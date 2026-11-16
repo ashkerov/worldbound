@@ -121,6 +121,8 @@ export class WorldView {
   private shadowDirty = true;
   /** Кадров, в которые рисуется второй конвейер: оба компилируются заранее, переключение камеры без рывка. */
   private warmPlain = 2;
+  /** Невидимый заслонитель под землёй с материалом рельефа: конвейер теней рельефа компилируется при загрузке, а не при первом снижении камеры. */
+  private shadowWarm: THREE.Mesh | null = null;
   /** Сообщает о каждом кадре — для мини-карты (рамка обзора). */
   onFrame: (() => void) | null = null;
 
@@ -247,6 +249,10 @@ export class WorldView {
     this.daysPerSeason = message.config.daysPerSeason;
     this.terrainUniforms.worldSize.value = data.worldSize;
     const material = terrainMaterial(data, this.terrainUniforms);
+    this.shadowWarm = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), material);
+    this.shadowWarm.castShadow = true;
+    this.shadowWarm.frustumCulled = false;
+    this.worldGroup.add(this.shadowWarm);
     this.terrain = new TerrainLod(data, material);
     this.terrain.lodK = this.quality.lodK;
     this.terrain.setCastShadow(this.quality.shadow > 0);
@@ -269,6 +275,7 @@ export class WorldView {
   clearWorld(): void {
     this.terrain?.dispose();
     this.terrain = null;
+    this.shadowWarm = null;
     for (const child of [...this.worldGroup.children]) {
       this.worldGroup.remove(child);
       if (child instanceof THREE.Mesh) child.geometry.dispose();
@@ -490,6 +497,7 @@ export class WorldView {
       this.terrain?.update(this.rig.camera.position);
       this.updateEnvironment(now);
       this.sky.follow(this.rig.target, this.rig.camera.position, this.rig.distance);
+      this.shadowWarm?.position.set(this.rig.target.x, this.rig.target.y - 150, this.rig.target.z);
       this.sky.updateFog(this.rig.distance, this.rig.altitude(), this.rig.camera.far);
       this.updateAgents(now);
       const every = this.quality.shadowEvery;

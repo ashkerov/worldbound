@@ -10,6 +10,8 @@ import type { WorldData } from './worldData';
 const GRID = 32;
 /** Минимальная сторона листа, м: 64 м / 32 = шаг 2 м — разрешение высот мира. */
 const LEAF = 64;
+/** Тени отбрасывают только узлы не крупнее этого (шаг ≤ 8 м): грубые дальние узлы давали угловатые тени при низком солнце. */
+const SHADOW_CASTER_MAX = 256;
 
 type FloatUniform = UniformNode<'float', number>;
 export interface TerrainUniforms {
@@ -64,6 +66,8 @@ export function terrainMaterial(data: WorldData, u: TerrainUniforms): THREE.Mesh
   ground = ground.mul(float(1).sub(weather.r.mul(0.32)));
 
   m.colorNode = mix(ground, layer.rgb, u.layerOpacity.mul(layer.a));
+  // Слой-карта читается и ночью: часть его цвета не зависит от освещения сцены.
+  m.emissiveNode = layer.rgb.mul(u.layerOpacity.mul(layer.a).mul(0.45));
   m.roughnessNode = float(0.95).sub(wet.mul(0.25)).sub(snowK.mul(0.15));
   return m;
 }
@@ -227,7 +231,7 @@ export class TerrainLod {
     g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
     const mesh = new THREE.Mesh(g, this.material);
     mesh.receiveShadow = true;
-    mesh.castShadow = this.castShadow;
+    mesh.castShadow = this.castShadow && node.size <= SHADOW_CASTER_MAX;
     mesh.matrixAutoUpdate = false;
     this.built++;
     return mesh;
@@ -293,7 +297,7 @@ export class TerrainLod {
   setCastShadow(on: boolean): void {
     this.castShadow = on;
     const walk = (node: Node) => {
-      if (node.mesh) node.mesh.castShadow = on;
+      if (node.mesh) node.mesh.castShadow = on && node.size <= SHADOW_CASTER_MAX;
       node.children?.forEach(walk);
     };
     walk(this.root);
