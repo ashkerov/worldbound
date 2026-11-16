@@ -1,46 +1,44 @@
-// Сквозная проверка запуска на обоих графических путях: WebGPU и WebGL 2.
-// Запускается в установленном системном браузере на реальном графическом стеке машины.
+// Сквозные проверки игры на обоих графических путях (WebGPU и WebGL 2) в системном браузере:
+// создание мира, время и скорости, слои, карточка ячейки, камера, сохранение и загрузка, детерминизм.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/app/debugHandle';
+import { Simulation } from '../../src/sim/core/simulation';
 
-const SHOTS = 'docs/screenshots';
+const SHOTS = 'docs/screenshots/phase2';
 const RESULTS = 'docs/measurements';
 mkdirSync(SHOTS, { recursive: true });
 mkdirSync(RESULTS, { recursive: true });
 
-interface Stats {
-  sim: { tick: number; ticksPerSecond: number; tickMsAvg: number; tickMsMax: number; droppedTicks: number; agents: number } | null;
-  render: { backend: string; fps: number; frameMsAvg: number; frameMsMax: number; drawCalls: number; triangles: number } | null;
-}
-
-async function open(page: Page, renderer: 'webgpu' | 'webgl2', agents = 300): Promise<string[]> {
+function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
-  await page.goto(`/?renderer=${renderer}&agents=${agents}&seed=worldbound`);
-  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 60_000 });
+  return errors;
+}
+
+async function autostart(page: Page, renderer: 'webgpu' | 'webgl2', query = ''): Promise<string[]> {
+  const errors = watchErrors(page);
+  await page.goto(`/?renderer=${renderer}&autostart=1&seed=42&size=S&debug=1${query}`);
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
   await expect(page.getByTestId('time-panel')).toBeVisible();
   return errors;
 }
 
 const tick = (page: Page) => page.evaluate(() => window.__wb!.getTick());
-const stats = (page: Page) => page.evaluate(() => window.__wb!.getStats() as unknown) as Promise<Stats>;
 
 for (const renderer of ['webgpu', 'webgl2'] as const) {
   test.describe(`Графический путь: ${renderer}`, () => {
-    test('приложение запускается, мир рисуется, симуляция идёт', async ({ page }) => {
-      const errors = await open(page, renderer);
-
-      // Запрошенный графический путь действительно используется.
-      const backend = await page.evaluate(() => window.__wb!.backend);
-      expect(backend, 'если здесь webgl2 при запросе webgpu — WebGPU недоступен в этом браузере').toBe(renderer);
+    test('мир создаётся и рисуется, время идёт, агенты движутся', async ({ page }) => {
+      const errors = await autostart(page, renderer, '&agents=300');
+      expect(await page.evaluate(() => window.__wb!.backend)).toBe(renderer);
       await expect(page.getByTestId('backend')).toHaveText(renderer === 'webgpu' ? 'WebGPU' : 'WebGL 2');
+      const gpu = await page.evaluate(() => window.__wb!.gpu);
+      expect(gpu.software, `программная отрисовка: ${gpu.adapter}`).toBe(false);
 
-      // Такты идут примерно с частотой 10/с на ×1.
       await page.waitForTimeout(1500);
       const t0 = await tick(page);
       await page.waitForTimeout(3000);
@@ -48,92 +46,125 @@ for (const renderer of ['webgpu', 'webgl2'] as const) {
       expect(t1 - t0).toBeGreaterThan(20);
       expect(t1 - t0).toBeLessThan(40);
 
-      // Агенты на экране движутся между кадрами (интерполяция работает).
       const p0 = await page.evaluate(() => window.__wb!.sampleAgents(20));
       await page.waitForTimeout(400);
       const p1 = await page.evaluate(() => window.__wb!.sampleAgents(20));
       expect(p0.length).toBe(40);
       expect(p0.some((value, i) => Math.abs(value - p1[i]!) > 0.05)).toBe(true);
 
-      // Замеры имеют смысл только на аппаратной отрисовке.
-      const gpu = await page.evaluate(() => window.__wb!.gpu);
-      writeFileSync(`${RESULTS}/phase0-gpu-${renderer}.json`, JSON.stringify(gpu, null, 2));
-      expect(gpu.software, `программная отрисовка: ${gpu.adapter}`).toBe(false);
-
-      await page.waitForTimeout(1500);
-      const s = await stats(page);
-      expect(s.render!.fps).toBeGreaterThan(5);
-      expect(s.render!.triangles).toBeGreaterThan(1000);
-      expect(s.sim!.agents).toBe(300);
-
-      await page.screenshot({ path: `${SHOTS}/phase0-${renderer}.png` });
+      const stats = (await page.evaluate(() => window.__wb!.getStats())) as { render: { fps: number; triangles: number; terrainNodes: number } };
+      expect(stats.render.fps).toBeGreaterThan(5);
+      expect(stats.render.triangles).toBeGreaterThan(10_000);
+      expect(stats.render.terrainNodes).toBeGreaterThan(3);
+      await page.screenshot({ path: `${SHOTS}/e2e-${renderer}.png` });
       expect(errors, errors.join('\n')).toEqual([]);
     });
 
     test('пауза и скорости ×1–×8 работают', async ({ page }) => {
-      await open(page, renderer);
-
+      await autostart(page, renderer);
       await page.getByTestId('speed-0').click();
       await page.waitForTimeout(1200);
-      const paused0 = await tick(page);
+      const paused = await tick(page);
       await page.waitForTimeout(1500);
-      expect(await tick(page)).toBe(paused0);
-      await expect(page.getByTestId('speed-0')).toHaveAttribute('aria-pressed', 'true');
-
+      expect(await tick(page)).toBe(paused);
       const rates: Record<string, number> = {};
       for (const speed of [1, 2, 4, 8]) {
         await page.getByTestId(`speed-${speed}`).click();
         await page.waitForTimeout(1500);
         const a = await tick(page);
         await page.waitForTimeout(3000);
-        const b = await tick(page);
-        const rate = (b - a) / 3;
+        const rate = ((await tick(page)) - a) / 3;
         rates[`x${speed}`] = +rate.toFixed(1);
         expect(rate, `скорость ×${speed}`).toBeGreaterThan(speed * 10 * 0.75);
         expect(rate, `скорость ×${speed}`).toBeLessThan(speed * 10 * 1.25);
       }
-      writeFileSync(`${RESULTS}/phase0-speeds-${renderer}.json`, JSON.stringify(rates, null, 2));
+      writeFileSync(`${RESULTS}/phase2-speeds-${renderer}.json`, JSON.stringify(rates, null, 2));
     });
 
-    test('команды создателя доходят до симуляции, хранилище OPFS работает', async ({ page }) => {
-      await open(page, renderer);
+    test('слои, карточка ячейки, камера и скрытие интерфейса', async ({ page }) => {
+      const errors = await autostart(page, renderer);
+      for (const id of ['height', 'moisture', 'temperature', 'precipitation', 'snow', 'soil']) {
+        await page.getByTestId(`layer-${id}`).click();
+        await expect(page.getByTestId('legend')).toBeVisible();
+        await expect(page.getByTestId('legend').locator('.wb-legend-row').first()).toBeVisible();
+      }
+      await page.getByTestId('layer-provinces').click();
+      await page.screenshot({ path: `${SHOTS}/layer-provinces-${renderer}.png` });
+      await page.getByTestId('layer-none').click();
 
-      await page.getByTestId('spawn').click();
-      await expect(page.getByTestId('agents')).toHaveText('1300', { timeout: 5000 });
-      await page.getByTestId('clear').click();
-      await expect(page.getByTestId('agents')).toHaveText('0', { timeout: 5000 });
+      // Карточка: щелчок по середине мира.
+      await page.evaluate(() => window.__wb!.pick(1024, 1024));
+      const card = page.getByTestId('cell-card');
+      await expect(card).toBeVisible();
+      await expect(page.getByTestId('cell-temperature')).toContainText('°C');
+      await expect(page.getByTestId('cell-height')).toContainText('м');
+      // Настоящий щелчок мышью по экрану тоже выбирает ячейку.
+      await page.mouse.click(640, 420);
+      await expect(card).toBeVisible();
 
-      await page.getByTestId('storage-check').click();
-      await expect(page.getByTestId('storage-result')).toContainText('opfs: исправно', { timeout: 15_000 });
-    });
-
-    test('нагрузка: 8000 агентов на ×1 и ×8', async ({ page }) => {
-      await open(page, renderer, 8000);
-      await page.waitForTimeout(4000);
-      const x1 = await stats(page);
-      await page.screenshot({ path: `${SHOTS}/phase0-${renderer}-8000-agents.png` });
-      await page.getByTestId('speed-8').click();
-      await page.waitForTimeout(5000);
-      const x8 = await stats(page);
-      writeFileSync(`${RESULTS}/phase0-load-${renderer}.json`, JSON.stringify({ agents: 8000, x1, x8 }, null, 2));
-      expect(x1.sim!.agents).toBe(8000);
-      expect(x1.render!.fps).toBeGreaterThan(5);
+      await page.getByTestId('camera-mode').click();
+      await expect(page.getByTestId('camera-mode')).toHaveText('Камера: свободная');
+      expect(await page.evaluate(() => window.__wb!.getView().mode)).toBe('free');
+      await page.keyboard.press('KeyH');
+      await expect(page.getByTestId('hud-hidden')).toBeVisible();
+      await page.keyboard.press('KeyH');
+      await expect(page.getByTestId('time-panel')).toBeVisible();
+      expect(errors, errors.join('\n')).toEqual([]);
     });
   });
 }
 
-test('состояние симуляции в браузере совпадает с эталоном Node при том же seed', async ({ page }) => {
-  // Тот же seed и ноль агентов: состояние определяется только генерацией рельефа,
-  // которая обязана быть побитно одинаковой в любом движке.
-  await page.goto('/?renderer=webgl2&agents=0&seed=42');
-  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 60_000 });
+test('меню: создать мир → сохранить → выйти → открыть: состояние совпало; удалить', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?renderer=webgpu');
+  await expect(page.getByTestId('main-menu')).toBeVisible();
+  await page.getByTestId('new-world').click();
+  await page.getByTestId('world-name').fill('Проверочная долина');
+  await page.getByTestId('world-seed').fill('777');
+  await page.getByTestId('size-S').click();
+  await page.getByTestId('season-3').click();
+  await page.getByTestId('climate-cold').click();
+  await page.getByTestId('create-submit').click();
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
+  await page.getByTestId('speed-8').click();
+  await page.waitForTimeout(2500);
+  await page.getByTestId('speed-0').click();
+  await page.waitForTimeout(800);
+  await page.getByTestId('save-now').click();
+  await expect(page.getByTestId('save-status')).toContainText('Сохранено');
+  const saved = await page.evaluate(() => window.__wb!.stateHash());
+  expect(saved.tick).toBeGreaterThan(0);
+
+  await page.getByTestId('exit-menu').click();
+  await expect(page.getByTestId('main-menu')).toBeVisible();
+  const item = page.getByTestId('world-item').filter({ hasText: 'Проверочная долина' });
+  await expect(item).toBeVisible();
+  await item.getByTestId('open-world').click();
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
+  const loaded = await page.evaluate(() => window.__wb!.stateHash());
+  expect(loaded).toEqual(saved);
+
+  await page.getByTestId('exit-menu').click();
+  await expect(page.getByTestId('main-menu')).toBeVisible();
+  const again = page.getByTestId('world-item').filter({ hasText: 'Проверочная долина' });
+  await again.getByTestId('delete-world').click();
+  await again.getByTestId('confirm-delete').click();
+  await expect(page.getByTestId('world-item').filter({ hasText: 'Проверочная долина' })).toHaveCount(0);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('мир в браузере побитно совпадает с эталоном Node при том же seed', async ({ page }, info) => {
+  await page.goto('/?renderer=webgl2&autostart=1&seed=42&size=S');
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
   await page.getByTestId('speed-0').click();
   await page.waitForTimeout(1200);
-  const { tick: atTick, hash } = await page.evaluate(() => window.__wb!.stateHash());
-  const { Simulation } = await import('../../src/sim/core/simulation');
-  const reference = new Simulation({ seed: 42, worldSize: 512, testAgents: 0 });
+  const browser = await page.evaluate(() => window.__wb!.stateHash());
+  const reference = new Simulation({ config: { seed: 42, size: 'S', name: 'Проверка 42' }, testAgents: 0 });
+  expect(browser.geoHash).toBe(reference.world.geoHash);
   reference.enqueue({ type: 'setSpeed', speed: 0 });
-  for (let i = 0; i < atTick; i++) reference.step();
+  while (reference.world.tick < browser.tick) reference.step();
   reference.applyCommands();
-  expect(hash).toBe(reference.stateHash());
+  expect(browser.hash).toBe(reference.stateHash());
+  const channel = String(info.project.use.channel ?? 'msedge');
+  writeFileSync(`${RESULTS}/phase2-determinism-${channel}.json`, JSON.stringify({ browser: channel, geoHash: browser.geoHash, tick: browser.tick, hash: browser.hash, node: reference.stateHash() }, null, 2));
 });

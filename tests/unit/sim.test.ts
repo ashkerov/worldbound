@@ -4,14 +4,16 @@ import { idGeneration } from '../../src/shared/ids';
 import { TICK_SECONDS } from '../../src/shared/time';
 import { AgentStore } from '../../src/sim/core/agentStore';
 import { Scheduler } from '../../src/sim/core/scheduler';
-import { Simulation } from '../../src/sim/core/simulation';
+import { Simulation, startTick } from '../../src/sim/core/simulation';
 import { heightAt } from '../../src/sim/core/world';
-import { generateTestTerrain } from '../../src/sim/worldgen/testTerrain';
+import { config, generated } from '../support/worlds';
 
-const INIT = { seed: 42, worldSize: 512, testAgents: 500 };
+const CONFIG = config();
+const INIT = { config: CONFIG, testAgents: 500 };
+const make = (init = INIT) => new Simulation(init, undefined, generated(config(init.config)));
 
 function run(ticks: number, commands: Record<number, Command[]> = {}, init = INIT): Simulation {
-  const sim = new Simulation(init);
+  const sim = make(init);
   for (let t = 0; t < ticks; t++) {
     for (const command of commands[t] ?? []) sim.enqueue(command);
     sim.step();
@@ -28,12 +30,12 @@ describe('Детерминизм', () => {
     };
     const a = run(1500, commands);
     const b = run(1500, commands);
-    expect(a.world.tick).toBe(1500);
+    expect(a.world.tick).toBe(startTick(CONFIG.daysPerSeason) + 1500);
     expect(a.stateHash()).toBe(b.stateHash());
   });
 
   it('другой seed даёт другое состояние', () => {
-    expect(run(200).stateHash()).not.toBe(run(200, {}, { ...INIT, seed: 43 }).stateHash());
+    expect(run(200).stateHash()).not.toBe(run(200, {}, { ...INIT, config: config({ seed: 43 }) }).stateHash());
   });
 
   it('другая команда даёт другое состояние', () => {
@@ -41,35 +43,26 @@ describe('Детерминизм', () => {
     const b = run(300, { 100: [{ type: 'spawnTestAgents', count: 11 }] });
     expect(a.stateHash()).not.toBe(b.stateHash());
   });
-
-  it('тестовый рельеф воспроизводим побитно и имеет эталонный хеш', () => {
-    const a = generateTestTerrain(42, 512, 4);
-    const b = generateTestTerrain(42, 512, 4);
-    expect(a.samples).toBe(129);
-    expect(Array.from(a.heights)).toEqual(Array.from(b.heights));
-    // Эталон: генерация использует только целочисленный хеш и + − ×, значит хеш обязан совпасть в любом движке.
-    expect(new Simulation({ seed: 42, worldSize: 512, testAgents: 0 }).stateHash()).toMatchInlineSnapshot(`"f6f397b4bb9c3305"`);
-  });
 });
 
 describe('Команды', () => {
   it('применяются на границе такта и попадают в журнал с номером такта', () => {
-    const sim = new Simulation(INIT);
+    const sim = make();
     sim.step();
     sim.step();
     sim.enqueue({ type: 'spawnTestAgents', count: 5 });
     expect(sim.world.agents.count).toBe(500);
     sim.step();
     expect(sim.world.agents.count).toBe(505);
-    expect(sim.commandLog).toEqual([{ tick: 2, command: { type: 'spawnTestAgents', count: 5 } }]);
+    expect(sim.commandLog).toEqual([{ tick: startTick(CONFIG.daysPerSeason) + 2, command: { type: 'spawnTestAgents', count: 5 } }]);
   });
 
   it('applyCommands работает без такта — нужно для снятия паузы', () => {
-    const sim = new Simulation(INIT);
+    const sim = make();
     sim.enqueue({ type: 'setSpeed', speed: 0 });
     sim.applyCommands();
     expect(sim.world.speed).toBe(0);
-    expect(sim.world.tick).toBe(0);
+    expect(sim.world.tick).toBe(startTick(CONFIG.daysPerSeason));
   });
 });
 
@@ -128,14 +121,14 @@ describe('Тестовые агенты и снимок', () => {
     for (let i = 0; i < a.highWater; i++) {
       expect(Number.isFinite(a.x[i]!) && Number.isFinite(a.z[i]!) && Number.isFinite(a.heading[i]!)).toBe(true);
       expect(a.x[i]!).toBeGreaterThanOrEqual(0);
-      expect(a.x[i]!).toBeLessThanOrEqual(512);
+      expect(a.x[i]!).toBeLessThanOrEqual(2048);
       expect(a.z[i]!).toBeGreaterThanOrEqual(0);
-      expect(a.z[i]!).toBeLessThanOrEqual(512);
+      expect(a.z[i]!).toBeLessThanOrEqual(2048);
     }
   });
 
   it('за такт агент проходит не больше скорость × длительность такта', () => {
-    const sim = new Simulation(INIT);
+    const sim = make();
     const a = sim.world.agents;
     const x0 = Array.from(a.x.subarray(0, a.highWater));
     const z0 = Array.from(a.z.subarray(0, a.highWater));

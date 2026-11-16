@@ -69,6 +69,20 @@ export class AgentStore {
     this.count = 0;
   }
 
+  /** Свободные слоты в порядке стека: часть состояния (порядок переиспользования влияет на будущее). */
+  freeSlots(): Int32Array {
+    return Int32Array.from(this.free);
+  }
+
+  /** Восстановление из сохранения: столбцы уже записаны, задаются счётчики и стек свободных слотов. */
+  restore(highWater: number, count: number, free: ArrayLike<number>): void {
+    if (highWater > this.capacity || count > highWater) throw new Error('Сохранение агентов повреждено');
+    this.highWater = highWater;
+    this.count = count;
+    this.free.length = 0;
+    for (let i = 0; i < free.length; i++) this.free.push(free[i]!);
+  }
+
   idOf(index: number): EntityId {
     return makeId(EntityKind.TestAgent, this.generation[index]!, index);
   }

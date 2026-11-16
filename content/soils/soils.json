@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "description": "Типы почв. Порядок записей — числовой идентификатор типа в поле почв и в сохранениях: новые типы добавляются только в конец.",
+  "soils": [
+    { "id": "rock", "name": "Каменистая", "fieldCapacityMm": 35, "drainagePerDay": 0.6, "fertility": 0.12 },
+    { "id": "sand", "name": "Песчаная", "fieldCapacityMm": 70, "drainagePerDay": 0.4, "fertility": 0.3 },
+    { "id": "loam", "name": "Суглинистая", "fieldCapacityMm": 160, "drainagePerDay": 0.14, "fertility": 0.75 },
+    { "id": "clay", "name": "Глинистая", "fieldCapacityMm": 210, "drainagePerDay": 0.06, "fertility": 0.55 },
+    { "id": "alluvial", "name": "Аллювиальная", "fieldCapacityMm": 185, "drainagePerDay": 0.1, "fertility": 0.95 },
+    { "id": "peat", "name": "Торфяная", "fieldCapacityMm": 320, "drainagePerDay": 0.03, "fertility": 0.45 }
+  ]
+}

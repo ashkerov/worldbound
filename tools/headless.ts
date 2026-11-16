@@ -1,5 +1,5 @@
 // Headless-прогон ядра симуляции в Node — без браузера, воркера и рендера.
-// Использование: npm run headless -- [--seed 42] [--ticks 7200] [--agents 2000]
+// Использование: npm run headless -- [--seed 42] [--size S|M] [--ticks 7200] [--agents 2000]
 
 import { performance } from 'node:perf_hooks';
 import { Simulation } from '../src/sim/core/simulation';
@@ -15,7 +15,10 @@ const seed = arg('seed', 42);
 const ticks = arg('ticks', TICKS_PER_DAY);
 const agents = arg('agents', 2000);
 
-const sim = new Simulation({ seed, worldSize: 512, testAgents: agents }, () => performance.now());
+const size = process.argv.includes('--size') && process.argv[process.argv.indexOf('--size') + 1] === 'S' ? 'S' : 'M';
+const genStart = performance.now();
+const sim = new Simulation({ config: { seed, size }, testAgents: agents }, () => performance.now());
+const generationMs = performance.now() - genStart;
 const start = performance.now();
 for (let i = 0; i < ticks; i++) sim.step();
 const elapsed = performance.now() - start;
@@ -24,6 +27,9 @@ console.log(
   JSON.stringify(
     {
       seed,
+      size,
+      generationMs: +generationMs.toFixed(0),
+      geoHash: sim.world.geoHash,
       ticks,
       agents: sim.world.agents.count,
       gameDays: +(ticks / TICKS_PER_DAY).toFixed(3),

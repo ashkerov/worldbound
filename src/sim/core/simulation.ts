@@ -4,19 +4,55 @@
 import type { Command, WorldInit } from '../../shared/protocol';
 import { SNAPSHOT_STRIDE } from '../../shared/protocol';
 import { EntityKind } from '../../shared/ids';
+import { TICKS_PER_DAY, TICKS_PER_HOUR } from '../../shared/time';
+import { WORLD_SIZES, normalizeConfig, type WorldConfig } from '../../shared/worldConfig';
 import { AgentStore } from './agentStore';
 import { StateHasher } from './hash';
 import { Scheduler, type Clock, type SystemTiming } from './scheduler';
-import { heightAt, type World } from './world';
-import { generateTestTerrain } from '../worldgen/testTerrain';
+import { heightAt, type World, type WorldDerived } from './world';
+import { generateWorld, type GeneratedWorld, type ProgressFn } from '../worldgen/generate';
+import type { Geo } from '../worldgen/geo';
+import { createEnv, precipFactor } from '../env/envState';
+import { SOILS } from '../env/soils';
+import { weatherSystem } from '../env/weather';
+import { greennessTarget, waterSystem } from '../env/water';
+import { cellTemperature, timeContext } from '../env/climate';
+import { WaterKind } from '../worldgen/geo';
 import { spawnTestAgents, testAgentDecisionSystem, testAgentMoveSystem } from '../systems/testAgents';
 
-export const TEST_TERRAIN_SPACING = 4;
 export const AGENT_CAPACITY = 16384;
+/** Мир начинается в середине весны, в 7:00. */
+export function startTick(daysPerSeason: number): number {
+  return Math.floor(daysPerSeason / 2) * TICKS_PER_DAY + 7 * TICKS_PER_HOUR;
+}
 
 export interface LoggedCommand {
   tick: number;
   command: Command;
+}
+
+function derive(geo: Geo): WorldDerived {
+  const { factor, landMean, landCells } = precipFactor(geo);
+  const count = geo.n * geo.n;
+  const capacity = new Float32Array(count);
+  const drainHour = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const soil = SOILS[geo.soil[i]!]!;
+    capacity[i] = soil.fieldCapacityMm;
+    drainHour[i] = soil.drainagePerDay / 24;
+  }
+  return { pFactor: factor, landMeanPrecip: landMean, landCells, capacity, drainHour };
+}
+
+/** Начальный покров — в равновесии с условиями момента старта (а не «голая земля»). */
+function initGreenness(world: World): void {
+  const geo = world.geo;
+  const ctx = timeContext(world.seed, world.tick, world.config.daysPerSeason);
+  for (let i = 0; i < geo.n * geo.n; i++) {
+    if (geo.waterKind[i] !== WaterKind.None) continue;
+    const t = cellTemperature(geo, i, ctx, 0.2);
+    world.env.greenness[i] = greennessTarget(geo, i, ctx, t, world.env.moisture[i]! / world.derived.capacity[i]!, 0);
+  }
 }
 
 export class Simulation {
@@ -26,16 +62,29 @@ export class Simulation {
   /** Журнал применённых команд: причина «вмешательство создателя» и воспроизведение в тестах. */
   readonly commandLog: LoggedCommand[] = [];
 
-  constructor(init: WorldInit, clock?: Clock) {
+  /**
+   * @param generated готовый результат генератора для этого же config (повторное использование в тестах);
+   *                  если не передан — мир генерируется здесь.
+   */
+  constructor(init: WorldInit, clock?: Clock, generated?: GeneratedWorld, progress?: ProgressFn) {
+    const config: WorldConfig = normalizeConfig(init.config);
+    const gen = generated ?? generateWorld(config, progress);
+    const worldSize = WORLD_SIZES[config.size];
     this.world = {
-      seed: init.seed >>> 0,
-      worldSize: init.worldSize,
-      tick: 0,
+      seed: config.seed,
+      config,
+      worldSize,
+      tick: startTick(config.daysPerSeason),
       speed: 1,
-      terrain: generateTestTerrain(init.seed >>> 0, init.worldSize, TEST_TERRAIN_SPACING),
+      terrain: gen.geo.terrain,
+      geo: gen.geo,
+      geoHash: gen.hash,
+      env: createEnv(gen.geo, worldSize),
+      derived: derive(gen.geo),
       agents: new AgentStore(AGENT_CAPACITY),
     };
-    this.scheduler = new Scheduler<World>(clock).add(testAgentDecisionSystem).add(testAgentMoveSystem);
+    initGreenness(this.world);
+    this.scheduler = new Scheduler<World>(clock).add(weatherSystem).add(waterSystem).add(testAgentDecisionSystem).add(testAgentMoveSystem);
     spawnTestAgents(this.world, init.testAgents);
   }
 
@@ -102,23 +151,39 @@ export class Simulation {
     return row;
   }
 
+  /** Хеш всего авторитетного состояния: статика (через хеш генерации), среда, агенты, время. */
   stateHash(): string {
     const w = this.world;
     const a = w.agents;
-    return new StateHasher()
-      .addInt(w.seed)
-      .addInt(w.tick)
+    const e = w.env;
+    const hasher = new StateHasher().addInt(w.seed).addInt(w.config.daysPerSeason).addInt(w.config.size === 'M' ? 2 : 1);
+    for (let i = 0; i < w.config.climate.length; i++) hasher.addInt(w.config.climate.charCodeAt(i));
+    for (let i = 0; i < w.geoHash.length; i++) hasher.addInt(w.geoHash.charCodeAt(i));
+    hasher
+      .addInt(w.tick % 0x40000000)
+      .addInt(Math.floor(w.tick / 0x40000000))
       .addInt(w.speed)
+      .addArray(e.moisture)
+      .addArray(e.snow)
+      .addArray(e.greenness)
+      .addArray(e.discharge)
+      .addArray(e.runoff)
+      .addArray(e.waterTotals)
+      .addArray(e.weather.cells)
+      .addArray(e.weather.chunkRate)
+      .addArray(e.weather.chunkCloud)
+      .addArray(e.weather.chunkAccum)
+      .addArray(e.weather.balance)
+      .addInt(e.lastHourStep)
       .addInt(a.count)
-      .addArray(w.terrain.heights)
       .addArray(a.x, a.highWater)
       .addArray(a.z, a.highWater)
       .addArray(a.heading, a.highWater)
       .addArray(a.targetHeading, a.highWater)
       .addArray(a.speed, a.highWater)
       .addArray(a.alive, a.highWater)
-      .addArray(a.generation, a.highWater)
-      .digest();
+      .addArray(a.generation, a.highWater);
+    return hasher.digest();
   }
 
   getTimings(): readonly SystemTiming[] {

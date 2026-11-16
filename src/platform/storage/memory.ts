@@ -16,8 +16,14 @@ export class MemoryStorage implements StoragePort {
     this.files.set(parts.join('/'), data.slice());
   }
 
+  /** Удаляет файл или каталог целиком (как OPFS removeEntry с recursive). */
   async remove(path: string): Promise<boolean> {
-    return this.files.delete(splitPath(path).join('/'));
+    const key = splitPath(path).join('/');
+    let removed = this.files.delete(key);
+    for (const k of [...this.files.keys()]) {
+      if (k.startsWith(key + '/')) removed = this.files.delete(k) || removed;
+    }
+    return removed;
   }
 
   async list(dir: string): Promise<string[]> {

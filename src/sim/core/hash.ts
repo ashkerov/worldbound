@@ -11,7 +11,7 @@ export class StateHasher {
   }
 
   /** Хеширует `length` первых элементов массива по их байтовому представлению. */
-  addArray(array: Float32Array | Uint8Array | Uint16Array | Int32Array | Uint32Array, length = array.length): this {
+  addArray(array: Float32Array | Float64Array | Uint8Array | Uint16Array | Int16Array | Int32Array | Uint32Array, length = array.length): this {
     const bytes = new Uint8Array(array.buffer, array.byteOffset, length * array.BYTES_PER_ELEMENT);
     let h1 = this.h1;
     let h2 = this.h2;
