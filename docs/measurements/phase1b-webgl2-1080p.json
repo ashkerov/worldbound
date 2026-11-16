@@ -1,0 +1,43 @@
+{
+  "backend": "webgl2",
+  "adapter": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x000046A8) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "resolution": "1920×1080",
+  "setup": {
+    "trees": 300150,
+    "creatures": 3000,
+    "grass": 60000,
+    "shadows": true,
+    "treeMeshesCreated": 794
+  },
+  "buildMs": 560.1000000238419,
+  "heapMb": 70.11563873291016,
+  "segments": [
+    {
+      "name": "Стратегический обзор (высота 900 м)",
+      "fpsAvg": 22.995939779431954,
+      "frameMsAvg": 43.48593749990687,
+      "frameMsP99": 225.90000000596046,
+      "frameMsMax": 252.30000001192093,
+      "drawCalls": 663,
+      "triangles": 3233313
+    },
+    {
+      "name": "Средняя высота (120 м), пролёт над лесом",
+      "fpsAvg": 17.50437609404214,
+      "frameMsAvg": 57.12857142851061,
+      "frameMsP99": 309.40000000596046,
+      "frameMsMax": 309.40000000596046,
+      "drawCalls": 339,
+      "triangles": 5907721
+    },
+    {
+      "name": "У земли (6 м), стадо и лес вблизи",
+      "fpsAvg": 25.241061214085885,
+      "frameMsAvg": 39.61798561155367,
+      "frameMsP99": 274.40000000596046,
+      "frameMsMax": 280.09999999403954,
+      "drawCalls": 433,
+      "triangles": 4313109
+    }
+  ]
+}

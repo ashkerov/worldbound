@@ -1,0 +1,133 @@
+:root {
+  --wb-panel: rgba(24, 28, 22, 0.78);
+  --wb-border: rgba(214, 190, 130, 0.35);
+  --wb-text: #efe8d6;
+  --wb-muted: #b9b29c;
+  --wb-accent: #d9a441;
+  --wb-ok: #9ccf7a;
+  --wb-fail: #e58a6c;
+}
+
+.wb-panel {
+  position: absolute;
+  pointer-events: auto;
+  color: var(--wb-text);
+  background: var(--wb-panel);
+  border: 1px solid var(--wb-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: 13px/1.45 'Segoe UI', system-ui, sans-serif;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.wb-time {
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.wb-date {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.wb-speeds,
+.wb-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wb-btn {
+  font: inherit;
+  color: var(--wb-text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  min-width: 38px;
+  cursor: pointer;
+}
+
+.wb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.wb-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wb-btn-active {
+  background: var(--wb-accent);
+  border-color: var(--wb-accent);
+  color: #20180a;
+  font-weight: 600;
+}
+
+.wb-debug {
+  top: 14px;
+  right: 14px;
+  width: 270px;
+}
+
+.wb-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--wb-accent);
+}
+
+.wb-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-row > span:first-child {
+  color: var(--wb-muted);
+}
+
+.wb-sep {
+  height: 1px;
+  background: var(--wb-border);
+  margin: 8px 0;
+}
+
+.wb-actions {
+  margin-top: 8px;
+}
+
+.wb-note {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.wb-adapter {
+  margin: 2px 0 6px;
+  color: var(--wb-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-ok {
+  color: var(--wb-ok);
+}
+
+.wb-fail {
+  color: var(--wb-fail);
+}
+
+.wb-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 480px;
+  text-align: center;
+}

@@ -1,0 +1,182 @@
+[
+  {
+    "backend": "webgpu",
+    "variant": "base",
+    "overview": 26.2,
+    "overviewP99": 94,
+    "triangles": 1230615,
+    "resolution": "1536×864",
+    "house": 32.9,
+    "houseP99": 42
+  },
+  {
+    "backend": "webgpu",
+    "variant": "post",
+    "overview": 21,
+    "overviewP99": 77,
+    "triangles": 1230603,
+    "resolution": "1536×864",
+    "house": 34.5,
+    "houseP99": 74
+  },
+  {
+    "backend": "webgpu",
+    "variant": "bloom",
+    "overview": 12,
+    "overviewP99": 4164,
+    "triangles": 808148,
+    "resolution": "1536×864",
+    "house": 24.9,
+    "houseP99": 89
+  },
+  {
+    "backend": "webgpu",
+    "variant": "taps",
+    "overview": 28.4,
+    "overviewP99": 49,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 31.5,
+    "houseP99": 44
+  },
+  {
+    "backend": "webgpu",
+    "variant": "shadow",
+    "overview": 30.4,
+    "overviewP99": 47,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 27.3,
+    "houseP99": 50
+  },
+  {
+    "backend": "webgpu",
+    "variant": "every1",
+    "overview": 22.4,
+    "overviewP99": 849,
+    "triangles": 1230615,
+    "resolution": "1536×864",
+    "house": 24,
+    "houseP99": 119
+  },
+  {
+    "backend": "webgpu",
+    "variant": "pr06",
+    "overview": 33,
+    "overviewP99": 95,
+    "triangles": 808160,
+    "resolution": "1152×648",
+    "house": 32.7,
+    "houseP99": 56
+  },
+  {
+    "backend": "webgpu",
+    "variant": "lights",
+    "overview": 26,
+    "overviewP99": 65,
+    "triangles": 1230615,
+    "resolution": "1536×864",
+    "house": 32.6,
+    "houseP99": 42
+  },
+  {
+    "backend": "webgpu",
+    "variant": "grass",
+    "overview": 35.4,
+    "overviewP99": 33,
+    "triangles": 478160,
+    "resolution": "1536×864",
+    "house": 28.7,
+    "houseP99": 56
+  },
+  {
+    "backend": "webgl2",
+    "variant": "base",
+    "overview": 38.8,
+    "overviewP99": 510,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 11,
+    "houseP99": 3556
+  },
+  {
+    "backend": "webgl2",
+    "variant": "post",
+    "overview": 46.1,
+    "overviewP99": 391,
+    "triangles": 808148,
+    "resolution": "1536×864",
+    "house": 30.3,
+    "houseP99": 1538
+  },
+  {
+    "backend": "webgl2",
+    "variant": "bloom",
+    "overview": 53.9,
+    "overviewP99": 991,
+    "triangles": 1230603,
+    "resolution": "1536×864",
+    "house": 46.7,
+    "houseP99": 15
+  },
+  {
+    "backend": "webgl2",
+    "variant": "taps",
+    "overview": 40.1,
+    "overviewP99": 908,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 42.5,
+    "houseP99": 1149
+  },
+  {
+    "backend": "webgl2",
+    "variant": "shadow",
+    "overview": 44.7,
+    "overviewP99": 44,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 29.3,
+    "houseP99": 1330
+  },
+  {
+    "backend": "webgl2",
+    "variant": "every1",
+    "overview": 46.5,
+    "overviewP99": 752,
+    "triangles": 1230615,
+    "resolution": "1536×864",
+    "house": 26.4,
+    "houseP99": 1551
+  },
+  {
+    "backend": "webgl2",
+    "variant": "pr06",
+    "overview": 53.1,
+    "overviewP99": 989,
+    "triangles": 808160,
+    "resolution": "1152×648",
+    "house": 37.1,
+    "houseP99": 629
+  },
+  {
+    "backend": "webgl2",
+    "variant": "lights",
+    "overview": 37.3,
+    "overviewP99": 22,
+    "triangles": 808160,
+    "resolution": "1536×864",
+    "house": 20.8,
+    "houseP99": 1615
+  },
+  {
+    "backend": "webgl2",
+    "variant": "grass",
+    "overview": 36.2,
+    "overviewP99": 1415,
+    "triangles": 478160,
+    "resolution": "1536×864",
+    "house": 30.6,
+    "houseP99": 519
+  }
+]

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WORLDBOUND — визуальный прототип 1A</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #10140f; font: 13px/1.45 'Segoe UI', system-ui, sans-serif; color: #efe8d6; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+      #view:active { cursor: grabbing; }
+      .panel { position: fixed; background: rgba(24, 28, 22, 0.78); border: 1px solid rgba(214, 190, 130, 0.35); border-radius: 12px;
+        padding: 10px 12px; backdrop-filter: blur(6px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+      #controls { left: 14px; top: 14px; width: 268px; }
+      #stats { right: 14px; top: 14px; min-width: 190px; font-variant-numeric: tabular-nums; white-space: pre; }
+      #help { left: 14px; bottom: 14px; max-width: 420px; color: #b9b29c; font-size: 12px; }
+      h1 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #d9a441; letter-spacing: 0.04em; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+      .label { width: 100%; color: #b9b29c; margin-top: 8px; font-size: 12px; }
+      button { font: inherit; color: #efe8d6; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(214, 190, 130, 0.35);
+        border-radius: 8px; padding: 4px 9px; cursor: pointer; }
+      button:hover { background: rgba(255, 255, 255, 0.14); }
+      button.on { background: #d9a441; border-color: #d9a441; color: #20180a; font-weight: 600; }
+      input[type='range'] { flex: 1; accent-color: #d9a441; min-width: 0; }
+      #clock { width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+      #loading { left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; white-space: pre-wrap; max-width: 520px; }
+      body.clean .panel { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div class="panel" id="loading">Построение диорамы…</div>
+    <div class="panel" id="controls" hidden>
+      <h1>WORLDBOUND · прототип 1A</h1>
+      <div class="label">Камера</div>
+      <div class="row" id="modes">
+        <button data-mode="strategic">Стратегическая</button>
+        <button data-mode="free">Свободная</button>
+      </div>
+      <div class="label">Перейти к</div>
+      <div class="row" id="focus">
+        <button data-focus="overview">Обзор</button>
+        <button data-focus="house">Дом</button>
+        <button data-focus="waterfall">Водопад</button>
+        <button data-focus="stag">Олень</button>
+        <button data-focus="doe">Самка</button>
+        <button data-focus="farmer">Житель</button>
+      </div>
+      <div class="label">Время суток</div>
+      <div class="row">
+        <button id="play" title="Запустить или остановить ход времени">▶</button>
+        <input id="hour" type="range" min="0" max="24" step="0.05" />
+        <span id="clock">12:00</span>
+      </div>
+      <div class="label">Качество графики (перезагружает сцену)</div>
+      <div class="row" id="quality">
+        <button data-quality="low">Низкое</button>
+        <button data-quality="medium">Среднее</button>
+        <button data-quality="high">Высокое</button>
+      </div>
+    </div>
+    <div class="panel" id="stats" hidden></div>
+    <div class="panel" id="help" hidden>
+      Левая кнопка мыши — в стратегическом режиме сдвиг, в свободном вращение · правая — наоборот · колесо — масштаб ·
+      W A S D — движение · Q E — поворот · Tab — режим · H — скрыть интерфейс
+    </div>
+    <script type="module" src="./diorama.ts"></script>
+  </body>
+</html>

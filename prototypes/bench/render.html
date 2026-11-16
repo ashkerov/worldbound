@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WORLDBOUND — стенд 1B: нагрузка рендера</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #10140f; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      #status { position: fixed; left: 12px; top: 12px; margin: 0; padding: 10px 14px; max-width: 70vw; white-space: pre-wrap;
+        font: 13px/1.45 'Segoe UI', system-ui, sans-serif; color: #efe8d6; background: rgba(24, 28, 22, 0.78); border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <pre id="status">Построение сцены…</pre>
+    <script type="module" src="./renderBench.ts"></script>
+  </body>
+</html>

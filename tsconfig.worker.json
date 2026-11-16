@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "WebWorker", "WebWorker.Iterable", "WebWorker.AsyncIterable"]
+  },
+  "include": [
+    "src/shared/**/*.ts",
+    "src/sim/**/*.ts",
+    "src/platform/storage/**/*.ts",
+    "src/worker/sim.worker.ts"
+  ]
+}

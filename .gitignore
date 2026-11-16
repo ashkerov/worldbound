@@ -1,0 +1,17 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+
+# Исходные материалы заказчика — хранятся только локально
+reference/
+
+# Локальные настройки и кэши
+.claude/settings.local.json
+.env
+.env.*
+.vite/

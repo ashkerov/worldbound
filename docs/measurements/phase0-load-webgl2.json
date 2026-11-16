@@ -1,0 +1,45 @@
+{
+  "agents": 8000,
+  "x1": {
+    "sim": {
+      "type": "stats",
+      "tick": 40,
+      "speed": 1,
+      "agents": 8000,
+      "tickMsAvg": 3.379999989271164,
+      "tickMsMax": 4.399999976158142,
+      "ticksPerSecond": 9.809691975327818,
+      "droppedTicks": 0
+    },
+    "render": {
+      "backend": "webgl2",
+      "fps": 54.06449121389795,
+      "frameMsAvg": 18.496428571641445,
+      "frameMsMax": 21.400000005960464,
+      "drawCalls": 3,
+      "triangles": 1600769,
+      "agentsDrawn": 8000
+    }
+  },
+  "x8": {
+    "sim": {
+      "type": "stats",
+      "tick": 433,
+      "speed": 8,
+      "agents": 8000,
+      "tickMsAvg": 3.157499996572733,
+      "tickMsMax": 6.0999999940395355,
+      "ticksPerSecond": 79.8722044709422,
+      "droppedTicks": 0
+    },
+    "render": {
+      "backend": "webgl2",
+      "fps": 53.784095275298846,
+      "frameMsAvg": 18.59285714264427,
+      "frameMsMax": 21.80000001192093,
+      "drawCalls": 3,
+      "triangles": 1600769,
+      "agentsDrawn": 8000
+    }
+  }
+}

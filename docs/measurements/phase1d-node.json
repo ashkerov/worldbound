@@ -1,0 +1,56 @@
+{
+  "environment": "Node v24.22.1",
+  "agents": [
+    {
+      "agents": 2000,
+      "ticks": 300,
+      "msAvg": 0.5243200000000015,
+      "msP95": 0.8588999999999487,
+      "msMax": 3.12439999999998
+    },
+    {
+      "agents": 5000,
+      "ticks": 300,
+      "msAvg": 1.6796076666666693,
+      "msP95": 1.966899999999896,
+      "msMax": 2.4436999999999216
+    },
+    {
+      "agents": 10000,
+      "ticks": 300,
+      "msAvg": 4.584663000000001,
+      "msP95": 5.555100000000039,
+      "msMax": 7.525200000000041
+    },
+    {
+      "agents": 20000,
+      "ticks": 300,
+      "msAvg": 33.8152043333333,
+      "msP95": 54.710000000000036,
+      "msMax": 73.26370000000043
+    }
+  ],
+  "fields": {
+    "cells": 262144,
+    "passes": 10,
+    "msPerDailyPass": 42.00226000000002
+  },
+  "unified": [
+    {
+      "chunks": 1024,
+      "days": 67,
+      "rabbitsAvg": 18393.298507462685,
+      "foxesAvg": 2269.2985074626868,
+      "msPerGameDay": 337.79557761194025,
+      "individualHoursPerSecond": 1468054.5312760186
+    },
+    {
+      "chunks": 1024,
+      "days": 67,
+      "rabbitsAvg": 4853.388059701492,
+      "foxesAvg": 1979,
+      "msPerGameDay": 44.668180597014945,
+      "individualHoursPerSecond": 3671009.457765871
+    }
+  ]
+}

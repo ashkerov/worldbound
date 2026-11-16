@@ -1,0 +1,38 @@
+[
+  {
+    "view": "Стратегический обзор",
+    "backend": "webgl2",
+    "quality": "medium",
+    "resolution": "1440×810",
+    "fps": 44.57473983777097,
+    "frameMs": 22.434230769253695,
+    "frameMsP99": 922,
+    "drawCalls": 165,
+    "triangles": 1041433,
+    "buildMs": 2302.9000000059605
+  },
+  {
+    "view": "Свободная камера у дома",
+    "backend": "webgl2",
+    "quality": "medium",
+    "resolution": "1440×810",
+    "fps": 43.47303125577309,
+    "frameMs": 23.00276679848965,
+    "frameMsP99": 1047.9000000059605,
+    "drawCalls": 87,
+    "triangles": 679756,
+    "buildMs": 2302.9000000059605
+  },
+  {
+    "view": "Свободная камера рядом с оленем",
+    "backend": "webgl2",
+    "quality": "medium",
+    "resolution": "1440×810",
+    "fps": 59.884223833683585,
+    "frameMs": 16.698888888955118,
+    "frameMsP99": 774.3000000119209,
+    "drawCalls": 132,
+    "triangles": 972221,
+    "buildMs": 2302.9000000059605
+  }
+]
