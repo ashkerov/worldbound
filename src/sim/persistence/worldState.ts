@@ -2,15 +2,19 @@
 // нормы, почвы, провинции) не сохраняется: она побитно воспроизводится генератором из параметров мира,
 // а совпадение проверяется по хешу генерации. Каждая секция версионируется отдельно.
 
-import type { World } from '../core/world';
+import { cellAt, type World } from '../core/world';
+import { populateFromGreenness } from '../flora/populate';
 import { SectionReader, SectionWriter } from './binary';
 
 export const SECTION_SCHEMAS = {
   core: 1,
   env: 1,
   agents: 1,
+  flora: 1,
 } as const;
 export type SectionId = keyof typeof SECTION_SCHEMAS;
+/** Без этих секций мир не загружается; остальные при отсутствии восстанавливаются миграцией. */
+export const REQUIRED_SECTIONS: readonly SectionId[] = ['core', 'env'];
 
 export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
   const e = world.env;
@@ -43,14 +47,56 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
     .array(a.alive.subarray(0, hw))
     .array(a.generation.subarray(0, hw))
     .finish('agents', SECTION_SCHEMAS.agents);
-  return { core, env, agents };
+  const f = world.flora;
+  const w = f.woody;
+  const wh = w.highWater;
+  const flora = new SectionWriter()
+    .f64(f.lastSliceHour)
+    .array(f.slotSpecies)
+    .array(f.slotBiomass)
+    .array(f.litterFast)
+    .array(f.litterFastN)
+    .array(f.litterWood)
+    .array(f.litterWoodN)
+    .array(f.nutrient)
+    .array(f.accT)
+    .array(f.accW)
+    .array(f.accRunoff)
+    .array(f.accMinT)
+    .array(f.accHours)
+    .array(f.ledger)
+    .f64(wh)
+    .f64(w.count)
+    .array(w.freeSlots())
+    .array(w.x.subarray(0, wh))
+    .array(w.z.subarray(0, wh))
+    .array(w.species.subarray(0, wh))
+    .array(w.age.subarray(0, wh))
+    .array(w.biomass.subarray(0, wh))
+    .array(w.leaf.subarray(0, wh))
+    .array(w.health.subarray(0, wh))
+    .array(w.stage.subarray(0, wh))
+    .array(w.stressW.subarray(0, wh))
+    .array(w.stressL.subarray(0, wh))
+    .array(w.alive.subarray(0, wh))
+    .array(w.generation.subarray(0, wh))
+    .finish('flora', SECTION_SCHEMAS.flora);
+  return { core, env, agents, flora };
 }
+
+/** Что пришлось восстановить миграцией при загрузке. */
+export type Migration = 'agents:absent' | 'flora:from-greenness';
 
 const SPEEDS = [0, 1, 2, 4, 8];
 
-/** Применяет секции к свежесозданному миру с той же статикой. Ошибка — исключение, мир тогда не используется. */
-export function applySections(world: World, sections: Record<SectionId, Uint8Array>): void {
-  const core = new SectionReader(sections.core, 'core');
+/**
+ * Применяет секции к свежесозданному миру с той же статикой (без начального заселения).
+ * Ошибка — исключение, мир тогда не используется. Возвращает список выполненных миграций.
+ */
+export function applySections(world: World, sections: Partial<Record<SectionId, Uint8Array>>): Migration[] {
+  for (const id of REQUIRED_SECTIONS) if (!sections[id]) throw new Error(`Нет обязательной секции ${id}`);
+  const migrations: Migration[] = [];
+  const core = new SectionReader(sections.core!, 'core');
   if (core.header.schema !== SECTION_SCHEMAS.core) throw new Error(`Секция core: неизвестная версия схемы ${core.header.schema}`);
   const tick = core.f64();
   const speed = core.f64();
@@ -59,7 +105,7 @@ export function applySections(world: World, sections: Record<SectionId, Uint8Arr
   world.tick = tick;
   world.speed = speed as World['speed'];
 
-  const env = new SectionReader(sections.env, 'env');
+  const env = new SectionReader(sections.env!, 'env');
   if (env.header.schema !== SECTION_SCHEMAS.env) throw new Error(`Секция env: неизвестная версия схемы ${env.header.schema}`);
   const e = world.env;
   env.into(e.moisture);
@@ -75,7 +121,20 @@ export function applySections(world: World, sections: Record<SectionId, Uint8Arr
   env.into(e.weather.balance);
   e.lastHourStep = env.f64();
 
-  const agents = new SectionReader(sections.agents, 'agents');
+  if (!sections.agents) migrations.push('agents:absent');
+  else readAgents(world, sections.agents);
+
+  if (sections.flora) readFlora(world, sections.flora);
+  else {
+    // Сохранение фазы 2: растений не было — травяной ярус восстанавливается из сохранённого индекса зелени.
+    populateFromGreenness(world);
+    migrations.push('flora:from-greenness');
+  }
+  return migrations;
+}
+
+function readAgents(world: World, bytes: Uint8Array): void {
+  const agents = new SectionReader(bytes, 'agents');
   if (agents.header.schema !== SECTION_SCHEMAS.agents) throw new Error(`Секция agents: неизвестная версия схемы ${agents.header.schema}`);
   const a = world.agents;
   const hw = agents.f64();
@@ -91,4 +150,43 @@ export function applySections(world: World, sections: Record<SectionId, Uint8Arr
   agents.into(a.alive.subarray(0, hw));
   agents.into(a.generation.subarray(0, hw));
   a.restore(hw, count, free);
+}
+
+function readFlora(world: World, bytes: Uint8Array): void {
+  const r = new SectionReader(bytes, 'flora');
+  if (r.header.schema !== SECTION_SCHEMAS.flora) throw new Error(`Секция flora: неизвестная версия схемы ${r.header.schema}`);
+  const f = world.flora;
+  f.lastSliceHour = r.f64();
+  r.into(f.slotSpecies);
+  r.into(f.slotBiomass);
+  r.into(f.litterFast);
+  r.into(f.litterFastN);
+  r.into(f.litterWood);
+  r.into(f.litterWoodN);
+  r.into(f.nutrient);
+  r.into(f.accT);
+  r.into(f.accW);
+  r.into(f.accRunoff);
+  r.into(f.accMinT);
+  r.into(f.accHours);
+  r.into(f.ledger);
+  const w = f.woody;
+  const wh = r.f64();
+  const count = r.f64();
+  const free = r.int32();
+  if (!Number.isInteger(wh) || wh < 0 || wh > w.capacity) throw new Error('Секция flora: неверное число растений');
+  r.into(w.x.subarray(0, wh));
+  r.into(w.z.subarray(0, wh));
+  r.into(w.species.subarray(0, wh));
+  r.into(w.age.subarray(0, wh));
+  r.into(w.biomass.subarray(0, wh));
+  r.into(w.leaf.subarray(0, wh));
+  r.into(w.health.subarray(0, wh));
+  r.into(w.stage.subarray(0, wh));
+  r.into(w.stressW.subarray(0, wh));
+  r.into(w.stressL.subarray(0, wh));
+  r.into(w.alive.subarray(0, wh));
+  r.into(w.generation.subarray(0, wh));
+  w.restore(wh, count, free);
+  for (let i = 0; i < wh; i++) w.cell[i] = cellAt(world, w.x[i]!, w.z[i]!);
 }

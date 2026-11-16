@@ -15,6 +15,8 @@ export interface WorldInit {
   config: Partial<WorldConfig> & { seed: number };
   /** Число тестовых агентов на старте (отладка, фаза 0). */
   testAgents: number;
+  /** false — не заселять растениями (состояние придёт из сохранения). */
+  populate?: boolean;
 }
 
 export type ToWorker =

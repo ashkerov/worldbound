@@ -3,6 +3,7 @@ import type { WorldConfig } from '../../shared/worldConfig';
 import type { EnvState } from '../env/envState';
 import type { Geo } from '../worldgen/geo';
 import type { AgentStore } from './agentStore';
+import type { FloraState } from '../flora/state';
 
 export interface Terrain {
   /** Число отсчётов по стороне. */
@@ -39,6 +40,7 @@ export interface World {
   readonly env: EnvState;
   readonly derived: WorldDerived;
   readonly agents: AgentStore;
+  readonly flora: FloraState;
 }
 
 /** Билинейная выборка высоты в метрах. Координаты зажимаются в границы мира. */

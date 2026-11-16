@@ -1,0 +1,102 @@
+{
+ "version": 1,
+ "description": "Биомы. Правила проверяются по порядку, первое совпавшее даёт биом ячейки. Биом не хранится: вычисляется из фактической растительности и условий.",
+ "biomes": [
+  {
+   "id": "water",
+   "name": "Водоём",
+   "color": "#3d7fb0",
+   "rule": {
+    "water": [
+     "river",
+     "lake",
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "bog",
+   "name": "Болото",
+   "color": "#6f7d4a",
+   "rule": {
+    "moistureMin": 0.85,
+    "treeCoverMax": 0.4,
+    "herbBiomassMin": 60
+   }
+  },
+  {
+   "id": "coniferous-forest",
+   "name": "Хвойный лес",
+   "color": "#2f5a3a",
+   "rule": {
+    "treeCoverMin": 0.5,
+    "coniferShareMin": 0.65
+   }
+  },
+  {
+   "id": "broadleaf-forest",
+   "name": "Широколиственный лес",
+   "color": "#3f7a35",
+   "rule": {
+    "treeCoverMin": 0.5,
+    "coniferShareMax": 0.35
+   }
+  },
+  {
+   "id": "mixed-forest",
+   "name": "Смешанный лес",
+   "color": "#386a37",
+   "rule": {
+    "treeCoverMin": 0.5
+   }
+  },
+  {
+   "id": "woodland",
+   "name": "Редколесье",
+   "color": "#6e9a48",
+   "rule": {
+    "treeCoverMin": 0.2
+   }
+  },
+  {
+   "id": "shrubland",
+   "name": "Кустарники",
+   "color": "#8a9a4e",
+   "rule": {
+    "shrubCoverMin": 0.3
+   }
+  },
+  {
+   "id": "tundra",
+   "name": "Горная тундра",
+   "color": "#9aa08a",
+   "rule": {
+    "tMeanMax": 0,
+    "herbBiomassMin": 20
+   }
+  },
+  {
+   "id": "meadow",
+   "name": "Луг",
+   "color": "#8fbf5a",
+   "rule": {
+    "herbBiomassMin": 150,
+    "moistureMin": 0.35
+   }
+  },
+  {
+   "id": "steppe",
+   "name": "Степь",
+   "color": "#c2b46a",
+   "rule": {
+    "herbBiomassMin": 40
+   }
+  },
+  {
+   "id": "barren",
+   "name": "Голая земля и скалы",
+   "color": "#a39a88",
+   "rule": {}
+  }
+ ]
+}

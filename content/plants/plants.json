@@ -1,0 +1,708 @@
+{
+ "version": 1,
+ "description": "Виды растений. [Предварительно] — состав видов не утверждён заказчиком (docs/PHASE3_PLAN.md, раздел 10). Порядок записей — числовой идентификатор вида в сохранениях: новые виды добавляются только в конец. Температура — среднесуточная, °C; влага — доля полевой влагоёмкости; темпы — за игровой год; биомасса трав — г/м², древесных — кг на растение.",
+ "plants": [
+  {
+   "id": "meadow-grass",
+   "name": "Мятлик луговой",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 2,
+    "optMin": 10,
+    "optMax": 22,
+    "max": 30
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.4,
+    "optMax": 0.85,
+    "max": 1.05
+   },
+   "shadeTolerance": 0.25,
+   "nutrientDemand": 0.5,
+   "growthRate": 22,
+   "maxBiomass": 450,
+   "nutrientContent": 0.015,
+   "baseMortality": 0.6,
+   "spreadRate": 0.6,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.8
+  },
+  {
+   "id": "feather-grass",
+   "name": "Ковыль",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 4,
+    "optMin": 14,
+    "optMax": 28,
+    "max": 38
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.06,
+    "optMin": 0.14,
+    "optMax": 0.45,
+    "max": 0.8
+   },
+   "shadeTolerance": 0.05,
+   "nutrientDemand": 0.2,
+   "growthRate": 14,
+   "maxBiomass": 300,
+   "nutrientContent": 0.01,
+   "baseMortality": 0.6,
+   "spreadRate": 0.4,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.6,
+   "soilPreference": {
+    "sand": 0.9,
+    "loam": 0.8,
+    "rock": 0.5,
+    "peat": 0.1
+   }
+  },
+  {
+   "id": "sedge",
+   "name": "Осока",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 1,
+    "optMin": 8,
+    "optMax": 22,
+    "max": 30
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.5,
+    "optMin": 0.75,
+    "optMax": 1.0,
+    "max": 1.3
+   },
+   "shadeTolerance": 0.5,
+   "nutrientDemand": 0.35,
+   "growthRate": 16,
+   "maxBiomass": 500,
+   "nutrientContent": 0.014,
+   "baseMortality": 0.6,
+   "spreadRate": 0.4,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.6,
+   "soilPreference": {
+    "peat": 1,
+    "alluvial": 0.9,
+    "clay": 0.8,
+    "sand": 0.3,
+    "rock": 0.1
+   }
+  },
+  {
+   "id": "clover",
+   "name": "Клевер",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 4,
+    "optMin": 12,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.25,
+    "optMin": 0.45,
+    "optMax": 0.85,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.2,
+   "nutrientDemand": 0.3,
+   "growthRate": 20,
+   "maxBiomass": 300,
+   "nutrientContent": 0.03,
+   "baseMortality": 0.6,
+   "spreadRate": 0.5,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.6,
+   "colonistWeight": 0.5,
+   "fixesNutrient": 1.5
+  },
+  {
+   "id": "meadow-flowers",
+   "name": "Луговые цветы",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 3,
+    "optMin": 12,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.4,
+    "optMax": 0.8,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.2,
+   "nutrientDemand": 0.5,
+   "growthRate": 16,
+   "maxBiomass": 250,
+   "nutrientContent": 0.016,
+   "baseMortality": 0.6,
+   "spreadRate": 0.35,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.3,
+   "colonistWeight": 0.6
+  },
+  {
+   "id": "fireweed",
+   "name": "Иван-чай",
+   "form": "herb",
+   "leafHabit": "annualDieback",
+   "temperature": {
+    "min": 2,
+    "optMin": 10,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.4,
+    "optMax": 0.85,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.1,
+   "nutrientDemand": 0.6,
+   "growthRate": 26,
+   "maxBiomass": 400,
+   "nutrientContent": 0.017,
+   "baseMortality": 0.6,
+   "spreadRate": 1.2,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 1.4,
+   "colonistWeight": 1.0
+  },
+  {
+   "id": "bilberry",
+   "name": "Черника",
+   "form": "herb",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 0,
+    "optMin": 8,
+    "optMax": 20,
+    "max": 28
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.3,
+    "optMin": 0.5,
+    "optMax": 0.9,
+    "max": 1.1
+   },
+   "shadeTolerance": 0.85,
+   "nutrientDemand": 0.15,
+   "growthRate": 6,
+   "maxBiomass": 350,
+   "nutrientContent": 0.012,
+   "baseMortality": 0.25,
+   "spreadRate": 0.15,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 0.6,
+   "colonistWeight": 0.3,
+   "soilPreference": {
+    "peat": 1,
+    "sand": 0.8,
+    "loam": 0.6,
+    "clay": 0.4,
+    "rock": 0.4
+   }
+  },
+  {
+   "id": "moss",
+   "name": "Мох",
+   "form": "herb",
+   "leafHabit": "evergreen",
+   "temperature": {
+    "min": -2,
+    "optMin": 5,
+    "optMax": 16,
+    "max": 25
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.5,
+    "optMax": 1.0,
+    "max": 1.3
+   },
+   "shadeTolerance": 0.9,
+   "nutrientDemand": 0.05,
+   "growthRate": 5,
+   "maxBiomass": 250,
+   "nutrientContent": 0.008,
+   "baseMortality": 0.2,
+   "spreadRate": 0.2,
+   "establishment": 0.5,
+   "seedMass": 0.0005,
+   "litterQuality": 0.4,
+   "colonistWeight": 0.5,
+   "soilPreference": {
+    "rock": 1,
+    "peat": 1,
+    "sand": 0.7
+   }
+  },
+  {
+   "id": "hazel",
+   "name": "Лещина",
+   "form": "shrub",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 3,
+    "optMin": 12,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -35,
+   "moisture": {
+    "min": 0.3,
+    "optMin": 0.5,
+    "optMax": 0.85,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.7,
+   "nutrientDemand": 0.6,
+   "growthRate": 0.9,
+   "maxBiomass": 120,
+   "halfBiomass": 25,
+   "maxHeight": 5,
+   "maxCrownRadius": 2.5,
+   "nutrientContent": 0.012,
+   "leafFraction": 0.15,
+   "maturityYears": 6,
+   "lifespanYears": 70,
+   "baseMortality": 0.02,
+   "seedMass": 1.5,
+   "fecundity": 6,
+   "dispersal": {
+    "mean": 8,
+    "max": 40
+   },
+   "establishment": 0.25,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.4
+  },
+  {
+   "id": "wild-rose",
+   "name": "Шиповник",
+   "form": "shrub",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 4,
+    "optMin": 14,
+    "optMax": 28,
+    "max": 36
+   },
+   "frostKill": -35,
+   "moisture": {
+    "min": 0.12,
+    "optMin": 0.25,
+    "optMax": 0.65,
+    "max": 0.9
+   },
+   "shadeTolerance": 0.2,
+   "nutrientDemand": 0.3,
+   "growthRate": 0.9,
+   "maxBiomass": 40,
+   "halfBiomass": 8,
+   "maxHeight": 2.5,
+   "maxCrownRadius": 1.5,
+   "nutrientContent": 0.013,
+   "leafFraction": 0.2,
+   "maturityYears": 3,
+   "lifespanYears": 30,
+   "baseMortality": 0.03,
+   "seedMass": 0.02,
+   "fecundity": 30,
+   "dispersal": {
+    "mean": 25,
+    "max": 150
+   },
+   "establishment": 0.15,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.5
+  },
+  {
+   "id": "willow-shrub",
+   "name": "Ива кустарниковая",
+   "form": "shrub",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 1,
+    "optMin": 10,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -45,
+   "moisture": {
+    "min": 0.55,
+    "optMin": 0.8,
+    "optMax": 1.0,
+    "max": 1.3
+   },
+   "shadeTolerance": 0.25,
+   "nutrientDemand": 0.4,
+   "growthRate": 1.4,
+   "maxBiomass": 80,
+   "halfBiomass": 15,
+   "maxHeight": 4,
+   "maxCrownRadius": 2.2,
+   "nutrientContent": 0.013,
+   "leafFraction": 0.18,
+   "maturityYears": 3,
+   "lifespanYears": 35,
+   "baseMortality": 0.03,
+   "seedMass": 0.0002,
+   "fecundity": 200,
+   "dispersal": {
+    "mean": 60,
+    "max": 400
+   },
+   "establishment": 0.04,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.6,
+   "soilPreference": {
+    "alluvial": 1,
+    "peat": 0.9,
+    "clay": 0.8,
+    "sand": 0.6,
+    "rock": 0.1
+   }
+  },
+  {
+   "id": "juniper",
+   "name": "Можжевельник",
+   "form": "shrub",
+   "leafHabit": "evergreen",
+   "temperature": {
+    "min": -2,
+    "optMin": 8,
+    "optMax": 22,
+    "max": 32
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.06,
+    "optMin": 0.2,
+    "optMax": 0.6,
+    "max": 0.9
+   },
+   "shadeTolerance": 0.4,
+   "nutrientDemand": 0.1,
+   "growthRate": 0.35,
+   "maxBiomass": 60,
+   "halfBiomass": 15,
+   "maxHeight": 3,
+   "maxCrownRadius": 1.5,
+   "nutrientContent": 0.009,
+   "leafFraction": 0.25,
+   "maturityYears": 10,
+   "lifespanYears": 150,
+   "baseMortality": 0.008,
+   "seedMass": 0.03,
+   "fecundity": 10,
+   "dispersal": {
+    "mean": 30,
+    "max": 200
+   },
+   "establishment": 0.1,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.4,
+   "soilPreference": {
+    "rock": 1,
+    "sand": 1,
+    "loam": 0.6,
+    "peat": 0.3
+   }
+  },
+  {
+   "id": "birch",
+   "name": "Берёза",
+   "form": "tree",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 1,
+    "optMin": 10,
+    "optMax": 22,
+    "max": 30
+   },
+   "frostKill": -50,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.4,
+    "optMax": 0.85,
+    "max": 1.05
+   },
+   "shadeTolerance": 0.15,
+   "nutrientDemand": 0.35,
+   "growthRate": 0.55,
+   "maxBiomass": 600,
+   "halfBiomass": 150,
+   "maxHeight": 22,
+   "maxCrownRadius": 4,
+   "nutrientContent": 0.01,
+   "leafFraction": 0.06,
+   "maturityYears": 10,
+   "lifespanYears": 90,
+   "baseMortality": 0.012,
+   "seedMass": 0.0002,
+   "fecundity": 120,
+   "dispersal": {
+    "mean": 50,
+    "max": 300
+   },
+   "establishment": 0.03,
+   "litterQuality": 1.0,
+   "colonistWeight": 1.0
+  },
+  {
+   "id": "pine",
+   "name": "Сосна",
+   "form": "tree",
+   "leafHabit": "evergreen",
+   "temperature": {
+    "min": 0,
+    "optMin": 10,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -55,
+   "moisture": {
+    "min": 0.1,
+    "optMin": 0.25,
+    "optMax": 0.75,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.15,
+   "nutrientDemand": 0.15,
+   "growthRate": 0.45,
+   "maxBiomass": 1200,
+   "halfBiomass": 300,
+   "maxHeight": 28,
+   "maxCrownRadius": 3.5,
+   "nutrientContent": 0.007,
+   "leafFraction": 0.07,
+   "maturityYears": 15,
+   "lifespanYears": 250,
+   "baseMortality": 0.008,
+   "seedMass": 0.006,
+   "fecundity": 40,
+   "dispersal": {
+    "mean": 35,
+    "max": 200
+   },
+   "establishment": 0.04,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.7,
+   "soilPreference": {
+    "sand": 1,
+    "rock": 0.7,
+    "loam": 0.8,
+    "peat": 0.6
+   }
+  },
+  {
+   "id": "spruce",
+   "name": "Ель",
+   "form": "tree",
+   "leafHabit": "evergreen",
+   "temperature": {
+    "min": -1,
+    "optMin": 8,
+    "optMax": 20,
+    "max": 28
+   },
+   "frostKill": -55,
+   "moisture": {
+    "min": 0.3,
+    "optMin": 0.5,
+    "optMax": 0.95,
+    "max": 1.1
+   },
+   "shadeTolerance": 0.85,
+   "nutrientDemand": 0.4,
+   "growthRate": 0.38,
+   "maxBiomass": 1400,
+   "halfBiomass": 350,
+   "maxHeight": 30,
+   "maxCrownRadius": 3.5,
+   "nutrientContent": 0.009,
+   "leafFraction": 0.1,
+   "maturityYears": 20,
+   "lifespanYears": 220,
+   "baseMortality": 0.008,
+   "seedMass": 0.008,
+   "fecundity": 35,
+   "dispersal": {
+    "mean": 30,
+    "max": 150
+   },
+   "establishment": 0.05,
+   "litterQuality": 0.5,
+   "colonistWeight": 0.5
+  },
+  {
+   "id": "oak",
+   "name": "Дуб",
+   "form": "tree",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 5,
+    "optMin": 14,
+    "optMax": 26,
+    "max": 34
+   },
+   "frostKill": -40,
+   "moisture": {
+    "min": 0.2,
+    "optMin": 0.4,
+    "optMax": 0.8,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.45,
+   "nutrientDemand": 0.65,
+   "growthRate": 0.4,
+   "maxBiomass": 2500,
+   "halfBiomass": 700,
+   "maxHeight": 26,
+   "maxCrownRadius": 7,
+   "nutrientContent": 0.011,
+   "leafFraction": 0.05,
+   "maturityYears": 30,
+   "lifespanYears": 400,
+   "baseMortality": 0.005,
+   "seedMass": 4,
+   "fecundity": 4,
+   "dispersal": {
+    "mean": 15,
+    "max": 250
+   },
+   "establishment": 0.2,
+   "litterQuality": 1.0,
+   "colonistWeight": 0.4,
+   "soilPreference": {
+    "loam": 1,
+    "alluvial": 1,
+    "clay": 0.8,
+    "sand": 0.4,
+    "rock": 0.2,
+    "peat": 0.2
+   }
+  },
+  {
+   "id": "linden",
+   "name": "Липа",
+   "form": "tree",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 4,
+    "optMin": 13,
+    "optMax": 25,
+    "max": 33
+   },
+   "frostKill": -40,
+   "moisture": {
+    "min": 0.3,
+    "optMin": 0.45,
+    "optMax": 0.85,
+    "max": 1.0
+   },
+   "shadeTolerance": 0.8,
+   "nutrientDemand": 0.7,
+   "growthRate": 0.42,
+   "maxBiomass": 1800,
+   "halfBiomass": 500,
+   "maxHeight": 28,
+   "maxCrownRadius": 6,
+   "nutrientContent": 0.012,
+   "leafFraction": 0.06,
+   "maturityYears": 20,
+   "lifespanYears": 300,
+   "baseMortality": 0.006,
+   "seedMass": 0.04,
+   "fecundity": 25,
+   "dispersal": {
+    "mean": 25,
+    "max": 120
+   },
+   "establishment": 0.08,
+   "litterQuality": 1.5,
+   "colonistWeight": 0.3
+  },
+  {
+   "id": "alder",
+   "name": "Ольха",
+   "form": "tree",
+   "leafHabit": "deciduous",
+   "temperature": {
+    "min": 2,
+    "optMin": 11,
+    "optMax": 24,
+    "max": 32
+   },
+   "frostKill": -45,
+   "moisture": {
+    "min": 0.55,
+    "optMin": 0.75,
+    "optMax": 1.0,
+    "max": 1.3
+   },
+   "shadeTolerance": 0.3,
+   "nutrientDemand": 0.3,
+   "growthRate": 0.6,
+   "maxBiomass": 700,
+   "halfBiomass": 180,
+   "maxHeight": 20,
+   "maxCrownRadius": 4,
+   "nutrientContent": 0.014,
+   "leafFraction": 0.07,
+   "maturityYears": 8,
+   "lifespanYears": 100,
+   "baseMortality": 0.012,
+   "seedMass": 0.0007,
+   "fecundity": 80,
+   "dispersal": {
+    "mean": 40,
+    "max": 250
+   },
+   "establishment": 0.04,
+   "litterQuality": 1.4,
+   "colonistWeight": 0.6,
+   "fixesNutrient": 3,
+   "soilPreference": {
+    "alluvial": 1,
+    "peat": 0.9,
+    "clay": 0.8,
+    "loam": 0.7,
+    "sand": 0.4,
+    "rock": 0.1
+   }
+  }
+ ]
+}

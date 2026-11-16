@@ -20,6 +20,15 @@ export const CLIMATE_LABELS: Record<ClimateName, string> = {
   warm: 'Тёплый',
 };
 
+/** Сценарии начала мира (DEVELOPMENT_PLAN.md, сценарии v0.1). */
+export const SCENARIOS = ['wild', 'genesis'] as const;
+export type ScenarioName = (typeof SCENARIOS)[number];
+
+export const SCENARIO_LABELS: Record<ScenarioName, string> = {
+  wild: 'Дикая природа',
+  genesis: 'Genesis — голая земля',
+};
+
 export interface WorldConfig {
   /** Имя мира, видимое игроку. На генерацию не влияет. */
   name: string;
@@ -28,6 +37,10 @@ export interface WorldConfig {
   /** Длина сезона в игровых сутках. */
   daysPerSeason: number;
   climate: ClimateName;
+  /** Как начинается жизнь: дикая природа или голая земля. */
+  scenario: ScenarioName;
+  /** Изолированный мир: колонизации извне нет — вымерший вид не вернётся сам. */
+  isolated: boolean;
 }
 
 export const DEFAULT_CONFIG: WorldConfig = {
@@ -36,6 +49,8 @@ export const DEFAULT_CONFIG: WorldConfig = {
   size: 'M',
   daysPerSeason: DAYS_PER_SEASON,
   climate: 'temperate',
+  scenario: 'wild',
+  isolated: false,
 };
 
 /** Проверка и нормализация: в мир попадают только допустимые значения. */
@@ -44,7 +59,9 @@ export function normalizeConfig(config: Partial<WorldConfig>): WorldConfig {
   const days = (SEASON_LENGTHS as readonly number[]).includes(config.daysPerSeason ?? -1) ? config.daysPerSeason! : DEFAULT_CONFIG.daysPerSeason;
   const climate = (CLIMATES as readonly string[]).includes(config.climate ?? '') ? config.climate! : DEFAULT_CONFIG.climate;
   const name = (config.name ?? '').trim().slice(0, 40) || DEFAULT_CONFIG.name;
-  return { name, seed: (config.seed ?? DEFAULT_CONFIG.seed) >>> 0, size, daysPerSeason: days, climate };
+  const scenario = (SCENARIOS as readonly string[]).includes(config.scenario ?? '') ? config.scenario! : DEFAULT_CONFIG.scenario;
+  const isolated = config.isolated === true;
+  return { name, seed: (config.seed ?? DEFAULT_CONFIG.seed) >>> 0, size, daysPerSeason: days, climate, scenario, isolated };
 }
 
 /** Размер эко-ячейки, м (ARCHITECTURE.md, раздел 5). */

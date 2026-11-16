@@ -13,7 +13,7 @@ import { normalizeConfig, type WorldConfig } from '../shared/worldConfig';
 import { Simulation } from '../sim/core/simulation';
 import type { Clock } from '../sim/core/scheduler';
 import { FORMAT_VERSION, crc32, readHeader } from '../sim/persistence/binary';
-import { SECTION_SCHEMAS, applySections, serializeWorld, type SectionId } from '../sim/persistence/worldState';
+import { REQUIRED_SECTIONS, SECTION_SCHEMAS, applySections, serializeWorld, type Migration, type SectionId } from '../sim/persistence/worldState';
 import { WORLDGEN_VERSION, type ProgressFn } from '../sim/worldgen/generate';
 import type { StoragePort } from '../platform/storage/StoragePort';
 
@@ -37,7 +37,8 @@ export interface Manifest {
   worldgenVersion: number;
   geoHash: string;
   stateHash: string;
-  sections: Record<SectionId, SectionEntry>;
+  /** Секции сохранения; в старых форматах части секций может не быть (тогда — миграция). */
+  sections: Partial<Record<SectionId, SectionEntry>>;
   /** CRC-32 текста манифеста без этого поля. */
   check: number;
 }
@@ -86,9 +87,10 @@ export class WorldStore {
   }
 
   private async sectionsIntact(m: Manifest): Promise<boolean> {
+    for (const id of REQUIRED_SECTIONS) if (!m.sections[id]) return false;
     for (const id of SECTION_IDS) {
       const entry = m.sections[id];
-      if (!entry) return false;
+      if (!entry) continue;
       const bytes = await this.storage.read(`${this.dir(m.id)}/${entry.file}`);
       if (!bytes || bytes.length !== entry.bytes) return false;
       try {
@@ -109,7 +111,7 @@ export class WorldStore {
       const id = name.slice(0, -1);
       const m = await this.readManifest(id, false).catch(() => null);
       if (!m) continue;
-      const bytes = Object.values(m.sections).reduce((s, e) => s + e.bytes, 0);
+      const bytes = Object.values(m.sections).reduce((s, e) => s + (e?.bytes ?? 0), 0);
       out.push({ id: m.id, name: m.name, config: m.config, tick: m.tick, createdAt: m.createdAt, savedAt: m.savedAt, bytes });
     }
     return out.sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
@@ -158,25 +160,28 @@ export class WorldStore {
   }
 
   /** Загружает мир: генерирует статику из параметров, сверяет хеш генерации, применяет секции, сверяет хеш состояния. */
-  async load(id: string, testAgents: number, clock?: Clock, progress?: ProgressFn): Promise<{ sim: Simulation; manifest: Manifest }> {
+  async load(id: string, testAgents: number, clock?: Clock, progress?: ProgressFn): Promise<{ sim: Simulation; manifest: Manifest; migrations: Migration[] }> {
     const m = await this.readManifest(id);
     if (!m) throw new Error('Сохранение не найдено или повреждено');
     if (m.formatVersion > FORMAT_VERSION) throw new Error('Мир сохранён более новой версией игры');
     if (m.worldgenVersion !== WORLDGEN_VERSION) throw new Error(`Мир создан генератором версии ${m.worldgenVersion}, текущая версия ${WORLDGEN_VERSION}; перенос между версиями генератора пока не поддерживается`);
     const config = normalizeConfig(m.config);
-    const sim = new Simulation({ config, testAgents }, clock, undefined, progress);
+    const sim = new Simulation({ config, testAgents, populate: false }, clock, undefined, progress);
     if (sim.world.geoHash !== m.geoHash) throw new Error('Статика мира не совпала с сохранённой (другой результат генерации)');
-    const sections = {} as Record<SectionId, Uint8Array>;
+    const sections: Partial<Record<SectionId, Uint8Array>> = {};
     for (const sid of SECTION_IDS) {
-      const bytes = await this.storage.read(`${this.dir(id)}/${m.sections[sid].file}`);
+      const entry = m.sections[sid];
+      if (!entry) continue;
+      if (entry.schema > SECTION_SCHEMAS[sid]) throw new Error(`Секция ${sid} сохранена более новой версией игры`);
+      const bytes = await this.storage.read(`${this.dir(id)}/${entry.file}`);
       if (!bytes) throw new Error(`Нет секции ${sid}`);
       sections[sid] = bytes;
     }
-    applySections(sim.world, sections);
-    const hash = sim.stateHash();
-    if (hash !== m.stateHash) throw new Error('Хеш состояния после загрузки не совпал с сохранённым');
-    void testAgents;
-    return { sim, manifest: m };
+    const migrations = applySections(sim.world, sections);
+    // Хеш сверяется, только если состояние восстановлено без миграций: при миграции состояние
+    // по определению отличается от записанного старой версией (целостность проверена CRC секций).
+    if (migrations.length === 0 && sim.stateHash() !== m.stateHash) throw new Error('Хеш состояния после загрузки не совпал с сохранённым');
+    return { sim, manifest: m, migrations };
   }
 
   async remove(id: string): Promise<boolean> {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { calendarFromTick, SEASON_LENGTHS, SEASON_NAMES } from '../shared/time';
-import { CLIMATES, CLIMATE_LABELS, DEFAULT_CONFIG, type ClimateName, type WorldConfig, type WorldSizeName } from '../shared/worldConfig';
+import { CLIMATES, CLIMATE_LABELS, DEFAULT_CONFIG, SCENARIOS, SCENARIO_LABELS, type ClimateName, type ScenarioName, type WorldConfig, type WorldSizeName } from '../shared/worldConfig';
 import { seedFromString } from '../shared/rng';
 import { useUi } from './store';
 
@@ -95,9 +95,10 @@ export function CreateWorld() {
   const [size, setSize] = useState<WorldSizeName>(DEFAULT_CONFIG.size);
   const [days, setDays] = useState<number>(DEFAULT_CONFIG.daysPerSeason);
   const [climate, setClimate] = useState<ClimateName>(DEFAULT_CONFIG.climate);
+  const [scenario, setScenario] = useState<ScenarioName>(DEFAULT_CONFIG.scenario);
   const seed = /^\d+$/.test(seedText.trim()) ? Number(seedText.trim()) >>> 0 : seedFromString(seedText.trim());
   const submit = () => {
-    const config: WorldConfig = { name, seed, size, daysPerSeason: days, climate };
+    const config: WorldConfig = { name, seed, size, daysPerSeason: days, climate, scenario, isolated: false };
     createWorld(config);
   };
   return (
@@ -143,6 +144,19 @@ export function CreateWorld() {
             </button>
           ))}
         </span>
+      </div>
+      <div className="wb-field">
+        <span>Начало жизни</span>
+        <span className="wb-inline">
+          {SCENARIOS.map((sc) => (
+            <button key={sc} type="button" data-testid={`scenario-${sc}`} className={sc === scenario ? 'wb-btn wb-btn-active' : 'wb-btn'} onClick={() => setScenario(sc)}>
+              {SCENARIO_LABELS[sc]}
+            </button>
+          ))}
+        </span>
+        <small className="wb-muted">
+          {scenario === 'genesis' ? 'Мир без растений: голая земля.' : 'Травяной покров и редкий подрост деревьев и кустарников по условиям среды.'}
+        </small>
       </div>
       <div className="wb-field">
         <span>Длина сезона</span>

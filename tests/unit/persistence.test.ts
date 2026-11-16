@@ -7,6 +7,8 @@ import { SectionReader, SectionWriter, crc32 } from '../../src/sim/persistence/b
 import { WorldStore } from '../../src/worker/worldStore';
 import { simulation } from '../support/worlds';
 
+const meta = { id: 'wtest', createdAt: '2026-11-16T00:00:00.000Z' };
+
 describe('Двоичные секции', () => {
   it('запись и чтение сохраняют значения побитно', () => {
     const f = new Float32Array([1.5, -2.25, Number.MAX_VALUE > 0 ? 3.4e38 : 0]);
@@ -37,7 +39,6 @@ describe('Двоичные секции', () => {
 });
 
 describe('Хранилище миров', () => {
-  const meta = { id: 'wtest', createdAt: '2026-11-16T00:00:00.000Z' };
 
   it('сохранить → загрузить → хеш совпал, и дальнейший ход одинаков', async () => {
     const storage = new MemoryStorage();
@@ -66,7 +67,7 @@ describe('Хранилище миров', () => {
       await store.save(sim, meta, new Date(Date.UTC(2026, 10, 16, 10, g)));
     }
     const files = await storage.list(`worlds/${meta.id}`);
-    expect(files.filter((f) => f.endsWith('.bin')).sort()).toEqual(['agents.g3.bin', 'agents.g4.bin', 'core.g3.bin', 'core.g4.bin', 'env.g3.bin', 'env.g4.bin']);
+    expect(files.filter((f) => f.endsWith('.bin')).sort()).toEqual(['agents.g3.bin', 'agents.g4.bin', 'core.g3.bin', 'core.g4.bin', 'env.g3.bin', 'env.g4.bin', 'flora.g3.bin', 'flora.g4.bin']);
     const list = await store.list();
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ id: meta.id, name: 'Долина', tick: sim.world.tick });
@@ -100,4 +101,52 @@ describe('Хранилище миров', () => {
     await expect(store.load('../evil', 0)).rejects.toThrow();
     await expect(store.load('missing', 0)).rejects.toThrow(/не найдено/);
   });
+});
+
+describe('Совместимость и растения', () => {
+  it('сохранение фазы 2 открывается: время и среда те же, травяной ярус восстановлен из индекса зелени', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const dir = 'tests/fixtures/phase2-world';
+    const expected = JSON.parse(readFileSync(`${dir}/expected.json`, 'utf-8')) as { tick: number; geoHash: string };
+    const storage = new MemoryStorage();
+    for (const name of readdirSync(dir)) {
+      if (name.endsWith('.bin') || name.startsWith('manifest')) await storage.write(`worlds/phase2/${name}`, new Uint8Array(readFileSync(`${dir}/${name}`)));
+    }
+    const store = new WorldStore(storage);
+    const { sim, manifest, migrations } = await store.load('phase2', 0);
+    expect(manifest.formatVersion).toBe(1);
+    expect(migrations).toEqual(['flora:from-greenness']);
+    expect(sim.world.tick).toBe(expected.tick);
+    expect(sim.world.geoHash).toBe(expected.geoHash);
+    expect(sim.world.config.scenario).toBe('wild');
+    expect(sim.world.config.isolated).toBe(false);
+    // Травы появились там, где была зелень; деревьев нет — их в фазе 2 не было.
+    const f = sim.world.flora;
+    let herbs = 0;
+    for (let k = 0; k < f.slotBiomass.length; k++) herbs += f.slotBiomass[k]!;
+    expect(herbs).toBeGreaterThan(0);
+    expect(f.woody.count).toBe(0);
+    // Пересохранение в новом формате и повторная загрузка — без миграций и с совпадением хеша.
+    await store.save(sim, { id: 'phase2', createdAt: manifest.createdAt }, new Date('2026-11-17T10:00:00Z'));
+    const again = await store.load('phase2', 0);
+    expect(again.migrations).toEqual([]);
+    expect(again.manifest.formatVersion).toBe(2);
+    expect(again.sim.stateHash()).toBe(sim.stateHash());
+  }, 60_000);
+
+  it('растения, опад и запас питания переживают сохранение и загрузку побитно', async () => {
+    const store = new WorldStore(new MemoryStorage());
+    const sim = simulation({ seed: 42 });
+    const w = sim.world.flora.woody;
+    expect(w.count).toBeGreaterThan(0);
+    // Освободим слот в середине, чтобы проверить и стек свободных слотов.
+    w.remove(Math.floor(w.highWater / 2));
+    sim.world.flora.litterFast[100] = 12.5;
+    for (let t = 0; t < 50; t++) sim.step();
+    await store.save(sim, meta, new Date('2026-11-17T10:00:00Z'));
+    const { sim: loaded, migrations } = await store.load(meta.id, 0);
+    expect(migrations).toEqual([]);
+    expect(loaded.stateHash()).toBe(sim.stateHash());
+    expect(loaded.world.flora.woody.freeSlots()).toEqual(w.freeSlots());
+  }, 60_000);
 });

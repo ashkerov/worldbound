@@ -18,6 +18,8 @@ import { weatherSystem } from '../env/weather';
 import { greennessTarget, waterSystem } from '../env/water';
 import { cellTemperature, timeContext } from '../env/climate';
 import { WaterKind } from '../worldgen/geo';
+import { createFlora } from '../flora/state';
+import { populateGenesis, populateWild } from '../flora/populate';
 import { spawnTestAgents, testAgentDecisionSystem, testAgentMoveSystem } from '../systems/testAgents';
 
 export const AGENT_CAPACITY = 16384;
@@ -82,8 +84,14 @@ export class Simulation {
       env: createEnv(gen.geo, worldSize),
       derived: derive(gen.geo),
       agents: new AgentStore(AGENT_CAPACITY),
+      flora: createFlora(gen.geo),
     };
     initGreenness(this.world);
+    // При загрузке сохранения растения приходят из секций, а не из начального заселения.
+    if (init.populate !== false) {
+      if (config.scenario === 'genesis') populateGenesis(this.world);
+      else populateWild(this.world);
+    }
     this.scheduler = new Scheduler<World>(clock).add(weatherSystem).add(waterSystem).add(testAgentDecisionSystem).add(testAgentMoveSystem);
     spawnTestAgents(this.world, init.testAgents);
   }
@@ -156,7 +164,9 @@ export class Simulation {
     const w = this.world;
     const a = w.agents;
     const e = w.env;
-    const hasher = new StateHasher().addInt(w.seed).addInt(w.config.daysPerSeason).addInt(w.config.size === 'M' ? 2 : 1);
+    const f = w.flora;
+    const wd = f.woody;
+    const hasher = new StateHasher().addInt(w.seed).addInt(w.config.daysPerSeason).addInt(w.config.size === 'M' ? 2 : 1).addInt(w.config.scenario === 'genesis' ? 1 : 0).addInt(w.config.isolated ? 1 : 0);
     for (let i = 0; i < w.config.climate.length; i++) hasher.addInt(w.config.climate.charCodeAt(i));
     for (let i = 0; i < w.geoHash.length; i++) hasher.addInt(w.geoHash.charCodeAt(i));
     hasher
@@ -182,7 +192,34 @@ export class Simulation {
       .addArray(a.targetHeading, a.highWater)
       .addArray(a.speed, a.highWater)
       .addArray(a.alive, a.highWater)
-      .addArray(a.generation, a.highWater);
+      .addArray(a.generation, a.highWater)
+      .addArray(f.slotSpecies)
+      .addArray(f.slotBiomass)
+      .addArray(f.litterFast)
+      .addArray(f.litterFastN)
+      .addArray(f.litterWood)
+      .addArray(f.litterWoodN)
+      .addArray(f.nutrient)
+      .addArray(f.accT)
+      .addArray(f.accW)
+      .addArray(f.accRunoff)
+      .addArray(f.accMinT)
+      .addArray(f.accHours)
+      .addArray(f.ledger)
+      .addInt(f.lastSliceHour)
+      .addInt(wd.count)
+      .addArray(wd.x, wd.highWater)
+      .addArray(wd.z, wd.highWater)
+      .addArray(wd.species, wd.highWater)
+      .addArray(wd.age, wd.highWater)
+      .addArray(wd.biomass, wd.highWater)
+      .addArray(wd.leaf, wd.highWater)
+      .addArray(wd.health, wd.highWater)
+      .addArray(wd.stage, wd.highWater)
+      .addArray(wd.stressW, wd.highWater)
+      .addArray(wd.stressL, wd.highWater)
+      .addArray(wd.alive, wd.highWater)
+      .addArray(wd.generation, wd.highWater);
     return hasher.digest();
   }
 

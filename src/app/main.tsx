@@ -256,7 +256,7 @@ async function start(): Promise<void> {
     const seed = /^\d+$/.test(seedParam) ? Number(seedParam) >>> 0 : seedFromString(seedParam);
     const size = (params.get('size') === 'S' ? 'S' : 'M') as WorldSizeName;
     const days = Number(params.get('season') ?? 5);
-    actions.createWorld({ name: `Проверка ${seedParam}`, seed, size, daysPerSeason: days, climate: (params.get('climate') as 'temperate') ?? 'temperate' });
+    actions.createWorld({ name: `Проверка ${seedParam}`, seed, size, daysPerSeason: days, climate: (params.get('climate') as 'temperate') ?? 'temperate', scenario: (params.get('scenario') as 'wild') ?? 'wild' });
   }
 }
 

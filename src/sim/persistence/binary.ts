@@ -7,7 +7,8 @@
 // Нагрузка — последовательность полей с выравниванием по 8 байтам; порядок фиксирован схемой секции.
 
 export const SECTION_MAGIC = 0x43534257; // «WBSC» в little-endian
-export const FORMAT_VERSION = 1;
+/** 2 — фаза 3: набор секций открыт (новые секции необязательны и мигрируются). Секции версии 1 читаются. */
+export const FORMAT_VERSION = 2;
 const HEADER = 32;
 
 let crcTable: Uint32Array | null = null;
