@@ -14,6 +14,7 @@ import { Puffs, puffTexture } from './kit';
 import { HALF, HOUSE, heightAt } from './layout';
 import { Sky } from './sky';
 import { buildTerrain, buildWater, waterfallFoot } from './terrain';
+import type { SimLoadStats } from '../bench/simLoad.worker';
 
 type QualityName = 'low' | 'medium' | 'high';
 type Mode = 'strategic' | 'free';
@@ -60,6 +61,14 @@ export interface DioramaStats {
   fps: number;
   frameMs: number;
   frameMsP99: number;
+  frameMsMax: number;
+  /** Кадров дольше 100 мс в окне замера. */
+  longFrames: number;
+  frames: number;
+  heapMb: number | null;
+  contextLost: boolean;
+  /** Показатели воркера симуляции при совместном прогоне (?sim=N). */
+  sim: SimLoadStats | null;
   drawCalls: number;
   triangles: number;
   buildMs: number;
@@ -259,7 +268,8 @@ async function main(): Promise<void> {
   const tilt = uniform(1);
   const aspect = uniform(1);
   const band = screenUV.y.sub(0.5).abs();
-  const radius = smoothstep(0.11, 0.5, band).mul(tilt).mul(0.012);
+  // Размытие только у самых краёв кадра и вдвое слабее прежнего: мир должен оставаться читаемым.
+  const radius = smoothstep(0.24, 0.5, band).mul(tilt).mul(0.0055);
   const output = (taps: number): THREE.RenderPipeline => {
     const scenePass = pass(scene, camera);
     const sceneColor = scenePass.getTextureNode('output');
@@ -397,8 +407,18 @@ async function main(): Promise<void> {
   let last = performance.now();
   let statsShown = 0;
   let info = { drawCalls: 0, triangles: 0 };
+  let contextLost = false;
+  canvas.addEventListener('webglcontextlost', () => (contextLost = true));
+  let simStats: SimLoadStats | null = null;
+  const simAgents = Number(params.get('sim') ?? 0);
+  if (simAgents > 0) {
+    const worker = new Worker(new URL('../bench/simLoad.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (event: MessageEvent<SimLoadStats>) => (simStats = event.data);
+    worker.postMessage({ agents: simAgents, speed: Number(params.get('simSpeed') ?? 8) });
+  }
   const stats = (): DioramaStats => {
     const sorted = frameTimes.slice().sort((a, b) => a - b);
+    const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
     const avg = sorted.length > 0 ? sorted.reduce((a, b) => a + b, 0) / sorted.length : 0;
     return {
       backend,
@@ -407,6 +427,12 @@ async function main(): Promise<void> {
       fps: avg > 0 ? 1000 / avg : 0,
       frameMs: avg,
       frameMsP99: sorted.length > 0 ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.99))]! : 0,
+      frameMsMax: sorted.length > 0 ? sorted[sorted.length - 1]! : 0,
+      longFrames: sorted.filter((ms) => ms > 100).length,
+      frames: sorted.length,
+      heapMb: memory ? memory.usedJSHeapSize / 1048576 : null,
+      contextLost,
+      sim: simStats,
       drawCalls: info.drawCalls,
       triangles: info.triangles,
       buildMs,
@@ -419,7 +445,7 @@ async function main(): Promise<void> {
     last = now;
     const dt = Math.min(0.1, frameMs / 1000);
     frameTimes.push(frameMs);
-    if (frameTimes.length > 600) frameTimes.shift();
+    if (frameTimes.length > 4000) frameTimes.shift();
 
     if (auto) setHour(sky.hour + dt * (24 / 96));
     for (const actor of creatures.all) actor.update(dt);

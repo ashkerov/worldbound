@@ -4,5 +4,5 @@
     "lib": ["ES2023", "DOM"],
     "types": ["node"]
   },
-  "include": ["tools/**/*.ts", "prototypes/**/*.ts", "tests/**/*.ts", "vite.config.ts", "playwright.config.ts", "playwright.bench.config.ts"]
+  "include": ["tools/**/*.ts", "prototypes/**/*.ts", "tests/**/*.ts", "vite.config.ts", "playwright.config.ts", "playwright.bench.config.ts", "playwright.headed.config.ts"]
 }

@@ -1,0 +1,215 @@
+{
+  "setup": {
+    "nx": 8,
+    "ny": 24,
+    "days": 400,
+    "warmup": 200,
+    "seeds": 4,
+    "cascadeSeeds": 3,
+    "cascadeDays": 400
+  },
+  "species": [
+    {
+      "name": "кролик",
+      "survived": 4,
+      "of": 4,
+      "mean": 1845.3537500000002,
+      "se": 35.34837392388087,
+      "birthsBySeason": {
+        "весна": 0.4502880611488221,
+        "лето": 0.3163729013366798,
+        "осень": 0.23333903751449814,
+        "зима": 0
+      },
+      "deathsByCause": {
+        "голод": 0.35738924847874115,
+        "хищник": 0.3963024688965544,
+        "старость": 0.13846362544087437,
+        "случайная": 0.10784465718383009
+      },
+      "starvationBySeason": {
+        "весна": 6393,
+        "лето": 1157,
+        "осень": 3175,
+        "зима": 26159
+      },
+      "minParentAge": 8,
+      "matureDays": 6,
+      "minParentEnergy": 8.5,
+      "reproThreshold": 8.5,
+      "minOldAgeFraction": 0.804227066040039,
+      "summerZ": 0.5472987018018622,
+      "winterZ": 0.5456789335732495,
+      "migrationShiftM": -4.975927998298403,
+      "migrationSeedsSouthInWinter": 2
+    },
+    {
+      "name": "олень",
+      "survived": 4,
+      "of": 4,
+      "mean": 623.3975,
+      "se": 25.756888763008618,
+      "birthsBySeason": {
+        "весна": 1,
+        "лето": 0,
+        "осень": 0,
+        "зима": 0
+      },
+      "deathsByCause": {
+        "голод": 0.10995472055146313,
+        "хищник": 0.6679732378184767,
+        "старость": 0.10644049469487059,
+        "случайная": 0.11563154693518957
+      },
+      "starvationBySeason": {
+        "весна": 393,
+        "лето": 45,
+        "осень": 157,
+        "зима": 1032
+      },
+      "minParentAge": 20,
+      "matureDays": 20,
+      "minParentEnergy": 26.000394821166992,
+      "reproThreshold": 26,
+      "minOldAgeFraction": 0.8009590911865234,
+      "summerZ": 0.4098771994668896,
+      "winterZ": 0.5228998238999598,
+      "migrationShiftM": 347.2055022583917,
+      "migrationSeedsSouthInWinter": 4
+    },
+    {
+      "name": "лиса",
+      "survived": 4,
+      "of": 4,
+      "mean": 101.03625,
+      "se": 8.02268044748761,
+      "birthsBySeason": {
+        "весна": 0.6101485148514851,
+        "лето": 0.38985148514851486,
+        "осень": 0,
+        "зима": 0
+      },
+      "deathsByCause": {
+        "голод": 0.1994198694706309,
+        "хищник": 0,
+        "старость": 0.5736040609137056,
+        "случайная": 0.22697606961566352
+      },
+      "starvationBySeason": {
+        "весна": 90,
+        "лето": 64,
+        "осень": 49,
+        "зима": 72
+      },
+      "minParentAge": 14,
+      "matureDays": 14,
+      "minParentEnergy": 10.000092506408691,
+      "reproThreshold": 10,
+      "minOldAgeFraction": 0.8022819519042969,
+      "summerZ": 0.5089832729854128,
+      "winterZ": 0.5108827687330728,
+      "migrationShiftM": 5.835250936811576,
+      "migrationSeedsSouthInWinter": 2
+    },
+    {
+      "name": "волк",
+      "survived": 4,
+      "of": 4,
+      "mean": 53.182500000000005,
+      "se": 1.0798717130597815,
+      "birthsBySeason": {
+        "весна": 1,
+        "лето": 0,
+        "осень": 0,
+        "зима": 0
+      },
+      "deathsByCause": {
+        "голод": 0.08348794063079777,
+        "хищник": 0,
+        "старость": 0.6122448979591837,
+        "случайная": 0.3042671614100185
+      },
+      "starvationBySeason": {
+        "весна": 13,
+        "лето": 7,
+        "осень": 14,
+        "зима": 11
+      },
+      "minParentAge": 20,
+      "matureDays": 20,
+      "minParentEnergy": 19.02505874633789,
+      "reproThreshold": 19,
+      "minOldAgeFraction": 0.80625,
+      "summerZ": 0.4894695887692533,
+      "winterZ": 0.4900267096701136,
+      "migrationShiftM": 1.7114754074428333,
+      "migrationSeedsSouthInWinter": 2
+    }
+  ],
+  "perf": {
+    "msPerDay": 49.14130125,
+    "individuals": 2622.9700000000003
+  },
+  "cascades": {
+    "withoutWolves": {
+      "deer": {
+        "control": 608.2483333333333,
+        "variant": 869.6866666666666,
+        "changePct": 42.98217011144022,
+        "seedsSameDirection": 3,
+        "of": 3
+      },
+      "shrub": {
+        "control": 0.6084848737757634,
+        "variant": 0.48058700505474156,
+        "changePct": -21.01907117713403,
+        "seedsSameDirection": 3,
+        "of": 3
+      },
+      "rabbits": {
+        "control": 1853.131666666667,
+        "variant": 1610.1566666666668,
+        "changePct": -13.111588581131587,
+        "seedsSameDirection": 3,
+        "of": 3
+      },
+      "grass": {
+        "control": 0.4136096999353989,
+        "variant": 0.3007079161361965,
+        "changePct": -27.29669633396808,
+        "seedsSameDirection": 3,
+        "of": 3
+      }
+    },
+    "withoutFoxes": {
+      "rabbits": {
+        "control": 1853.131666666667,
+        "variant": 2442.76,
+        "changePct": 31.817940621236655,
+        "seedsSameDirection": 2,
+        "of": 3
+      },
+      "grass": {
+        "control": 0.4136096999353989,
+        "variant": 0.41821611292007593,
+        "changePct": 1.1137100956279506,
+        "seedsSameDirection": 1,
+        "of": 3
+      },
+      "deer": {
+        "control": 608.2483333333333,
+        "variant": 413.53999999999996,
+        "changePct": -32.01132212994145,
+        "seedsSameDirection": 3,
+        "of": 3
+      },
+      "shrub": {
+        "control": 0.6084848737757634,
+        "variant": 0.7456043057671233,
+        "changePct": 22.534567069926972,
+        "seedsSameDirection": 3,
+        "of": 3
+      }
+    }
+  }
+}

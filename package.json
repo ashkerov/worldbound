@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "diorama": "vite --open /prototypes/diorama/index.html",
+    "test:headed": "playwright test --config playwright.headed.config.ts",
     "bench": "playwright test --config playwright.bench.config.ts",
     "check:boundaries": "node tools/check-boundaries.mjs",
     "check:assets": "node tools/check-assets.mjs",

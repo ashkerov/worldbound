@@ -17,8 +17,11 @@ export interface AgentBench {
   msMax: number;
 }
 
-/** Такт агентов: сетка соседства перестраивается каждый такт, восприятие — каждый такт (худший случай). */
-export function benchAgents(n: number, ticks: number, now: Now): AgentBench {
+/**
+ * Мир агентов для замеров: сетка соседства перестраивается каждый такт, восприятие — каждый такт (худший случай).
+ * Возвращает функцию одного такта.
+ */
+export function makeAgentWorld(n: number): (tick: number) => void {
   const WORLD = 1024;
   const CELL = 16;
   const G = WORLD / CELL;
@@ -43,9 +46,7 @@ export function benchAgents(n: number, ticks: number, now: Now): AgentBench {
     energy[i] = hash4(1, 6, i, 0) * inv;
     kind[i] = hash4(1, 7, i, 0) * inv < 0.05 ? 1 : 0;
   }
-  const times = new Float64Array(ticks);
-  for (let tick = 0; tick < ticks; tick++) {
-    const start = now();
+  return (tick: number): void => {
     head.fill(-1);
     for (let i = 0; i < n; i++) {
       const c = Math.floor(z[i]! / CELL) * G + Math.floor(x[i]! / CELL);
@@ -129,6 +130,15 @@ export function benchAgents(n: number, ticks: number, now: Now): AgentBench {
       x[i] = nx;
       z[i] = nz;
     }
+  };
+}
+
+export function benchAgents(n: number, ticks: number, now: Now): AgentBench {
+  const step = makeAgentWorld(n);
+  const times = new Float64Array(ticks);
+  for (let tick = 0; tick < ticks; tick++) {
+    const start = now();
+    step(tick);
     times[tick] = now() - start;
   }
   const sorted = Array.from(times).sort((a, b) => a - b);
