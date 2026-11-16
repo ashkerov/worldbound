@@ -12,8 +12,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     channel,
-    headless: false,
+    // Контрольные режимы для расследования длинных кадров: WB_HEADLESS=1 — без окна, WB_NOVSYNC=1 — без синхронизации.
+    headless: process.env.WB_HEADLESS === '1',
     viewport: { width: 1600, height: 900 },
+    launchOptions: { args: process.env.WB_NOVSYNC === '1' ? ['--disable-gpu-vsync', '--disable-frame-rate-limit'] : [] },
   },
   webServer: {
     command: 'npm run preview',

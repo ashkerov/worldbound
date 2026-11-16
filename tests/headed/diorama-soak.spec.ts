@@ -11,6 +11,8 @@ const SHOTS = 'docs/screenshots/phase1';
 mkdirSync(RESULTS, { recursive: true });
 mkdirSync(SHOTS, { recursive: true });
 const SOAK_SECONDS = Number(process.env.WB_SOAK_SECONDS ?? 120);
+const TAG = process.env.WB_TAG ? '-' + process.env.WB_TAG : '';
+const BACKENDS = (process.env.WB_BACKENDS ?? 'webgpu,webgl2').split(',') as ('webgpu' | 'webgl2')[];
 const VIEWS = ['overview', 'house', 'stag', 'waterfall', 'farmer', 'doe'];
 
 async function open(page: Page, query: string): Promise<string[]> {
@@ -33,7 +35,7 @@ async function measure(page: Page, view: string, seconds: number): Promise<Diora
   return { view, ...(await page.evaluate(() => window.__diorama!.stats())) };
 }
 
-for (const backend of ['webgpu', 'webgl2'] as const) {
+for (const backend of BACKENDS) {
   test(`видимое окно, ${backend}: кадры, длинные кадры, совместная работа с симуляцией`, async ({ page }) => {
     // 1. Только рендер, средний пресет.
     let errors = await open(page, `renderer=${backend}&quality=medium&ui=0`);
@@ -49,10 +51,10 @@ for (const backend of ['webgpu', 'webgl2'] as const) {
     const span = 10;
     for (let k = 0; k * (span + 1.2) < SOAK_SECONDS; k++) joint.push(await measure(page, VIEWS[k % VIEWS.length]!, span));
     await page.evaluate(() => window.__diorama!.hideUi(false));
-    await page.screenshot({ path: `${SHOTS}/soak-${backend}.png` });
+    await page.screenshot({ path: `${SHOTS}/soak-${backend}${TAG}.png` });
     const last = joint[joint.length - 1]!;
 
-    writeFileSync(`${RESULTS}/phase1-headed-${backend}.json`, JSON.stringify({ backend, userAgent: await page.evaluate(() => navigator.userAgent), renderOnly, joint, errors }, null, 2));
+    writeFileSync(`${RESULTS}/phase1-headed-${backend}${TAG}.json`, JSON.stringify({ backend, userAgent: await page.evaluate(() => navigator.userAgent), renderOnly, joint, errors }, null, 2));
     expect(last.contextLost).toBe(false);
     expect(last.sim).not.toBeNull();
     expect(errors, errors.join('\n')).toEqual([]);
