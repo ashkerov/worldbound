@@ -1,0 +1,80 @@
+{
+  "backend": "webgpu",
+  "quality": "high",
+  "gpu": {
+    "adapter": "intel · gen-12lp",
+    "software": false
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 900
+  },
+  "resolution": "1600×900",
+  "fpsMean": 46.3,
+  "fpsMinSegment": 44.4,
+  "longFrames": 0,
+  "simTicksPerSecond": 79.6,
+  "segments": [
+    {
+      "name": "обзор мира → побережье",
+      "fps": 46.7,
+      "frameMsP95": 33.4,
+      "frameMsP99": 33.7,
+      "frameMsMax": 34.1,
+      "longFrames": 0,
+      "frames": 374,
+      "triangles": 509605,
+      "drawCalls": 111,
+      "terrainNodes": 76
+    },
+    {
+      "name": "побережье → долина низко",
+      "fps": 46.3,
+      "frameMsP95": 33.5,
+      "frameMsP99": 38.6,
+      "frameMsMax": 50.2,
+      "longFrames": 0,
+      "frames": 370,
+      "triangles": 806821,
+      "drawCalls": 240,
+      "terrainNodes": 328
+    },
+    {
+      "name": "долина низко → горы",
+      "fps": 46.7,
+      "frameMsP95": 33.4,
+      "frameMsP99": 33.9,
+      "frameMsMax": 50,
+      "longFrames": 0,
+      "frames": 372,
+      "triangles": 627109,
+      "drawCalls": 162,
+      "terrainNodes": 154
+    },
+    {
+      "name": "горы → у реки, свободная камера",
+      "fps": 44.4,
+      "frameMsP95": 33.6,
+      "frameMsP99": 50.1,
+      "frameMsMax": 50.2,
+      "longFrames": 0,
+      "frames": 355,
+      "triangles": 753829,
+      "drawCalls": 217,
+      "terrainNodes": 328
+    },
+    {
+      "name": "у реки, свободная камера → обзор мира",
+      "fps": 47.1,
+      "frameMsP95": 33.4,
+      "frameMsP99": 49.9,
+      "frameMsMax": 50.2,
+      "longFrames": 0,
+      "frames": 377,
+      "triangles": 334501,
+      "drawCalls": 35,
+      "terrainNodes": 16
+    }
+  ],
+  "errors": []
+}

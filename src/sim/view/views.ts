@@ -66,6 +66,21 @@ export function buildSurface(world: World): Uint8Array {
     out[o + 2] = Math.round(clamp01(env.greenness[i]!) * 255);
     out[o + 3] = Math.round(clamp01((chunkSample(w, w.chunkRate, geo, i) * world.derived.pFactor[i]!) / 4) * 255);
   }
+  // У воды нет покрова; чтобы фильтрация текстуры не растягивала «голую почву» на берега,
+  // водные ячейки получают зелень соседней суши (на вид воды это не влияет — её рисует вода).
+  const n = geo.n;
+  for (let i = 0; i < count; i++) {
+    const kind = geo.waterKind[i]!;
+    if (kind === WaterKind.None || kind === WaterKind.Sea) continue;
+    const x = i % n;
+    let best = 0;
+    for (const j of [i - 1, i + 1, i - n, i + n]) {
+      if (j < 0 || j >= count || (j === i - 1 && x === 0) || (j === i + 1 && x === n - 1)) continue;
+      if (geo.waterKind[j] === WaterKind.None && out[j * 4 + 2]! > best) best = out[j * 4 + 2]!;
+    }
+    out[i * 4 + 2] = best;
+    out[i * 4 + 1] = 255;
+  }
   return out;
 }
 

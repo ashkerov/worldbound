@@ -2,7 +2,7 @@
 // материал из полей симуляции (почва, влага, зелень, снег, облачность, слой-карта).
 
 import * as THREE from 'three/webgpu';
-import { color, float, mix, mx_noise_float, normalWorld, positionWorld, sin, smoothstep, texture, vec2 } from 'three/tsl';
+import { color, float, mix, mx_noise_float, normalWorld, positionWorld, sin, smoothstep, step, texture, vec2 } from 'three/tsl';
 import type { UniformNode } from 'three/webgpu';
 import type { WorldData } from './worldData';
 
@@ -50,7 +50,9 @@ export function terrainMaterial(data: WorldData, u: TerrainUniforms): THREE.Mesh
   const seam = smoothstep(0, 0.08, band).mul(smoothstep(1, 0.9, band));
   const tone = sin(layerY.floor().mul(12.9898)).mul(0.5).add(0.5);
   const rock = mix(color(0x77716a), color(0x9a9488), tone.mul(0.7).add(mid.mul(0.3))).mul(seam.mul(0.18).add(0.82)).mul(fine.mul(0.14).add(1));
-  const rockMask = smoothstep(0.8, 0.62, normalWorld.y.add(mid.mul(0.06)));
+  // За границей мира (горизонт, разрешение 32 м) склоны сглажены — горы там скальные по высоте.
+  const outside = float(1).sub(step(0, p.x).mul(step(p.x, u.worldSize)).mul(step(0, p.z)).mul(step(p.z, u.worldSize)));
+  const rockMask = smoothstep(0.8, 0.62, normalWorld.y.add(mid.mul(0.06))).max(outside.mul(smoothstep(90, 220, p.y.add(big.mul(40))))).max(smoothstep(340, 520, p.y.add(big.mul(60))));
   ground = mix(ground, rock, rockMask);
 
   // Влажная поверхность темнее; снег ложится на пологие места.
@@ -87,7 +89,7 @@ export class TerrainLod {
   /** Коэффициент дальности: узел делится, пока расстояние до него меньше size × k. */
   lodK = 2;
   /** Сколько геометрий узлов можно построить за кадр. */
-  buildBudget = 6;
+  buildBudget = 3;
   castShadow = true;
   nodesDrawn = 0;
   private built = 0;
@@ -161,13 +163,36 @@ export class TerrainLod {
     const nor = new Float32Array(count * 3);
     const last = t.samples - 1;
     const hAt = (ix: number, iz: number) => t.heights[Math.min(last, Math.max(0, iz)) * t.samples + Math.min(last, Math.max(0, ix))]!;
+    const d = this.data;
+    const perCell = d.cellSize / t.spacing;
+    // Над реками вершина грубого узла берёт минимум по своему окну: прорезанное русло не исчезает
+    // при прореживании отсчётов, и вода не прячется под рельефом на средних дистанциях.
+    const nearRiver = (ix: number, iz: number) => {
+      const cx = Math.floor(ix / perCell);
+      const cz = Math.floor(iz / perCell);
+      for (let dz = -1; dz <= 1; dz++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = cx + dx;
+          const z = cz + dz;
+          if (x >= 0 && z >= 0 && x < d.n && z < d.n && d.waterKind[z * d.n + x] === 1) return true;
+        }
+      }
+      return false;
+    };
+    const vertexHeight = (ix: number, iz: number) => {
+      if (stride === 1 || stride > 16 || !nearRiver(ix, iz)) return hAt(ix, iz);
+      const r = stride >> 1;
+      let m = Infinity;
+      for (let z = iz - r; z <= iz + r; z++) for (let x = ix - r; x <= ix + r; x++) m = Math.min(m, hAt(x, z));
+      return m;
+    };
     for (let j = 0; j < verts; j++) {
       for (let i = 0; i < verts; i++) {
         const ix = x0 + i * stride;
         const iz = z0 + j * stride;
         const k = (j * verts + i) * 3;
         pos[k] = ix * t.spacing;
-        pos[k + 1] = hAt(ix, iz);
+        pos[k + 1] = vertexHeight(ix, iz);
         pos[k + 2] = iz * t.spacing;
         // Нормаль по центральным разностям с шагом узла — освещение согласовано с геометрией.
         const dx = hAt(ix + stride, iz) - hAt(ix - stride, iz);
@@ -223,15 +248,14 @@ export class TerrainLod {
       const split = node.size > LEAF && this.distance(node, eye) < node.size * this.lodK;
       if (split) {
         const kids = this.children(node);
-        // Делим, только если у всех детей есть геометрия (или её можно построить в этом кадре).
-        const missing = kids.filter((k) => !k.mesh).length;
-        if (missing <= budget) {
-          for (const k of kids) {
-            if (!k.mesh) {
-              k.mesh = this.buildMesh(k);
-              budget--;
-            }
+        // Геометрия детей строится постепенно, в пределах бюджета кадра; делим узел, когда готовы все четыре.
+        for (const k of kids) {
+          if (!k.mesh && budget > 0) {
+            k.mesh = this.buildMesh(k);
+            budget--;
           }
+        }
+        if (kids.every((k) => k.mesh)) {
           for (const k of kids) visit(k);
           return;
         }
@@ -304,8 +328,9 @@ export function buildHorizonMesh(data: WorldData, material: THREE.Material): THR
     for (let i = 0; i < s - 1; i++) {
       const x0 = h.originX + i * h.spacing;
       const z0 = h.originZ + j * h.spacing;
-      // Квад целиком внутри мира не рисуется; полоса у края перекрывается с рельефом мира и уходит под него.
-      if (x0 >= h.spacing && z0 >= h.spacing && x0 + 2 * h.spacing <= size && z0 + 2 * h.spacing <= size) continue;
+      // Квад внутри мира (включая касающиеся границы изнутри) не рисуется: горизонт стыкуется с рельефом
+      // мира ровно по границе, где высоты совпадают, и не перекрывает его.
+      if (x0 >= 0 && z0 >= 0 && x0 + h.spacing <= size && z0 + h.spacing <= size) continue;
       const a = j * s + i;
       idx.push(a, a + s, a + 1, a + 1, a + s, a + s + 1);
     }
@@ -314,13 +339,6 @@ export function buildHorizonMesh(data: WorldData, material: THREE.Material): THR
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
-  // Внутри мира полоса горизонта опущена, чтобы не спорить с настоящим рельефом.
-  const p = g.getAttribute('position') as THREE.BufferAttribute;
-  for (let k = 0; k < p.count; k++) {
-    const x = p.getX(k);
-    const z = p.getZ(k);
-    if (x > 0 && z > 0 && x < size && z < size) p.setY(k, p.getY(k) - 3);
-  }
   const mesh = new THREE.Mesh(g, material);
   mesh.receiveShadow = true;
   return mesh;

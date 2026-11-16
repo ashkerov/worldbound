@@ -6,12 +6,12 @@ import type { HeightGrid, WorldStaticMessage } from '../shared/protocol';
 
 /** Цвета почв (sRGB). Порядок задаётся идентификаторами из сообщения, а не индексами. */
 const SOIL_COLORS: Record<string, number> = {
-  rock: 0x8b857b,
-  sand: 0xcdb98c,
-  loam: 0x7d5d3e,
-  clay: 0x93644a,
-  alluvial: 0x5f4a33,
-  peat: 0x3f3328,
+  rock: 0x857f75,
+  sand: 0xc2b28c,
+  loam: 0x6e5a43,
+  clay: 0x7d6650,
+  alluvial: 0x5a4a38,
+  peat: 0x433a2f,
 };
 
 export interface Heights {

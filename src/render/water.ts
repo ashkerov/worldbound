@@ -157,7 +157,8 @@ export function buildInlandWater(data: WorldData, sky: SkyUniforms): THREE.Mesh 
   m.emissiveNode = sky.sunColor.mul(glint.mul(sky.sunStrength).mul(0.3));
   // Вдали грубый LOD рельефа может перекрыть узкое русло — поверхность чуть приподнимается с расстоянием.
   // Только для рек: озёра широкие и плоские, грубый LOD их не прячет.
-  const lift = positionWorld.sub(cameraPosition).length().sub(250).max(0).mul(0.003).mul(float(1).sub(isLake));
+  // В positionNode нельзя ссылаться на positionWorld (он сам из него выводится); матрица сетки единичная.
+  const lift = positionLocal.sub(cameraPosition).length().sub(250).max(0).mul(0.003).mul(float(1).sub(isLake));
   m.positionNode = positionLocal.add(vec3(0, lift.add(steep.mul(0.15)), 0));
   const mesh = new THREE.Mesh(g, m);
   mesh.renderOrder = 2;

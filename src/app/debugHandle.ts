@@ -22,6 +22,8 @@ export interface DebugHandle {
   worldSize(): number;
   /** Имитация щелчка по точке мира — открывает карточку ячейки. */
   pick(x: number, z: number): void;
+  /** Высота поверхности в рендере — для проверки, что рельеф совпадает с данными симуляции. */
+  ground(x: number, z: number): number;
 }
 
 declare global {

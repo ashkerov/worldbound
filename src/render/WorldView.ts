@@ -119,6 +119,8 @@ export class WorldView {
   private stats: RenderStats;
   private disposed = false;
   private shadowDirty = true;
+  /** Кадров, в которые рисуется второй конвейер: оба компилируются заранее, переключение камеры без рывка. */
+  private warmPlain = 2;
   /** Сообщает о каждом кадре — для мини-карты (рамка обзора). */
   onFrame: (() => void) | null = null;
 
@@ -134,7 +136,7 @@ export class WorldView {
     this.stats = { backend, quality: qualityName, fps: 0, frameMsAvg: 0, frameMsMax: 0, longFrames: 0, drawCalls: 0, triangles: 0, agentsDrawn: 0, terrainNodes: 0, resolution: '' };
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.sky = new Sky(2048);
     this.sky.light.castShadow = this.quality.shadow > 0;
@@ -210,6 +212,7 @@ export class WorldView {
     this.pipelineTilt.dispose();
     this.pipelinePlain.dispose();
     this.buildPipelines();
+    this.warmPlain = 2;
     this.rebuildPrecip();
     this.resize();
     this.shadowDirty = true;
@@ -255,6 +258,7 @@ export class WorldView {
     this.rebuildPrecip();
     this.buildLabels(message);
 
+    this.warmPlain = 2;
     this.rig.bounds = data.worldSize;
     this.rig.ground = (x, z) => data.groundAt(x, z);
     const c = data.worldSize / 2;
@@ -498,7 +502,10 @@ export class WorldView {
       this.sky.follow(this.rig.target, this.rig.camera.position, 1000);
       this.sky.updateFog(1000, 100, this.rig.camera.far);
     }
-    (this.tilt.value > 0.02 ? this.pipelineTilt : this.pipelinePlain).render();
+    if (this.warmPlain > 0) {
+      this.warmPlain--;
+      (this.tilt.value > 0.02 ? this.pipelinePlain : this.pipelineTilt).render();
+    } else (this.tilt.value > 0.02 ? this.pipelineTilt : this.pipelinePlain).render();
     this.onFrame?.();
 
     if (now - this.statsStart >= 500) {
@@ -528,8 +535,10 @@ export class WorldView {
   }
 
   setView(view: Partial<CameraView>): void {
+    const before = this.rig.target.clone();
     this.rig.setView(view);
-    this.shadowDirty = true;
+    // Плавное ведение камеры не требует внеочередного обновления теней — только скачок.
+    if (before.distanceTo(this.rig.target) > 200) this.shadowDirty = true;
   }
 
   getStats(): RenderStats {

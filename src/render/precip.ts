@@ -77,14 +77,14 @@ export class Precipitation {
     this.mesh = new THREE.Mesh(g, m);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 5;
-    this.mesh.visible = false;
+    // Сетка видима всегда (частицы при нулевой интенсивности уводятся вниз): шейдер компилируется при запуске,
+    // а не в момент первого дождя — иначе первый дождь давал бы рывок кадра.
   }
 
   update(camera: THREE.Camera, rateMmH: number, temperature: number, windX: number, windZ: number, windSpeed: number, altitude: number): void {
     const k = Math.min(1, rateMmH / 6);
     // Частицы видны у земли; с высоты осадки видны по тени облаков на рельефе.
     this.intensity.value = altitude < 250 ? k : 0;
-    this.mesh.visible = this.intensity.value > 0.01;
     this.snow.value += ((temperature < 0.5 ? 1 : 0) - this.snow.value) * 0.05;
     this.center.value.copy(camera.position);
     this.wind.value.set(windX * windSpeed, windZ * windSpeed);

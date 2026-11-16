@@ -242,7 +242,11 @@ async function start(): Promise<void> {
     getView: () => view.rig.view(),
     worldSize: () => useUi.getState().world?.worldSize ?? 0,
     pick: (x, z) => view.rig.onPick?.(x, z),
+    ground: (x, z) => view.rig.ground(x, z),
   };
+
+  // Только в режиме разработки: прямой доступ к рендеру из консоли.
+  if (import.meta.env.DEV) (window as unknown as { __wbView: WorldView }).__wbView = view;
 
   setInterval(() => useUi.setState({ render: view.getStats() }), 500);
 
