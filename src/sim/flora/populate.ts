@@ -7,6 +7,8 @@
 import { counterRandom } from '../../shared/rng';
 import type { World } from '../core/world';
 import { WaterKind } from '../worldgen/geo';
+import { climateMoisture } from '../env/envState';
+import { timeContext } from '../env/climate';
 import { NO_SPECIES, SPECIES } from './species';
 import { Ledger, SLOTS, nutrientStock } from './state';
 import { suitability } from './suitability';
@@ -26,7 +28,10 @@ function bestHerbs(world: World, cell: number, moistureRel: number): { s: number
     const suit = suitability(t, s, seasonTemp(world, cell), moistureRel, 1, world.flora.nutrient[cell]!, world.geo.soil[cell]!);
     if (suit > 0.15) out.push({ s, suit });
   }
-  out.sort((a, b) => b.suit - a.suit || a.s - b.s);
+  // Ранжирование по возможной продуктивности: теневыносливый мох пригоден и на открытом лугу,
+  // но проигрывает там травам, которые набирают больше биомассы.
+  const score = (p: { s: number; suit: number }) => p.suit * t.maxBiomass[p.s]! * Math.sqrt(t.growth[p.s]!);
+  out.sort((a, b) => score(b) - score(a) || a.s - b.s);
   return out.slice(0, 2);
 }
 
@@ -46,6 +51,13 @@ function setHerbs(world: World, cell: number, picks: { s: number; suit: number }
 }
 
 function finish(world: World): void {
+  // Суточные средние до первых суток — по климату момента старта и текущей влаге.
+  const geo = world.geo;
+  const ctx = timeContext(world.seed, world.tick, world.config.daysPerSeason);
+  for (let i = 0; i < geo.n * geo.n; i++) {
+    world.flora.dayT[i] = geo.tMean[i]! + geo.tAmp[i]! * ctx.seasonal + ctx.anomaly;
+    world.flora.dayW[i] = world.env.moisture[i]! / world.derived.capacity[i]!;
+  }
   world.flora.ledger.fill(0);
   world.flora.ledger[Ledger.initialStock] = nutrientStock(world.flora, world.geo);
 }
@@ -63,7 +75,7 @@ export function populateWild(world: World): void {
   for (let s = 0; s < t.count; s++) if (t.woody[s] === 1) woodySpecies.push(s);
   for (let i = 0; i < count; i++) {
     if (geo.waterKind[i] !== WaterKind.None) continue;
-    const moistureRel = world.env.moisture[i]! / world.derived.capacity[i]!;
+    const moistureRel = climateMoisture(geo.precip[i]!);
     setHerbs(world, i, bestHerbs(world, i, moistureRel), 0.45);
     // Редкий подрост: вероятность пропорциональна лучшей пригодности древесного вида.
     let total = 0;

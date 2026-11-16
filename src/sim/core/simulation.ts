@@ -5,7 +5,7 @@ import type { Command, WorldInit } from '../../shared/protocol';
 import { SNAPSHOT_STRIDE } from '../../shared/protocol';
 import { EntityKind } from '../../shared/ids';
 import { TICKS_PER_DAY, TICKS_PER_HOUR } from '../../shared/time';
-import { WORLD_SIZES, normalizeConfig, type WorldConfig } from '../../shared/worldConfig';
+import { normalizeConfig, type WorldConfig } from '../../shared/worldConfig';
 import { AgentStore } from './agentStore';
 import { StateHasher } from './hash';
 import { Scheduler, type Clock, type SystemTiming } from './scheduler';
@@ -15,9 +15,8 @@ import type { Geo } from '../worldgen/geo';
 import { createEnv, precipFactor } from '../env/envState';
 import { SOILS } from '../env/soils';
 import { weatherSystem } from '../env/weather';
-import { greennessTarget, waterSystem } from '../env/water';
-import { cellTemperature, timeContext } from '../env/climate';
-import { WaterKind } from '../worldgen/geo';
+import { waterSystem } from '../env/water';
+import { floraSystem, refreshCover } from '../flora/system';
 import { createFlora } from '../flora/state';
 import { populateGenesis, populateWild } from '../flora/populate';
 import { spawnTestAgents, testAgentDecisionSystem, testAgentMoveSystem } from '../systems/testAgents';
@@ -46,16 +45,6 @@ function derive(geo: Geo): WorldDerived {
   return { pFactor: factor, landMeanPrecip: landMean, landCells, capacity, drainHour };
 }
 
-/** Начальный покров — в равновесии с условиями момента старта (а не «голая земля»). */
-function initGreenness(world: World): void {
-  const geo = world.geo;
-  const ctx = timeContext(world.seed, world.tick, world.config.daysPerSeason);
-  for (let i = 0; i < geo.n * geo.n; i++) {
-    if (geo.waterKind[i] !== WaterKind.None) continue;
-    const t = cellTemperature(geo, i, ctx, 0.2);
-    world.env.greenness[i] = greennessTarget(geo, i, ctx, t, world.env.moisture[i]! / world.derived.capacity[i]!, 0);
-  }
-}
 
 export class Simulation {
   readonly world: World;
@@ -71,7 +60,8 @@ export class Simulation {
   constructor(init: WorldInit, clock?: Clock, generated?: GeneratedWorld, progress?: ProgressFn) {
     const config: WorldConfig = normalizeConfig(init.config);
     const gen = generated ?? generateWorld(config, progress);
-    const worldSize = WORLD_SIZES[config.size];
+    // Сторона мира — по статике (у тестовых участков она меньше стандартных размеров).
+    const worldSize = gen.geo.n * gen.geo.cellSize;
     this.world = {
       seed: config.seed,
       config,
@@ -86,13 +76,13 @@ export class Simulation {
       agents: new AgentStore(AGENT_CAPACITY),
       flora: createFlora(gen.geo),
     };
-    initGreenness(this.world);
     // При загрузке сохранения растения приходят из секций, а не из начального заселения.
     if (init.populate !== false) {
       if (config.scenario === 'genesis') populateGenesis(this.world);
       else populateWild(this.world);
+      refreshCover(this.world, true);
     }
-    this.scheduler = new Scheduler<World>(clock).add(weatherSystem).add(waterSystem).add(testAgentDecisionSystem).add(testAgentMoveSystem);
+    this.scheduler = new Scheduler<World>(clock).add(weatherSystem).add(waterSystem).add(floraSystem).add(testAgentDecisionSystem).add(testAgentMoveSystem);
     spawnTestAgents(this.world, init.testAgents);
   }
 
@@ -205,6 +195,13 @@ export class Simulation {
       .addArray(f.accRunoff)
       .addArray(f.accMinT)
       .addArray(f.accHours)
+      .addArray(f.dayT)
+      .addArray(f.dayW)
+      .addArray(f.capillary)
+      .addArray(f.canopy)
+      .addArray(f.treeCover)
+      .addArray(f.shrubCover)
+      .addArray(f.coniferCover)
       .addArray(f.ledger)
       .addInt(f.lastSliceHour)
       .addInt(wd.count)

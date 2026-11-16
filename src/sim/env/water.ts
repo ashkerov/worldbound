@@ -1,13 +1,14 @@
 // Часовой шаг воды и покрова (ARCHITECTURE.md, разделы 8.2–8.3):
 // осадки → снег или почва; таяние; ведёрная модель влаги (полевая влагоёмкость, испарение, дренаж);
-// сток по дереву стока → текущий расход рек; отклик индекса зелени на тепло и влагу.
-// Баланс воды учитывается точно: изменение запасов = осадки − испарение − сток.
+// капиллярная подпитка почвы у рек и озёр; сток по дереву стока → текущий расход рек;
+// суточные накопители условий для растений. Испарение зависит от растительного покрова.
+// Баланс воды учитывается точно: изменение запасов = осадки + подпитка − испарение − сток.
 
 import { smoothstep } from '../../shared/dmath';
 import { TICKS_PER_HOUR, hoursPerYear } from '../../shared/time';
 import type { System } from '../core/scheduler';
 import type { World } from '../core/world';
-import { WaterKind, type Geo } from '../worldgen/geo';
+import { WaterKind } from '../worldgen/geo';
 import { cellTemperature, chunkSample, timeContext, type TimeContext } from './climate';
 
 /** Ниже этой температуры осадки выпадают снегом, °C. */
@@ -18,12 +19,12 @@ const REAL_HOURS_PER_YEAR = 8760;
 
 const ctx: TimeContext = { seasonal: 0, diurnal: 0, anomaly: 0, sun: { x: 0, y: 1, z: 0 } };
 
-/** Уровень зелени, который поддерживают тепло сезона, влага почвы и снег. */
-export function greennessTarget(geo: Geo, i: number, c: TimeContext, temperature: number, moistureRel: number, snow: number): number {
-  const warm = smoothstep(-1, 9, geo.tMean[i]! + geo.tAmp[i]! * c.seasonal) * (1 - smoothstep(29, 38, temperature));
-  const wet = smoothstep(0.1, 0.5, moistureRel);
-  return snow > 4 ? 0.04 : warm * wet * (0.35 + 0.65 * geo.fertility[i]!);
-}
+/** Дальность капиллярной подпитки почвы от реки или озера, м. */
+export const CAPILLARY_RANGE = 40;
+/** Подпитка у самой воды: доля влагоёмкости за час. */
+const CAPILLARY_RATE = 0.03;
+/** Потенциальное испарение, мм за реальный час на градус выше −4 °C: ≈ 600 мм за год в умеренном климате. */
+const PET_PER_DEGREE = 0.0084;
 
 export const waterSystem: System<World> = {
   name: 'env.water',
@@ -46,6 +47,8 @@ export const waterSystem: System<World> = {
     let precipTotal = 0;
     let localTotal = 0;
     const runoff = env.runoff;
+    const flora = world.flora;
+    let capillary = 0;
     for (let i = 0; i < count; i++) {
       const kind = geo.waterKind[i]!;
       if (kind === WaterKind.Sea) {
@@ -79,8 +82,16 @@ export const waterSystem: System<World> = {
         out = m - cap;
         m = cap;
       }
-      // Испарение и транспирация: растут с температурой и светом; под снегом почти нет.
-      const pet = t > -4 ? (t + 4) * 0.0042 * compression * (0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y)) * (1 - 0.5 * cloud) : 0;
+      // Капиллярная подпитка у воды: почва берегов не пересыхает — основа прибрежной растительности.
+      const wd = geo.waterDist[i]!;
+      if (wd < CAPILLARY_RANGE && m < cap) {
+        const add = Math.min(cap - m, cap * CAPILLARY_RATE * (1 - wd / CAPILLARY_RANGE));
+        m += add;
+        capillary += add;
+      }
+      // Испарение и транспирация: растут с температурой, светом и растительным покровом; под снегом почти нет.
+      const cover = env.greenness[i]!;
+      const pet = t > -4 ? (t + 4) * PET_PER_DEGREE * compression * (0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y)) * (1 - 0.5 * cloud) * (0.3 + 0.7 * (cover > 1 ? 1 : cover)) : 0;
       const et = Math.min(m, pet * (m / cap) * (snow > 5 ? 0.2 : 1));
       m -= et;
       const drain = d.drainHour[i]! * m * (m / cap);
@@ -92,11 +103,14 @@ export const waterSystem: System<World> = {
       evaporated += et;
       localTotal += out;
 
-      // Индекс зелени тянется к тому, что позволяют тепло, влага и снег.
-      const target = greennessTarget(geo, i, ctx, t, m / cap, snow);
-      const g = env.greenness[i]!;
-      env.greenness[i] = g + (target - g) * (target > g ? 0.035 : 0.022);
+      // Суточные накопители для растений (их читает суточный шаг флоры).
+      flora.accT[i] = flora.accT[i]! + t;
+      flora.accW[i] = flora.accW[i]! + m / cap;
+      flora.accRunoff[i] = flora.accRunoff[i]! + out;
+      if (t < flora.accMinT[i]!) flora.accMinT[i] = t;
+      if (flora.accHours[i]! < 255) flora.accHours[i] = flora.accHours[i]! + 1;
     }
+    flora.capillary[0]! += capillary;
     // Сток по дереву: от истоков к устьям.
     const discharge = env.discharge;
     const order = geo.upstreamOrder;

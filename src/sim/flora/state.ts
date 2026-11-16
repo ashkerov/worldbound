@@ -55,8 +55,13 @@ export interface FloraState {
   readonly accRunoff: Float32Array;
   readonly accMinT: Float32Array;
   readonly accHours: Uint8Array;
+  /** Средние за последние завершённые сутки ячейки: температура, °C, и относительная влага почвы. */
+  readonly dayT: Float32Array;
+  readonly dayW: Float32Array;
+  /** Вода, поднятая в почву из рек и озёр капиллярной подпиткой, мм·ячейка (учёт баланса воды). */
+  readonly capillary: Float64Array;
   readonly woody: WoodyStore;
-  /** Производные (не сохраняются): покрытие пологом по ярусам, доля хвойных, покрытие кустарниками. */
+  /** Полог: покрытие кронами по ярусам, деревьями, кустарниками, хвойными. Пересчитывается в начале суток и сохраняется (между пересчётами растения растут). */
   readonly canopy: Float32Array;
   readonly treeCover: Float32Array;
   readonly shrubCover: Float32Array;
@@ -95,6 +100,9 @@ export function createFlora(geo: Geo): FloraState {
     accRunoff: new Float32Array(count),
     accMinT: minT,
     accHours: new Uint8Array(count),
+    dayT: new Float32Array(count),
+    dayW: new Float32Array(count),
+    capillary: new Float64Array(1),
     woody: new WoodyStore(woodyCapacity(geo)),
     canopy: new Float32Array(count * CANOPY_LAYERS),
     treeCover: new Float32Array(count),

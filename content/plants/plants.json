@@ -30,7 +30,15 @@
    "establishment": 0.5,
    "seedMass": 0.0005,
    "litterQuality": 1.0,
-   "colonistWeight": 0.8
+   "colonistWeight": 0.8,
+   "soilPreference": {
+    "loam": 1,
+    "alluvial": 1,
+    "clay": 0.8,
+    "sand": 0.5,
+    "peat": 0.35,
+    "rock": 0.15
+   }
   },
   {
    "id": "feather-grass",
@@ -134,7 +142,15 @@
    "seedMass": 0.0005,
    "litterQuality": 1.6,
    "colonistWeight": 0.5,
-   "fixesNutrient": 1.5
+   "fixesNutrient": 1.5,
+   "soilPreference": {
+    "loam": 1,
+    "alluvial": 1,
+    "clay": 0.8,
+    "sand": 0.5,
+    "peat": 0.35,
+    "rock": 0.15
+   }
   },
   {
    "id": "meadow-flowers",
@@ -164,7 +180,15 @@
    "establishment": 0.5,
    "seedMass": 0.0005,
    "litterQuality": 1.3,
-   "colonistWeight": 0.6
+   "colonistWeight": 0.6,
+   "soilPreference": {
+    "loam": 1,
+    "alluvial": 1,
+    "clay": 0.8,
+    "sand": 0.5,
+    "peat": 0.35,
+    "rock": 0.15
+   }
   },
   {
    "id": "fireweed",
@@ -194,7 +218,15 @@
    "establishment": 0.5,
    "seedMass": 0.0005,
    "litterQuality": 1.4,
-   "colonistWeight": 1.0
+   "colonistWeight": 1.0,
+   "soilPreference": {
+    "loam": 1,
+    "alluvial": 1,
+    "clay": 0.8,
+    "sand": 0.5,
+    "peat": 0.35,
+    "rock": 0.15
+   }
   },
   {
    "id": "bilberry",
@@ -227,10 +259,11 @@
    "colonistWeight": 0.3,
    "soilPreference": {
     "peat": 1,
-    "sand": 0.8,
-    "loam": 0.6,
-    "clay": 0.4,
-    "rock": 0.4
+    "sand": 0.7,
+    "loam": 0.45,
+    "clay": 0.3,
+    "rock": 0.4,
+    "alluvial": 0.3
    }
   },
   {
@@ -265,7 +298,10 @@
    "soilPreference": {
     "rock": 1,
     "peat": 1,
-    "sand": 0.7
+    "sand": 0.6,
+    "loam": 0.35,
+    "clay": 0.35,
+    "alluvial": 0.3
    }
   },
   {
@@ -288,7 +324,7 @@
    },
    "shadeTolerance": 0.7,
    "nutrientDemand": 0.6,
-   "growthRate": 0.9,
+   "growthRate": 3.5,
    "maxBiomass": 120,
    "halfBiomass": 25,
    "maxHeight": 5,
@@ -328,7 +364,7 @@
    },
    "shadeTolerance": 0.2,
    "nutrientDemand": 0.3,
-   "growthRate": 0.9,
+   "growthRate": 3.0,
    "maxBiomass": 40,
    "halfBiomass": 8,
    "maxHeight": 2.5,
@@ -368,7 +404,7 @@
    },
    "shadeTolerance": 0.25,
    "nutrientDemand": 0.4,
-   "growthRate": 1.4,
+   "growthRate": 4.5,
    "maxBiomass": 80,
    "halfBiomass": 15,
    "maxHeight": 4,
@@ -415,7 +451,7 @@
    },
    "shadeTolerance": 0.4,
    "nutrientDemand": 0.1,
-   "growthRate": 0.35,
+   "growthRate": 1.4,
    "maxBiomass": 60,
    "halfBiomass": 15,
    "maxHeight": 3,
@@ -461,7 +497,7 @@
    },
    "shadeTolerance": 0.15,
    "nutrientDemand": 0.35,
-   "growthRate": 0.55,
+   "growthRate": 2.8,
    "maxBiomass": 600,
    "halfBiomass": 150,
    "maxHeight": 22,
@@ -501,7 +537,7 @@
    },
    "shadeTolerance": 0.15,
    "nutrientDemand": 0.15,
-   "growthRate": 0.45,
+   "growthRate": 2.2,
    "maxBiomass": 1200,
    "halfBiomass": 300,
    "maxHeight": 28,
@@ -547,7 +583,7 @@
    },
    "shadeTolerance": 0.85,
    "nutrientDemand": 0.4,
-   "growthRate": 0.38,
+   "growthRate": 1.8,
    "maxBiomass": 1400,
    "halfBiomass": 350,
    "maxHeight": 30,
@@ -587,7 +623,7 @@
    },
    "shadeTolerance": 0.45,
    "nutrientDemand": 0.65,
-   "growthRate": 0.4,
+   "growthRate": 1.8,
    "maxBiomass": 2500,
    "halfBiomass": 700,
    "maxHeight": 26,
@@ -635,7 +671,7 @@
    },
    "shadeTolerance": 0.8,
    "nutrientDemand": 0.7,
-   "growthRate": 0.42,
+   "growthRate": 2.0,
    "maxBiomass": 1800,
    "halfBiomass": 500,
    "maxHeight": 28,
@@ -675,7 +711,7 @@
    },
    "shadeTolerance": 0.3,
    "nutrientDemand": 0.3,
-   "growthRate": 0.6,
+   "growthRate": 2.8,
    "maxBiomass": 700,
    "halfBiomass": 180,
    "maxHeight": 20,

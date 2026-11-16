@@ -4,6 +4,7 @@
 
 import { cellAt, type World } from '../core/world';
 import { populateFromGreenness } from '../flora/populate';
+import { refreshCover } from '../flora/system';
 import { SectionReader, SectionWriter } from './binary';
 
 export const SECTION_SCHEMAS = {
@@ -64,6 +65,13 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
     .array(f.accRunoff)
     .array(f.accMinT)
     .array(f.accHours)
+    .array(f.dayT)
+    .array(f.dayW)
+    .array(f.capillary)
+    .array(f.canopy)
+    .array(f.treeCover)
+    .array(f.shrubCover)
+    .array(f.coniferCover)
     .array(f.ledger)
     .f64(wh)
     .f64(w.count)
@@ -128,6 +136,7 @@ export function applySections(world: World, sections: Partial<Record<SectionId, 
   else {
     // Сохранение фазы 2: растений не было — травяной ярус восстанавливается из сохранённого индекса зелени.
     populateFromGreenness(world);
+    refreshCover(world, false);
     migrations.push('flora:from-greenness');
   }
   return migrations;
@@ -169,6 +178,13 @@ function readFlora(world: World, bytes: Uint8Array): void {
   r.into(f.accRunoff);
   r.into(f.accMinT);
   r.into(f.accHours);
+  r.into(f.dayT);
+  r.into(f.dayW);
+  r.into(f.capillary);
+  r.into(f.canopy);
+  r.into(f.treeCover);
+  r.into(f.shrubCover);
+  r.into(f.coniferCover);
   r.into(f.ledger);
   const w = f.woody;
   const wh = r.f64();

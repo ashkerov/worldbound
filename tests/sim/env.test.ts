@@ -89,9 +89,10 @@ describe('Сезоны, погода и вода (малый мир, умере�
     expect(mean / sim.world.derived.landMeanPrecip).toBeLessThan(1.25);
   });
 
-  it('баланс воды сходится: изменение запасов = осадки − испарение − сток', () => {
+  it('баланс воды сходится: изменение запасов = осадки + подпитка у воды − испарение − сток', () => {
     const delta = storage(sim) - initialStorage;
-    const budget = totals[0]! - totals[1]! - totals[3]!;
+    // Подпитка почвы из рек и озёр (фаза 3) — приход в баланс почвенной влаги.
+    const budget = totals[0]! - totals[1]! - totals[3]! + sim.world.flora.capillary[0]!;
     expect(Math.abs(delta - budget) / totals[0]!).toBeLessThan(1e-4);
     // Весь сток по дереву стока доходит до моря (маршрутизация без потерь).
     expect(Math.abs(totals[2]! - totals[3]!) / totals[3]!).toBeLessThan(1e-4);

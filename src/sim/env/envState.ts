@@ -49,6 +49,15 @@ export interface EnvState {
   lastHourStep: number;
 }
 
+/**
+ * Типичная относительная влага почвы в сезон роста по годовой норме осадков (0..1):
+ * оценка для начального состояния и выбора видов при заселении; дальше влагу ведёт часовой шаг воды.
+ */
+export function climateMoisture(precipMm: number): number {
+  const w = 0.15 + (0.75 * (precipMm - 200)) / 700;
+  return w < 0.1 ? 0.1 : w > 0.95 ? 0.95 : w;
+}
+
 /** Множитель осадков ячейки относительно среднего по суше: даёт пространственный рисунок климата. */
 export function precipFactor(geo: Geo): { factor: Float32Array; landMean: number; landCells: number } {
   const count = geo.n * geo.n;
@@ -72,9 +81,7 @@ export function createEnv(geo: Geo, worldSize: number): EnvState {
   for (let i = 0; i < count; i++) {
     if (geo.waterKind[i] !== WaterKind.None) continue;
     const cap = SOILS[geo.soil[i]!]!.fieldCapacityMm;
-    // Начальное состояние — весна после таяния: почва влажная, покров ещё не набрал силу.
-    const wet = 0.55 + 0.25 * Math.min(1, geo.precip[i]! / 1200);
-    moisture[i] = cap * wet;
+    moisture[i] = cap * climateMoisture(geo.precip[i]!);
     greenness[i] = 0.25;
   }
   const chunks = worldSize / CHUNK_SIZE;

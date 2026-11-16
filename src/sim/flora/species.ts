@@ -236,7 +236,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     t.wOptMax[i] = p.moisture.optMax;
     t.wMax[i] = p.moisture.max;
     t.lightNeed[i] = 1 - 0.85 * p.shadeTolerance;
-    t.nutrientHalf[i] = 0.3 + 3 * p.nutrientDemand;
+    t.nutrientHalf[i] = 0.2 + 1.2 * p.nutrientDemand;
     t.growth[i] = p.growthRate;
     t.maxBiomass[i] = p.maxBiomass;
     t.halfBiomass[i] = p.halfBiomass ?? 0;
