@@ -6,7 +6,8 @@ import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/app/debugHandle';
 import { Simulation } from '../../src/sim/core/simulation';
 
-const SHOTS = 'docs/screenshots/phase2';
+// Результаты сквозных тестов — отдельно от доказательств отчётов фаз: тесты не должны их перезаписывать.
+const SHOTS = 'docs/screenshots/e2e';
 const RESULTS = 'docs/measurements';
 mkdirSync(SHOTS, { recursive: true });
 mkdirSync(RESULTS, { recursive: true });
@@ -78,7 +79,7 @@ for (const renderer of ['webgpu', 'webgl2'] as const) {
         expect(rate, `скорость ×${speed}`).toBeGreaterThan(speed * 10 * 0.75);
         expect(rate, `скорость ×${speed}`).toBeLessThan(speed * 10 * 1.25);
       }
-      writeFileSync(`${RESULTS}/phase2-speeds-${renderer}.json`, JSON.stringify(rates, null, 2));
+      writeFileSync(`${RESULTS}/e2e-speeds-${renderer}.json`, JSON.stringify(rates, null, 2));
     });
 
     test('слои, карточка ячейки, камера и скрытие интерфейса', async ({ page }) => {
@@ -166,5 +167,5 @@ test('мир в браузере побитно совпадает с этало
   reference.applyCommands();
   expect(browser.hash).toBe(reference.stateHash());
   const channel = String(info.project.use.channel ?? 'msedge');
-  writeFileSync(`${RESULTS}/phase2-determinism-${channel}.json`, JSON.stringify({ browser: channel, geoHash: browser.geoHash, tick: browser.tick, hash: browser.hash, node: reference.stateHash() }, null, 2));
+  writeFileSync(`${RESULTS}/e2e-determinism-${channel}.json`, JSON.stringify({ browser: channel, geoHash: browser.geoHash, tick: browser.tick, hash: browser.hash, node: reference.stateHash() }, null, 2));
 });
