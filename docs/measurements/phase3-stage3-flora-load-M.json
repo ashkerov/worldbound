@@ -1,28 +1,40 @@
 {
+  "tool": "tools/flora-load.ts",
+  "commit": "03795c184979a9a18ff110b6df3ef67ff2e2acf7",
+  "dirty": false,
+  "measuredAt": "2026-11-18T18:51:18.646Z",
   "treesAtStart": 300000,
-  "treesAtEnd": 331221,
+  "treesAtEnd": 343089,
   "gameDays": 12,
-  "totalMs": 13065,
-  "msPerGameDay": 1089,
-  "rssMb": 174,
+  "totalMs": 10971,
+  "msPerGameDay": 914,
+  "tickMs": {
+    "mean": 0.127,
+    "p95": 0.001,
+    "p99": 4.133,
+    "p999": 18.25,
+    "max": 61
+  },
+  "ticksOver40ms": 1,
+  "rssMb": 177,
   "systems": [
     {
       "name": "env.weather",
       "runs": 1728,
-      "avgMs": 0.19,
-      "maxMs": 2.1
+      "avgMs": 0.18,
+      "maxMs": 3.5
     },
     {
       "name": "env.water",
       "runs": 288,
-      "avgMs": 27.34,
-      "maxMs": 44
+      "avgMs": 15.34,
+      "maxMs": 28.2
     },
     {
       "name": "flora.day",
       "runs": 1728,
-      "avgMs": 2.79,
-      "maxMs": 52.3
+      "avgMs": 3.58,
+      "maxMs": 61
     }
   ]
 }

@@ -22,10 +22,10 @@
 <path d="M64.0,275.8 L106.3,290.0 L176.8,301.4 L247.4,306.0 L317.9,308.9 L458.9,311.0 L600.0,311.6" fill="none" stroke="#9a4fa0" stroke-width="2" stroke-dasharray="6 4"/>
 <line x1="614" x2="634" y1="68" y2="68" stroke="#9a4fa0" stroke-width="2" stroke-dasharray="6 4"/>
 <text x="640" y="72" fill="#333">черника + мох — открыто</text>
-<path d="M64.0,278.5 L106.3,295.5 L176.8,286.2 L247.4,278.5 L317.9,272.6 L458.9,279.3 L600.0,285.0" fill="none" stroke="#3b7d3a" stroke-width="2"/>
+<path d="M64.0,278.5 L106.3,295.5 L176.8,286.2 L247.4,278.5 L317.9,272.5 L458.9,278.2 L600.0,284.9" fill="none" stroke="#3b7d3a" stroke-width="2"/>
 <line x1="614" x2="634" y1="86" y2="86" stroke="#3b7d3a" stroke-width="2"/>
 <text x="640" y="90" fill="#333">мятлик — под пологом</text>
-<path d="M64.0,265.9 L106.3,221.6 L176.8,186.2 L247.4,183.3 L317.9,183.3 L458.9,205.8 L600.0,239.9" fill="none" stroke="#9a4fa0" stroke-width="2"/>
+<path d="M64.0,265.9 L106.3,221.6 L176.8,186.2 L247.4,183.3 L317.9,183.3 L458.9,205.9 L600.0,240.1" fill="none" stroke="#9a4fa0" stroke-width="2"/>
 <line x1="614" x2="634" y1="104" y2="104" stroke="#9a4fa0" stroke-width="2"/>
 <text x="640" y="108" fill="#333">черника + мох — под пологом</text>
 </svg>

@@ -1,0 +1,217 @@
+{
+ "tool": "tools/wildlands-bench.ts",
+ "commit": "03795c184979a9a18ff110b6df3ef67ff2e2acf7",
+ "dirty": false,
+ "measuredAt": "2026-11-18T18:47:15.545Z",
+ "node": "v24.22.1",
+ "args": [
+  "--genesis",
+  "--size",
+  "M",
+  "--seeds",
+  "1",
+  "--climates",
+  "temperate",
+  "--years",
+  "5",
+  "--marks",
+  "1,2,5",
+  "--after",
+  "2",
+  "--out",
+  "docs/measurements/phase3-stage4-genesis-M.json"
+ ],
+ "results": [
+  {
+   "size": "M",
+   "climate": "temperate",
+   "seed": 1,
+   "scenario": "genesis",
+   "generationMs": 1514,
+   "worstPrepDayMs": 935,
+   "marks": [
+    {
+     "years": 1,
+     "prepMs": 12049,
+     "msPerGameDay": 602.5,
+     "landCells": 189312,
+     "herbCoveredShare": 0,
+     "herbBiomassT": 0,
+     "woodyBiomassT": 0,
+     "woody": 21,
+     "woodyPerLandCell": 0,
+     "storeFill": 0,
+     "trees": 16,
+     "shrubs": 5,
+     "stages": {
+      "всход": 21,
+      "подрост": 0,
+      "взрослое": 0,
+      "старое": 0
+     },
+     "species": {
+      "birch": 6,
+      "pine": 5,
+      "juniper": 3,
+      "spruce": 3,
+      "willow-shrub": 1,
+      "wild-rose": 1,
+      "alder": 2
+     },
+     "tallestM": 0.1,
+     "treeCoverLand": 0,
+     "shrubCoverLand": 0,
+     "landBiomeKinds": 1,
+     "biomes": {
+      "sea": 0.2033,
+      "lake": 0.072,
+      "river": 0.0025,
+      "barren": 0.7222
+     },
+     "colonizedSpecies": 18,
+     "externalN": 214,
+     "balanceError": 5.05e-10,
+     "heapMb": 17,
+     "rssMb": 160
+    },
+    {
+     "years": 2,
+     "prepMs": 39563,
+     "msPerGameDay": 989.1,
+     "landCells": 189312,
+     "herbCoveredShare": 0,
+     "herbBiomassT": 0.1,
+     "woodyBiomassT": 0,
+     "woody": 50,
+     "woodyPerLandCell": 0,
+     "storeFill": 0,
+     "trees": 32,
+     "shrubs": 18,
+     "stages": {
+      "всход": 50,
+      "подрост": 0,
+      "взрослое": 0,
+      "старое": 0
+     },
+     "species": {
+      "birch": 13,
+      "pine": 8,
+      "juniper": 9,
+      "spruce": 8,
+      "willow-shrub": 5,
+      "alder": 2,
+      "hazel": 2,
+      "wild-rose": 2,
+      "oak": 1
+     },
+     "tallestM": 0.4,
+     "treeCoverLand": 0,
+     "shrubCoverLand": 0,
+     "landBiomeKinds": 3,
+     "biomes": {
+      "sea": 0.2033,
+      "lake": 0.072,
+      "river": 0.0025,
+      "pioneer": 0,
+      "sparse-grass": 0.0001,
+      "barren": 0.7221
+     },
+     "colonizedSpecies": 18,
+     "externalN": 524,
+     "balanceError": 1e-10,
+     "heapMb": 14,
+     "rssMb": 161
+    },
+    {
+     "years": 5,
+     "prepMs": 111360,
+     "msPerGameDay": 1113.6,
+     "landCells": 189312,
+     "herbCoveredShare": 0,
+     "herbBiomassT": 0.2,
+     "woodyBiomassT": 0,
+     "woody": 98,
+     "woodyPerLandCell": 0,
+     "storeFill": 0,
+     "trees": 79,
+     "shrubs": 19,
+     "stages": {
+      "всход": 93,
+      "подрост": 3,
+      "взрослое": 2,
+      "старое": 0
+     },
+     "species": {
+      "juniper": 7,
+      "pine": 17,
+      "birch": 46,
+      "willow-shrub": 4,
+      "spruce": 7,
+      "linden": 2,
+      "alder": 4,
+      "hazel": 5,
+      "wild-rose": 3,
+      "oak": 3
+     },
+     "tallestM": 2,
+     "treeCoverLand": 0,
+     "shrubCoverLand": 0,
+     "landBiomeKinds": 4,
+     "biomes": {
+      "sea": 0.2033,
+      "lake": 0.072,
+      "river": 0.0025,
+      "pioneer": 0,
+      "meadow": 0.0001,
+      "sparse-grass": 0,
+      "barren": 0.722
+     },
+     "colonizedSpecies": 18,
+     "externalN": 1287,
+     "balanceError": 1.48e-10,
+     "heapMb": 17,
+     "rssMb": 161
+    }
+   ],
+   "after": {
+    "gameDays": 2,
+    "msPerGameDay": 709.8,
+    "tickMs": {
+     "mean": 0.0986,
+     "p95": 0.001,
+     "p99": 1.99,
+     "max": 22.26
+    },
+    "ticksOver40ms": 0,
+    "systems": [
+     {
+      "name": "env.weather",
+      "avgMs": 0.178,
+      "maxMs": 3.87
+     },
+     {
+      "name": "env.water",
+      "avgMs": 19.556,
+      "maxMs": 29.85
+     },
+     {
+      "name": "flora.day",
+      "avgMs": 1.371,
+      "maxMs": 13.4
+     },
+     {
+      "name": "testAgents.decide",
+      "avgMs": 0,
+      "maxMs": 0.28
+     },
+     {
+      "name": "testAgents.move",
+      "avgMs": 0,
+      "maxMs": 0.24
+     }
+    ]
+   },
+   "stateHash": "be1832d7329a35e6"
+  }
+ ]
+}

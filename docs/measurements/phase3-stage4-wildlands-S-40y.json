@@ -1,0 +1,235 @@
+{
+ "tool": "tools/wildlands-bench.ts",
+ "commit": "03795c184979a9a18ff110b6df3ef67ff2e2acf7",
+ "dirty": false,
+ "measuredAt": "2026-11-18T18:51:04.243Z",
+ "node": "v24.22.1",
+ "args": [
+  "--size",
+  "S",
+  "--seeds",
+  "1",
+  "--climates",
+  "temperate",
+  "--years",
+  "40",
+  "--marks",
+  "20,30,40",
+  "--after",
+  "1",
+  "--out",
+  "docs/measurements/phase3-stage4-wildlands-S-40y.json"
+ ],
+ "results": [
+  {
+   "size": "S",
+   "climate": "temperate",
+   "seed": 1,
+   "scenario": "wild",
+   "generationMs": 514,
+   "worstPrepDayMs": 514,
+   "marks": [
+    {
+     "years": 20,
+     "prepMs": 99114,
+     "msPerGameDay": 247.8,
+     "landCells": 52904,
+     "herbCoveredShare": 0.993,
+     "herbBiomassT": 301.9,
+     "woodyBiomassT": 674.2,
+     "woody": 111097,
+     "woodyPerLandCell": 2.1,
+     "storeFill": 0.424,
+     "trees": 76854,
+     "shrubs": 34243,
+     "stages": {
+      "всход": 45026,
+      "подрост": 34099,
+      "взрослое": 31972,
+      "старое": 0
+     },
+     "species": {
+      "pine": 16442,
+      "oak": 8804,
+      "birch": 33163,
+      "spruce": 7623,
+      "willow-shrub": 15261,
+      "wild-rose": 8669,
+      "hazel": 7342,
+      "juniper": 2971,
+      "linden": 4557,
+      "alder": 6265
+     },
+     "tallestM": 14.9,
+     "treeCoverLand": 0.029,
+     "shrubCoverLand": 0.013,
+     "landBiomeKinds": 6,
+     "biomes": {
+      "sea": 0.0817,
+      "lake": 0.1087,
+      "river": 0.0023,
+      "bog": 0.0084,
+      "woodland": 0.0238,
+      "shrubland": 0.0026,
+      "meadow": 0.6598,
+      "sparse-grass": 0.1069,
+      "barren": 0.0058
+     },
+     "colonizedSpecies": 18,
+     "externalN": 453408,
+     "balanceError": 2.28e-7,
+     "heapMb": 14,
+     "rssMb": 95
+    },
+    {
+     "years": 30,
+     "prepMs": 158490,
+     "msPerGameDay": 264.2,
+     "landCells": 52904,
+     "herbCoveredShare": 0.997,
+     "herbBiomassT": 310.9,
+     "woodyBiomassT": 2400.1,
+     "woody": 187287,
+     "woodyPerLandCell": 3.54,
+     "storeFill": 0.714,
+     "trees": 129292,
+     "shrubs": 57995,
+     "stages": {
+      "всход": 68792,
+      "подрост": 43642,
+      "взрослое": 73934,
+      "старое": 919
+     },
+     "species": {
+      "pine": 27777,
+      "oak": 11413,
+      "birch": 62479,
+      "spruce": 9801,
+      "wild-rose": 9818,
+      "hazel": 12266,
+      "linden": 7096,
+      "juniper": 3893,
+      "alder": 10726,
+      "willow-shrub": 32018
+     },
+     "tallestM": 19.3,
+     "treeCoverLand": 0.102,
+     "shrubCoverLand": 0.034,
+     "landBiomeKinds": 8,
+     "biomes": {
+      "sea": 0.0817,
+      "lake": 0.1087,
+      "river": 0.0023,
+      "bog": 0.0099,
+      "broadleaf-forest": 0.0011,
+      "mixed-forest": 0.0001,
+      "woodland": 0.2276,
+      "shrubland": 0.0132,
+      "meadow": 0.5498,
+      "sparse-grass": 0.0027,
+      "barren": 0.0029
+     },
+     "colonizedSpecies": 18,
+     "externalN": 669561,
+     "balanceError": 3.78e-7,
+     "heapMb": 14,
+     "rssMb": 99
+    },
+    {
+     "years": 40,
+     "prepMs": 226273,
+     "msPerGameDay": 282.8,
+     "landCells": 52904,
+     "herbCoveredShare": 0.996,
+     "herbBiomassT": 269.4,
+     "woodyBiomassT": 4655,
+     "woody": 243828,
+     "woodyPerLandCell": 4.61,
+     "storeFill": 0.93,
+     "trees": 177271,
+     "shrubs": 66557,
+     "stages": {
+      "всход": 72443,
+      "подрост": 43698,
+      "взрослое": 125768,
+      "старое": 1919
+     },
+     "species": {
+      "pine": 38735,
+      "oak": 16338,
+      "birch": 87614,
+      "spruce": 11058,
+      "linden": 9619,
+      "willow-shrub": 40874,
+      "hazel": 14979,
+      "juniper": 4173,
+      "alder": 13907,
+      "wild-rose": 6531
+     },
+     "tallestM": 21.1,
+     "treeCoverLand": 0.187,
+     "shrubCoverLand": 0.052,
+     "landBiomeKinds": 9,
+     "biomes": {
+      "sea": 0.0817,
+      "lake": 0.1087,
+      "river": 0.0023,
+      "bog": 0.0107,
+      "coniferous-forest": 0.0006,
+      "broadleaf-forest": 0.0321,
+      "mixed-forest": 0.0074,
+      "woodland": 0.3218,
+      "shrubland": 0.0307,
+      "meadow": 0.3993,
+      "sparse-grass": 0.0024,
+      "barren": 0.0022
+     },
+     "colonizedSpecies": 18,
+     "externalN": 869036,
+     "balanceError": 6.12e-7,
+     "heapMb": 19,
+     "rssMb": 109
+    }
+   ],
+   "after": {
+    "gameDays": 1,
+    "msPerGameDay": 259.2,
+    "tickMs": {
+     "mean": 0.036,
+     "p95": 0.001,
+     "p99": 0.896,
+     "max": 15.15
+    },
+    "ticksOver40ms": 0,
+    "systems": [
+     {
+      "name": "env.weather",
+      "avgMs": 0.041,
+      "maxMs": 2.03
+     },
+     {
+      "name": "env.water",
+      "avgMs": 4.229,
+      "maxMs": 13.02
+     },
+     {
+      "name": "flora.day",
+      "avgMs": 1.195,
+      "maxMs": 33.57
+     },
+     {
+      "name": "testAgents.decide",
+      "avgMs": 0,
+      "maxMs": 0.41
+     },
+     {
+      "name": "testAgents.move",
+      "avgMs": 0,
+      "maxMs": 2.04
+     }
+    ]
+   },
+   "stateHash": "b35caae375697b8c"
+  }
+ ]
+}

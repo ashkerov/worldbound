@@ -1,47 +1,51 @@
 {
+  "tool": "tools/headless.ts",
+  "commit": "03795c184979a9a18ff110b6df3ef67ff2e2acf7",
+  "dirty": false,
+  "measuredAt": "2026-11-18T18:51:51.541Z",
   "seed": 42,
   "size": "M",
-  "generationMs": 1564,
+  "generationMs": 1463,
   "geoHash": "40debae61cc997b3",
   "ticks": 288000,
   "agents": 0,
   "gameDays": 40,
-  "totalMs": 34880.1,
-  "msPerTick": 0.1211,
-  "woodyPlants": 4496,
-  "heapMb": 12,
-  "rssMb": 159,
-  "stateHash": "d05c5f9fdb93f89d",
+  "totalMs": 29925.4,
+  "msPerTick": 0.1039,
+  "woodyPlants": 49,
+  "heapMb": 19,
+  "rssMb": 162,
+  "stateHash": "4ffb3800a6137662",
   "systems": [
     {
       "name": "env.weather",
       "runs": 5760,
-      "avgMs": 0.1712,
-      "maxMs": 2.959
+      "avgMs": 0.1701,
+      "maxMs": 2.582
     },
     {
       "name": "env.water",
       "runs": 960,
-      "avgMs": 28.9461,
-      "maxMs": 41.342
+      "avgMs": 16.009,
+      "maxMs": 29.155
     },
     {
       "name": "flora.day",
-      "runs": 960,
-      "avgMs": 6.2427,
-      "maxMs": 28.931
+      "runs": 5760,
+      "avgMs": 2.3356,
+      "maxMs": 13.211
     },
     {
       "name": "testAgents.decide",
       "runs": 288000,
       "avgMs": 0.0001,
-      "maxMs": 0.541
+      "maxMs": 0.343
     },
     {
       "name": "testAgents.move",
       "runs": 288000,
       "avgMs": 0.0001,
-      "maxMs": 0.091
+      "maxMs": 0.075
     }
   ]
 }
