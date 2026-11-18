@@ -23,7 +23,9 @@ function watchErrors(page: Page): string[] {
 
 async function autostart(page: Page, renderer: 'webgpu' | 'webgl2', query = ''): Promise<string[]> {
   const errors = watchErrors(page);
-  await page.goto(`/?renderer=${renderer}&autostart=1&seed=42&size=S&debug=1${query}`);
+  // Wildlands с подготовкой в 1 год: проверки рендера и интерфейса не ждут полный 20-летний прогон
+  // (его время в браузере меряет tests/bench/wildlands.spec.ts).
+  await page.goto(`/?renderer=${renderer}&autostart=1&seed=42&size=S&prepare=1&debug=1${query}`);
   await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
   await expect(page.getByTestId('time-panel')).toBeVisible();
   return errors;
@@ -125,6 +127,9 @@ test('меню: создать мир → сохранить → выйти → 
   await page.getByTestId('size-S').click();
   await page.getByTestId('season-3').click();
   await page.getByTestId('climate-cold').click();
+  await page.getByTestId('scenario-genesis').click();
+  await page.getByTestId('world-isolated').check();
+  await expect(page.getByTestId('scenario-note')).toContainText('Пустая земля');
   await page.getByTestId('create-submit').click();
   await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
   await page.getByTestId('speed-8').click();
@@ -155,12 +160,13 @@ test('меню: создать мир → сохранить → выйти → 
 });
 
 test('мир в браузере побитно совпадает с эталоном Node при том же seed', async ({ page }, info) => {
-  await page.goto('/?renderer=webgl2&autostart=1&seed=42&size=S');
+  await page.goto('/?renderer=webgl2&autostart=1&seed=42&size=S&prepare=1');
   await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
   await page.getByTestId('speed-0').click();
   await page.waitForTimeout(1200);
   const browser = await page.evaluate(() => window.__wb!.stateHash());
-  const reference = new Simulation({ config: { seed: 42, size: 'S', name: 'Проверка 42' }, testAgents: 0 });
+  // Эталон проходит ту же подготовку Wildlands (1 год), что и мир в браузере.
+  const reference = new Simulation({ config: { seed: 42, size: 'S', name: 'Проверка 42' }, testAgents: 0, prepareYears: 1 });
   expect(browser.geoHash).toBe(reference.world.geoHash);
   reference.enqueue({ type: 'setSpeed', speed: 0 });
   while (reference.world.tick < browser.tick) reference.step();
@@ -168,4 +174,38 @@ test('мир в браузере побитно совпадает с этало
   expect(browser.hash).toBe(reference.stateHash());
   const channel = String(info.project.use.channel ?? 'msedge');
   writeFileSync(`${RESULTS}/e2e-determinism-${channel}.json`, JSON.stringify({ browser: channel, geoHash: browser.geoHash, tick: browser.tick, hash: browser.hash, node: reference.stateHash() }, null, 2));
+});
+
+test('Wildlands: прогресс подготовки виден и честен, создание можно отменить', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?renderer=webgl2&autostart=1&seed=5&size=S&prepare=20');
+  await expect(page.getByTestId('progress-stage')).toContainText('Природа развивается: год', { timeout: 60_000 });
+  await expect(page.getByTestId('progress-detail')).toContainText('осталось около', { timeout: 30_000 });
+  // Прогресс растёт, интерфейс отвечает.
+  const first = await page.getByTestId('progress-detail').textContent();
+  await page.waitForTimeout(3000);
+  const second = await page.getByTestId('progress-detail').textContent();
+  expect(second).not.toBe(first);
+  await page.getByTestId('progress-cancel').click();
+  await expect(page.getByTestId('main-menu')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('notice')).toContainText('отменено');
+  // Неготовый мир не сохранился.
+  await expect(page.getByTestId('world-item').filter({ hasText: 'Проверка 5' })).toHaveCount(0);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('Wildlands: подготовленный мир открывается, в карточке — биом и растения', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?renderer=webgl2&autostart=1&seed=42&size=S&prepare=3&debug=1');
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
+  await page.getByTestId('speed-0').click();
+  await page.getByTestId('layer-biomes').click();
+  await expect(page.getByTestId('legend')).toContainText('Луг');
+  await page.screenshot({ path: `${SHOTS}/wildlands-3y-biomes.png` });
+  await page.evaluate(() => window.__wb!.pick(1024, 1024));
+  await expect(page.getByTestId('cell-card')).toBeVisible();
+  await expect(page.getByTestId('cell-biome')).not.toBeEmpty();
+  await expect(page.getByTestId('cell-herbs')).toContainText('г/м²');
+  await expect(page.getByTestId('cell-woody')).toBeVisible();
+  expect(errors, errors.join('\n')).toEqual([]);
 });

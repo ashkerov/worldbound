@@ -138,6 +138,27 @@ export class SectionReader {
     if (this.offset !== this.bytes.length) throw new Error(`Секция ${this.header.id}: лишние данные после конца раскладки`);
   }
 
+  /** Читает байтовый массив переменной длины. */
+  uint8(): Uint8Array {
+    const count = this.f64();
+    if (!Number.isInteger(count) || count < 0 || this.offset + count > this.bytes.length) throw new Error(`Секция ${this.header.id}: повреждённый массив`);
+    const out = this.bytes.slice(this.offset, this.offset + count);
+    this.offset += count;
+    this.align();
+    return out;
+  }
+
+  /** Читает массив Float64 переменной длины. */
+  float64(): Float64Array {
+    const count = this.f64();
+    if (!Number.isInteger(count) || count < 0 || this.offset + count * 8 > this.bytes.length) throw new Error(`Секция ${this.header.id}: повреждённый массив`);
+    const out = new Float64Array(count);
+    new Uint8Array(out.buffer).set(this.bytes.subarray(this.offset, this.offset + count * 8));
+    this.offset += count * 8;
+    this.align();
+    return out;
+  }
+
   /** Читает массив переменной длины. */
   int32(): Int32Array {
     const count = this.f64();

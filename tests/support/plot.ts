@@ -80,9 +80,10 @@ export function plotGeo(o: PlotOptions = {}): Geo {
   };
 }
 
-export function plotSimulation(o: PlotOptions = {}, config: Partial<WorldConfig> = {}): Simulation {
+/** @param prepareYears Wildlands: лет подготовки (по умолчанию — как в игре). */
+export function plotSimulation(o: PlotOptions = {}, config: Partial<WorldConfig> = {}, prepareYears?: number): Simulation {
   const cfg = normalizeConfig({ seed: 7, size: 'S', daysPerSeason: 5, ...config });
-  return new Simulation({ config: cfg, testAgents: 0 }, undefined, { geo: plotGeo(o), hash: `plot-${JSON.stringify(o)}` });
+  return new Simulation({ config: cfg, testAgents: 0, prepareYears }, undefined, { geo: plotGeo(o), hash: `plot-${JSON.stringify(o)}` });
 }
 
 /** Прогон на целое число игровых суток. */

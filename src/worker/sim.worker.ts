@@ -4,7 +4,7 @@
 // Сама симуляция — в src/sim и о воркере не знает.
 
 import type { FromWorker, LayerId, SimRequest, SimResponse, ToWorker } from '../shared/protocol';
-import { TICK_MS, TICKS_PER_HOUR } from '../shared/time';
+import { SEASONS_PER_YEAR, TICK_MS, TICKS_PER_DAY, TICKS_PER_HOUR } from '../shared/time';
 import { normalizeConfig } from '../shared/worldConfig';
 import { Simulation } from '../sim/core/simulation';
 import { WEATHER_PERIOD, windAt } from '../sim/env/weather';
@@ -216,6 +216,48 @@ function close(): void {
 
 const progress = (stage: string, fraction: number) => post({ type: 'progress', stage, fraction });
 
+/** Отмена создания мира (подготовки Wildlands) запросом cancelCreate. */
+let cancelRequested = false;
+let preparing = false;
+/** Подготовка идёт порциями не дольше этого, мс: между порциями воркер принимает сообщения (отмена). */
+const PREPARE_SLICE_MS = 60;
+
+const yieldToMessages = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Подготовка Wildlands: обычные такты той же симуляции, порциями, с честным прогрессом
+ * (доля выполненных тактов, текущий год, число растений, оценка оставшегося времени по фактической скорости).
+ */
+async function prepare(next: Simulation): Promise<void> {
+  const p = next.preparation;
+  if (!p) return;
+  preparing = true;
+  cancelRequested = false;
+  try {
+    const ticksPerYear = next.world.config.daysPerSeason * SEASONS_PER_YEAR * TICKS_PER_DAY;
+    const started = performance.now();
+    while (next.preparation) {
+      if (cancelRequested) throw new Error('создание отменено');
+      const sliceStart = performance.now();
+      while (next.preparation && performance.now() - sliceStart < PREPARE_SLICE_MS) next.advancePreparation(TICKS_PER_HOUR / 6);
+      const fraction = next.preparationFraction();
+      const elapsed = (performance.now() - started) / 1000;
+      const year = Math.min(p.years, Math.floor((next.world.tick - p.startTick) / ticksPerYear) + 1);
+      post({
+        type: 'progress',
+        stage: `Природа развивается: год ${year} из ${p.years}`,
+        fraction,
+        detail: `Деревьев и кустарников: ${next.world.flora.woody.count.toLocaleString('ru-RU')}`,
+        etaSeconds: fraction > 0.01 ? (elapsed * (1 - fraction)) / fraction : undefined,
+        cancellable: true,
+      });
+      await yieldToMessages();
+    }
+  } finally {
+    preparing = false;
+  }
+}
+
 async function handleRequest(request: SimRequest): Promise<SimResponse> {
   switch (request.kind) {
     case 'listWorlds':
@@ -224,7 +266,9 @@ async function handleRequest(request: SimRequest): Promise<SimResponse> {
       if (sim && meta) await save(true).catch(() => undefined);
       close();
       const config = normalizeConfig(request.config);
-      const next = new Simulation({ config, testAgents: request.testAgents }, () => performance.now(), undefined, progress);
+      const next = new Simulation({ config, testAgents: request.testAgents, prepareYears: request.prepareYears }, () => performance.now(), undefined, progress);
+      // Wildlands: мир готовится прогоном симуляции; сохраняется и открывается только готовый мир.
+      await prepare(next);
       const nowDate = new Date();
       const worldId = newWorldId(config.seed, nowDate.getTime());
       sim = next;
@@ -240,6 +284,9 @@ async function handleRequest(request: SimRequest): Promise<SimResponse> {
       open(next, manifest.id, manifest.createdAt);
       return { kind: 'loadWorld', worldId: manifest.id };
     }
+    case 'cancelCreate':
+      cancelRequested = preparing;
+      return { kind: 'cancelCreate', cancelled: preparing };
     case 'saveWorld':
       return { kind: 'saveWorld', ...(await save(false)) };
     case 'closeWorld':

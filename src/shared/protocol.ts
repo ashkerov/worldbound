@@ -17,6 +17,8 @@ export interface WorldInit {
   testAgents: number;
   /** false — не заселять растениями (состояние придёт из сохранения). */
   populate?: boolean;
+  /** Wildlands: сколько игровых лет готовить мир (по умолчанию WILDLANDS_YEARS); для замеров и тестов. */
+  prepareYears?: number | undefined;
 }
 
 export type ToWorker =
@@ -25,7 +27,7 @@ export type ToWorker =
   | { type: 'request'; requestId: number; request: SimRequest };
 
 /** Слои-карты (DEVELOPMENT_PLAN.md, фаза 2). Каждый — раскраска реальных данных симуляции. */
-export const LAYERS = ['height', 'moisture', 'temperature', 'precipitation', 'snow', 'soil', 'provinces'] as const;
+export const LAYERS = ['height', 'moisture', 'temperature', 'precipitation', 'snow', 'soil', 'provinces', 'biomes'] as const;
 export type LayerId = (typeof LAYERS)[number];
 
 export const LAYER_LABELS: Record<LayerId, string> = {
@@ -36,6 +38,7 @@ export const LAYER_LABELS: Record<LayerId, string> = {
   snow: 'Снег',
   soil: 'Почвы',
   provinces: 'Провинции',
+  biomes: 'Биомы',
 };
 
 export interface LegendEntry {
@@ -58,7 +61,8 @@ export interface WorldSummary {
 
 export type SimRequest =
   | { kind: 'listWorlds' }
-  | { kind: 'createWorld'; config: WorldConfig; testAgents: number }
+  | { kind: 'createWorld'; config: WorldConfig; testAgents: number; /** Wildlands: лет подготовки (по умолчанию WILDLANDS_YEARS; для проверок). */ prepareYears?: number | undefined }
+  | { kind: 'cancelCreate' }
   | { kind: 'loadWorld'; worldId: string; testAgents?: number }
   | { kind: 'saveWorld' }
   | { kind: 'closeWorld'; save: boolean }
@@ -102,11 +106,21 @@ export interface CellInfo {
   windFrom: string;
   deposit: string;
   depositRichness: number;
+  /** Биом ячейки (устойчивая классификация по растительности). */
+  biome: string;
+  /** Биомасса трав, г/м², и главный вид травяного яруса. */
+  herbBiomass: number;
+  herbMain: string;
+  /** Древесных растений в ячейке и покрытие кронами деревьев и кустарников 0..1. */
+  woodyPlants: number;
+  treeCover: number;
+  shrubCover: number;
 }
 
 export type SimResponse =
   | { kind: 'listWorlds'; worlds: WorldSummary[] }
   | { kind: 'createWorld'; worldId: string }
+  | { kind: 'cancelCreate'; cancelled: boolean }
   | { kind: 'loadWorld'; worldId: string }
   | { kind: 'saveWorld'; savedAt: string; bytes: number; ms: number }
   | { kind: 'closeWorld' }
@@ -222,7 +236,16 @@ export interface SimStats {
 }
 
 export type FromWorker =
-  | { type: 'progress'; stage: string; fraction: number }
+  | {
+      type: 'progress';
+      stage: string;
+      fraction: number;
+      /** Подробности этапа (год подготовки, число растений) и оценка оставшегося времени, с. */
+      detail?: string;
+      etaSeconds?: number | undefined;
+      /** Этап можно отменить запросом cancelCreate. */
+      cancellable?: boolean;
+    }
   | WorldStaticMessage
   | SurfaceMessage
   | WeatherMessage

@@ -10,6 +10,9 @@ import { SOILS } from '../env/soils';
 import { SNOW_THRESHOLD } from '../env/water';
 import { windAt } from '../env/weather';
 import { DEPOSIT_NAMES, WaterKind } from '../worldgen/geo';
+import { BIOMES } from '../flora/biomes';
+import { NO_SPECIES, PLANTS } from '../flora/species';
+import { SLOTS, herbBiomass } from '../flora/state';
 
 const ctx: TimeContext = { seasonal: 0, diurnal: 0, anomaly: 0, sun: { x: 0, y: 1, z: 0 } };
 
@@ -146,8 +149,30 @@ export function cellInfo(world: World, x: number, z: number): CellInfo | null {
     windFrom: COMPASS[sector]!,
     deposit: DEPOSIT_NAMES[geo.deposit[i]!]!,
     depositRichness: geo.depositRichness[i]! / 255,
+    biome: BIOMES[world.flora.biome.current[i]!]?.name ?? '—',
+    herbBiomass: herbBiomass(world.flora, i),
+    herbMain: mainHerb(world, i),
+    woodyPlants: world.flora.woodyCount[i]!,
+    treeCover: world.flora.treeCover[i]!,
+    shrubCover: world.flora.shrubCover[i]!,
   };
 }
+
+function mainHerb(world: World, cell: number): string {
+  const f = world.flora;
+  let best = -1;
+  let mass = 0;
+  for (let k = 0; k < SLOTS; k++) {
+    const s = f.slotSpecies[cell * SLOTS + k]!;
+    if (s !== NO_SPECIES && f.slotBiomass[cell * SLOTS + k]! > mass) {
+      mass = f.slotBiomass[cell * SLOTS + k]!;
+      best = s;
+    }
+  }
+  return best >= 0 ? PLANTS[best]!.name : '—';
+}
+
+const BIOME_RGB = BIOMES.map((b) => [parseInt(b.color.slice(1, 3), 16), parseInt(b.color.slice(3, 5), 16), parseInt(b.color.slice(5, 7), 16)] as const);
 
 // ───────── Слои-карты ─────────
 
@@ -263,6 +288,18 @@ export function layerImage(world: World, layer: LayerId): { image: Uint8Array; l
         }
       }
       return { image: out, legend: SOILS.map((s, k) => ({ label: s.name, color: hex(...(SOIL_COLORS[k] ?? [255, 0, 255])) })) };
+    case 'biomes': {
+      // Устойчивый биом ячейки; в легенде — только встречающиеся в мире.
+      const present = new Uint8Array(BIOMES.length);
+      const cur = world.flora.biome.current;
+      for (let i = 0; i < count; i++) {
+        const b = cur[i]!;
+        present[b] = 1;
+        out.set(BIOME_RGB[b] ?? [255, 0, 255], i * 4);
+        out[i * 4 + 3] = 255;
+      }
+      return { image: out, legend: BIOMES.filter((_, k) => present[k] === 1).map((b) => ({ label: b.name, color: b.color })) };
+    }
     case 'provinces':
       for (let i = 0; i < count; i++) {
         const id = geo.province[i]!;
@@ -286,7 +323,7 @@ export function layerImage(world: World, layer: LayerId): { image: Uint8Array; l
 }
 
 /** Слои, меняющиеся со временем: их изображение обновляется раз в игровой час. */
-export const DYNAMIC_LAYERS: readonly LayerId[] = ['moisture', 'temperature', 'snow'];
+export const DYNAMIC_LAYERS: readonly LayerId[] = ['moisture', 'temperature', 'snow', 'biomes'];
 
 /** Мини-карта в естественных цветах: рельеф с отмывкой, вода, снег, зелень. RGBA8 n². */
 export function minimapImage(world: World, shade: Float32Array): Uint8Array {

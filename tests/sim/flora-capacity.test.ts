@@ -3,16 +3,18 @@
 
 import { describe, expect, it } from 'vitest';
 import { SPECIES, speciesIndex } from '../../src/sim/flora/species';
-import { SLOTS } from '../../src/sim/flora/state';
+import { Ledger, MAX_WOODY_PER_CELL, SLOTS, WOODY_PER_CELL_MEAN, nutrientBudget, nutrientStock, woodyCapacity } from '../../src/sim/flora/state';
+import { refreshCover } from '../../src/sim/flora/system';
+import { MAX_INDEX } from '../../src/shared/ids';
 import { lightResponse, moistureResponse, soilResponse, tempResponse } from '../../src/sim/flora/suitability';
-import { plotSimulation } from '../support/plot';
+import { plotGeo, plotSimulation, runDays } from '../support/plot';
 
 const IDS = ['meadow-grass', 'fireweed', 'clover', 'meadow-flowers'];
 
 describe('Вместимость ячейки для травяного яруса', () => {
   for (const days of [5, 3]) {
     it(`сумма биомассы видов не превышает вместимость лучшего из них (сезон ${days} сут., ${IDS.length} вида)`, () => {
-      const sim = plotSimulation({ precip: 750, soil: 'loam', fertility: 1 }, { scenario: 'genesis', daysPerSeason: days });
+      const sim = plotSimulation({ precip: 750, soil: 'loam', fertility: 1 }, { scenario: 'genesis', isolated: true, daysPerSeason: days });
       const f = sim.world.flora;
       const cells = sim.world.geo.n * sim.world.geo.n;
       const species = IDS.map(speciesIndex);
@@ -62,7 +64,7 @@ describe('Вместимость ячейки для травяного ярус
 
 describe('Худший случай дискретного шага', () => {
   it('один вид у 75 % вместимости при оптимуме и сезоне 3 суток не перескакивает вместимость', () => {
-    const sim = plotSimulation({ precip: 750, soil: 'loam', fertility: 1 }, { scenario: 'genesis', daysPerSeason: 3 });
+    const sim = plotSimulation({ precip: 750, soil: 'loam', fertility: 1 }, { scenario: 'genesis', isolated: true, daysPerSeason: 3 });
     const f = sim.world.flora;
     const cells = sim.world.geo.n * sim.world.geo.n;
     const meadow = speciesIndex('meadow-grass');
@@ -81,5 +83,38 @@ describe('Худший случай дискретного шага', () => {
       worst = Math.max(worst, f.slotBiomass[c * SLOTS]! / capacity);
     }
     expect(worst).toBeLessThanOrEqual(1 + 1e-4);
+  });
+});
+
+describe('Предел численности древесных (замечание заказчика к этапу 3)', () => {
+  it('предел мира не выше адресуемого идентификатором; на ячейку — не больше MAX_WOODY_PER_CELL', () => {
+    expect(woodyCapacity(plotGeo({ n: 512 }))).toBe(MAX_INDEX + 1);
+    expect(woodyCapacity(plotGeo({ n: 256 }))).toBe(256 * 256 * WOODY_PER_CELL_MEAN);
+    expect(WOODY_PER_CELL_MEAN).toBeLessThan(MAX_WOODY_PER_CELL);
+  });
+
+  it('при заполненном хранилище семена уходят в опад, вещество не теряется', () => {
+    const sim = plotSimulation({ precip: 750, soil: 'loam', fertility: 0.9, n: 32 }, { scenario: 'genesis', isolated: true, seed: 3 });
+    const w = sim.world;
+    const f = w.flora;
+    const store = f.woody;
+    const birch = speciesIndex('birch');
+    // Взрослые плодоносящие берёзы, затем хранилище добивается мелкими всходами до отказа.
+    for (let k = 0; k < 64; k++) {
+      const c = (4 + (k >> 3) * 3) * 32 + 4 + (k & 7) * 3;
+      store.spawn(birch, ((c % 32) + 0.5) * 8, (Math.floor(c / 32) + 0.5) * 8, c, 300, 30);
+    }
+    let c = 0;
+    while (store.spawn(birch, ((c % 32) + 0.5) * 8, (Math.floor(c / 32) + 0.5) * 8, c, 0.002, 0) >= 0) c = (c + 1) % (32 * 32);
+    expect(store.count).toBe(store.capacity);
+    refreshCover(w, false);
+    f.ledger[Ledger.initialStock] = nutrientStock(f, w.geo);
+    const litterBefore = f.litterFast.reduce((s, v) => s + v, 0);
+    // Год с днём рассева: семена есть, места в хранилище нет.
+    runDays(sim, 20);
+    expect(store.count).toBeLessThanOrEqual(store.capacity);
+    expect(f.litterFast.reduce((s, v) => s + v, 0)).toBeGreaterThan(litterBefore);
+    const err = Math.abs(nutrientStock(f, w.geo) - f.ledger[Ledger.initialStock]! - nutrientBudget(f)) / f.ledger[Ledger.initialStock]!;
+    expect(err).toBeLessThan(1e-4);
   });
 });

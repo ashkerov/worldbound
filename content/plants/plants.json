@@ -9,7 +9,8 @@
    "seedAllocation, dispersal, seedBankYears, seedMass": "Травы: новые характеристики размножения этапа 3 (доля биомассы в семена 3–10 % за год, дальность, срок жизни семян в почве, масса семени).",
    "canopyTransmission": "Древесные: новая характеристика — доля света под сомкнутой кроной (ель 0,07 … шиповник 0,4).",
    "baseMortality (иван-чай)": "0,6 → 1,4: короткоживущие побеги первопроходца.",
-   "seedBankYears (иван-чай)": "1 год: семена иван-чая недолговечны."
+   "seedBankYears (иван-чай)": "1 год: семена иван-чая недолговечны.",
+   "community": "Травы: тип сообщества (луговое, степное, болотное, лесное, пионерное) — для классификатора биомов (этап 4). Влияет только на классификацию, не на рост."
   }
  },
  "plants": [
@@ -18,6 +19,7 @@
    "name": "Мятлик луговой",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "meadow",
    "temperature": {
     "min": 2,
     "optMin": 10,
@@ -61,6 +63,7 @@
    "name": "Ковыль",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "steppe",
    "temperature": {
     "min": 4,
     "optMin": 14,
@@ -102,6 +105,7 @@
    "name": "Осока",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "wetland",
    "temperature": {
     "min": 1,
     "optMin": 8,
@@ -144,6 +148,7 @@
    "name": "Клевер",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "meadow",
    "temperature": {
     "min": 4,
     "optMin": 12,
@@ -188,6 +193,7 @@
    "name": "Луговые цветы",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "meadow",
    "temperature": {
     "min": 3,
     "optMin": 12,
@@ -231,6 +237,7 @@
    "name": "Иван-чай",
    "form": "herb",
    "leafHabit": "annualDieback",
+   "community": "pioneer",
    "temperature": {
     "min": 2,
     "optMin": 10,
@@ -274,6 +281,7 @@
    "name": "Черника",
    "form": "herb",
    "leafHabit": "deciduous",
+   "community": "forest",
    "temperature": {
     "min": 0,
     "optMin": 8,
@@ -317,6 +325,7 @@
    "name": "Мох",
    "form": "herb",
    "leafHabit": "evergreen",
+   "community": "forest",
    "temperature": {
     "min": -2,
     "optMin": 5,

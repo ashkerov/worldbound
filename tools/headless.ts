@@ -1,9 +1,11 @@
 // Headless-прогон ядра симуляции в Node — без браузера, воркера и рендера.
-// Использование: npm run headless -- [--seed 42] [--size S|M] [--ticks 7200] [--agents 2000]
+// Использование: npm run headless -- [--seed 42] [--size S|M] [--ticks 7200] [--agents 2000] [--scenario genesis|wild]
+// (wild — мир Wildlands без подготовки: подготовку меряет tools/wildlands-bench.ts)
 
 import { performance } from 'node:perf_hooks';
 import { Simulation } from '../src/sim/core/simulation';
 import { TICKS_PER_DAY } from '../src/shared/time';
+import { codeVersion } from './lib/commit';
 
 function arg(name: string, fallback: number): number {
   const i = process.argv.indexOf(`--${name}`);
@@ -17,7 +19,8 @@ const agents = arg('agents', 2000);
 
 const size = process.argv.includes('--size') && process.argv[process.argv.indexOf('--size') + 1] === 'S' ? 'S' : 'M';
 const genStart = performance.now();
-const sim = new Simulation({ config: { seed, size }, testAgents: agents }, () => performance.now());
+const scenario = process.argv.includes('--scenario') && process.argv[process.argv.indexOf('--scenario') + 1] === 'wild' ? 'wild' : 'genesis';
+const sim = new Simulation({ config: { seed, size, scenario }, testAgents: agents, prepareYears: 0 }, () => performance.now());
 const generationMs = performance.now() - genStart;
 const start = performance.now();
 for (let i = 0; i < ticks; i++) sim.step();
@@ -26,6 +29,8 @@ const elapsed = performance.now() - start;
 console.log(
   JSON.stringify(
     {
+      tool: 'tools/headless.ts',
+      ...codeVersion(),
       seed,
       size,
       generationMs: +generationMs.toFixed(0),

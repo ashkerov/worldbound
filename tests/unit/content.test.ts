@@ -69,17 +69,27 @@ describe('Биомы', () => {
   });
 
   it('классификатор работает по фактическим показателям', () => {
-    const land = { water: 0, treeCover: 0, shrubCover: 0, herbBiomass: 0, coniferShare: 0, tMean: 8, moisture: 0.5 };
+    const land = { water: 0, treeCover: 0, shrubCover: 0, tallShare: 1, herbBiomass: 0, coniferShare: 0, tMean: 8, moisture: 0.5, steppeShare: 0, wetShare: 0, pioneerShare: 0 };
     const id = (c: typeof land) => BIOMES[classifyBiome(c)]!.id;
-    expect(id({ ...land, water: 2 })).toBe('water');
+    expect(id({ ...land, water: 1 })).toBe('river');
+    expect(id({ ...land, water: 2 })).toBe('lake');
+    expect(id({ ...land, water: 3 })).toBe('sea');
     expect(id(land)).toBe('barren');
+    expect(id({ ...land, herbBiomass: 3 })).toBe('barren');
+    expect(id({ ...land, herbBiomass: 20 })).toBe('sparse-grass');
     expect(id({ ...land, herbBiomass: 300 })).toBe('meadow');
-    expect(id({ ...land, herbBiomass: 120, moisture: 0.2 })).toBe('steppe');
+    expect(id({ ...land, herbBiomass: 300, pioneerShare: 0.7 })).toBe('pioneer');
+    expect(id({ ...land, herbBiomass: 120, moisture: 0.2, steppeShare: 0.8 })).toBe('steppe');
+    expect(id({ ...land, herbBiomass: 120, steppeShare: 0.8 })).toBe('steppe');
+    expect(id({ ...land, herbBiomass: 40, tMean: -2 })).toBe('tundra');
+    expect(id({ ...land, treeCover: 0.6, tallShare: 0.1 })).toBe('young-forest');
     expect(id({ ...land, treeCover: 0.7, coniferShare: 0.9 })).toBe('coniferous-forest');
     expect(id({ ...land, treeCover: 0.7, coniferShare: 0.1 })).toBe('broadleaf-forest');
     expect(id({ ...land, treeCover: 0.7, coniferShare: 0.5 })).toBe('mixed-forest');
     expect(id({ ...land, treeCover: 0.3 })).toBe('woodland');
     expect(id({ ...land, shrubCover: 0.4 })).toBe('shrubland');
-    expect(id({ ...land, moisture: 0.95, herbBiomass: 200 })).toBe('bog');
+    expect(id({ ...land, moisture: 0.95, herbBiomass: 200, wetShare: 0.5 })).toBe('bog');
+    // Влажный луг без болотных трав — не болото.
+    expect(id({ ...land, moisture: 0.95, herbBiomass: 200 })).toBe('meadow');
   });
 });

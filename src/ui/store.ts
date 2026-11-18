@@ -53,7 +53,8 @@ export interface WorldInfoView {
 export interface Actions {
   dispatch: (command: Command) => void;
   refreshWorlds: () => void;
-  createWorld: (config: WorldConfig) => void;
+  createWorld: (config: WorldConfig, prepareYears?: number) => void;
+  cancelCreate: () => void;
   openWorld: (id: string) => void;
   deleteWorld: (id: string) => void;
   saveNow: () => void;
@@ -73,7 +74,7 @@ export interface UiState extends Actions {
   /** Сообщение об ошибке операции (не удалось загрузить мир и т. п.). */
   notice: string | null;
   worlds: WorldSummary[] | null;
-  progress: { stage: string; fraction: number };
+  progress: { stage: string; fraction: number; detail?: string | undefined; etaSeconds?: number | undefined; cancellable?: boolean | undefined };
   world: WorldInfoView | null;
   tick: number;
   speed: Speed;
@@ -125,6 +126,7 @@ export const useUi = create<UiState>(() => ({
   dispatch: noop,
   refreshWorlds: noop,
   createWorld: noop,
+  cancelCreate: noop,
   openWorld: noop,
   deleteWorld: noop,
   saveNow: noop,

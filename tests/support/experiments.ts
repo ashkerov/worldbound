@@ -4,7 +4,7 @@
 // справа — голая земля. Какие виды придут и выживут, решают только их характеристики и условия.
 
 import type { Simulation } from '../../src/sim/core/simulation';
-import { BIOMES, classifyBiome } from '../../src/sim/flora/biomes';
+import { BIOMES } from '../../src/sim/flora/biomes';
 import { NO_SPECIES, PLANTS, SPECIES } from '../../src/sim/flora/species';
 import { Ledger, SLOTS, nutrientBudget, nutrientStock } from '../../src/sim/flora/state';
 import { refreshCover, woodyHeight } from '../../src/sim/flora/system';
@@ -110,8 +110,7 @@ export function sampleZone(sim: Simulation, fromColumn: number, year: number, to
       nutrient += f.nutrient[c]!;
       shrubCover += f.shrubCover[c]!;
       for (let h = 0; h < SPECIES.herbs.length; h++) bank += f.seedBank[h * n * n + c]!;
-      const tc = f.treeCover[c]!;
-      const id = BIOMES[classifyBiome({ water: geo.waterKind[c]!, treeCover: tc, shrubCover: f.shrubCover[c]!, herbBiomass: hb, coniferShare: tc > 0 ? f.coniferCover[c]! / tc : 0, tMean: geo.tMean[c]!, moisture: f.dayW[c]! })]!.id;
+      const id = BIOMES[f.biome.current[c]!]!.id;
       biomes[id] = (biomes[id] ?? 0) + 1;
     }
   }
@@ -167,7 +166,7 @@ export interface SuccessionRun {
 
 /** Опыт зарастания: опушка слева, голая земля справа; выборка в середине лета каждого года. */
 export function runSuccession(plot: PlotOptions, seed: number, years: number, config: Partial<WorldConfig> = {}, sourceColumns = 4, clock: () => number = () => 0): SuccessionRun {
-  const sim = plotSimulation(plot, { scenario: 'genesis', seed, ...config });
+  const sim = plotSimulation(plot, { scenario: 'genesis', isolated: true, seed, ...config });
   plantSourceStrip(sim, sourceColumns);
   const samples: YearSample[] = [];
   const near: YearSample[] = [];
@@ -188,7 +187,7 @@ export function runSuccession(plot: PlotOptions, seed: number, years: number, co
  */
 export function runShade(seed: number, years: number): { open: YearSample; shaded: YearSample } {
   const make = (shade: boolean) => {
-    const sim = plotSimulation({ ...WET, n: 32 }, { scenario: 'genesis', seed });
+    const sim = plotSimulation({ ...WET, n: 32 }, { scenario: 'genesis', isolated: true, seed });
     const f = sim.world.flora;
     const n = 32;
     const spruce = PLANTS.findIndex((p) => p.id === 'spruce');
@@ -229,7 +228,7 @@ export function runShade(seed: number, years: number): { open: YearSample; shade
 /** Опыт D: граница пригодности. Запад — влажный суглинок, восток — сухие камни; луг-источник у западного края. */
 export const BOUNDARY: PlotOptions = { precip: 750, soil: 'loam', fertility: 0.8, n: 48, east: { soil: 'rock', precip: 300, fertility: 0.1 } };
 export function runBoundary(seed: number, years: number): { west: YearSample; east: YearSample; eastNearBoundary: YearSample } {
-  const sim = plotSimulation(BOUNDARY, { scenario: 'genesis', seed });
+  const sim = plotSimulation(BOUNDARY, { scenario: 'genesis', isolated: true, seed });
   const f = sim.world.flora;
   const n = 48;
   const herbs = SPECIES.herbs;

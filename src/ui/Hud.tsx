@@ -164,6 +164,9 @@ function CellCard() {
           <Row label="Плодородие" value={`${Math.round(cell.fertility * 100)} %`} />
           <Row label="Влага почвы" value={`${Math.round(cell.moistureMm)} мм (${Math.round(cell.moistureRel * 100)} %)`} testId="cell-moisture" />
           <Row label="Снег" value={cell.snowMm > 0.5 ? `${Math.round(cell.snowMm * 0.3)} см (${Math.round(cell.snowMm)} мм воды)` : 'нет'} testId="cell-snow" />
+          <Row label="Биом" value={cell.biome} testId="cell-biome" />
+          <Row label="Травы" value={cell.herbBiomass > 0.5 ? `${Math.round(cell.herbBiomass)} г/м² · ${cell.herbMain}` : 'нет'} testId="cell-herbs" />
+          <Row label="Деревья и кустарники" value={cell.woodyPlants > 0 ? `${cell.woodyPlants} шт. · кроны ${Math.round(cell.treeCover * 100)} % / ${Math.round(cell.shrubCover * 100)} %` : 'нет'} testId="cell-woody" />
           <Row label="Индекс зелени" value={`${Math.round(cell.greenness * 100)} %`} />
           {cell.deposit !== '—' && <Row label="Залежь" value={`${cell.deposit}, ${Math.round(cell.depositRichness * 100)} %`} />}
         </>

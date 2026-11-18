@@ -25,9 +25,15 @@ export const SCENARIOS = ['wild', 'genesis'] as const;
 export type ScenarioName = (typeof SCENARIOS)[number];
 
 export const SCENARIO_LABELS: Record<ScenarioName, string> = {
-  wild: 'Дикая природа',
-  genesis: 'Genesis — голая земля',
+  wild: 'Wildlands — сложившаяся природа',
+  genesis: 'Genesis — с нуля',
 };
+
+/**
+ * Wildlands готовится предварительным прогоном той же симуляции на столько игровых лет
+ * (решение заказчика №28; замеры стоимости — docs/PHASE3_STAGE4_REPORT.md).
+ */
+export const WILDLANDS_YEARS = 20;
 
 export interface WorldConfig {
   /** Имя мира, видимое игроку. На генерацию не влияет. */
@@ -37,9 +43,9 @@ export interface WorldConfig {
   /** Длина сезона в игровых сутках. */
   daysPerSeason: number;
   climate: ClimateName;
-  /** Как начинается жизнь: дикая природа или голая земля. */
+  /** Как начинается жизнь: Wildlands (мир готовится прогоном симуляции) или Genesis (пустая земля). */
   scenario: ScenarioName;
-  /** Изолированный мир: колонизации извне нет — вымерший вид не вернётся сам. */
+  /** Изолированный мир: семена извне не приходят — новых видов не появится, вымерший вид не вернётся сам. */
   isolated: boolean;
 }
 

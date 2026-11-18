@@ -53,6 +53,65 @@ export function chunkSample(weather: WeatherState, field: Float32Array, geo: Geo
   return (a * (1 - tx) + b * tx) * (1 - tz) + (d * (1 - tx) + e * tx) * tz;
 }
 
+/**
+ * Предвычисленная билинейная выборка поля чанков для всех ячеек: те же индексы и веса, что в chunkSample,
+ * поэтому результат побитно совпадает, но без деления и округления на каждой ячейке каждый час.
+ */
+export interface ChunkSampler {
+  readonly chunks: number;
+  /** Индекс левого верхнего чанка. */
+  readonly base: Int32Array;
+  readonly tx: Float64Array;
+  readonly tz: Float64Array;
+}
+
+const samplers = new WeakMap<Geo, ChunkSampler>();
+
+export function chunkSampler(weather: WeatherState, geo: Geo): ChunkSampler {
+  const cached = samplers.get(geo);
+  if (cached && cached.chunks === weather.chunks) return cached;
+  const n = geo.n;
+  const count = n * n;
+  const c = weather.chunks;
+  const per = n / c;
+  const base = new Int32Array(count);
+  const tx = new Float64Array(count);
+  const tz = new Float64Array(count);
+  for (let cell = 0; cell < count; cell++) {
+    const x = cell % n;
+    const z = (cell - x) / n;
+    let fx = (x + 0.5) / per - 0.5;
+    let fz = (z + 0.5) / per - 0.5;
+    if (fx < 0) fx = 0;
+    else if (fx > c - 1) fx = c - 1;
+    if (fz < 0) fz = 0;
+    else if (fz > c - 1) fz = c - 1;
+    let ix = Math.floor(fx);
+    let iz = Math.floor(fz);
+    if (ix > c - 2) ix = c - 2;
+    if (iz > c - 2) iz = c - 2;
+    base[cell] = iz * c + ix;
+    tx[cell] = fx - ix;
+    tz[cell] = fz - iz;
+  }
+  const sampler = { chunks: c, base, tx, tz };
+  samplers.set(geo, sampler);
+  return sampler;
+}
+
+/** То же, что chunkSample, по предвычисленным весам. */
+export function sampleChunks(s: ChunkSampler, field: Float32Array, cell: number): number {
+  const k = s.base[cell]!;
+  const c = s.chunks;
+  const tx = s.tx[cell]!;
+  const tz = s.tz[cell]!;
+  const a = field[k]!;
+  const b = field[k + 1]!;
+  const d = field[k + c]!;
+  const e = field[k + c + 1]!;
+  return (a * (1 - tx) + b * tx) * (1 - tz) + (d * (1 - tx) + e * tx) * tz;
+}
+
 export interface TimeContext {
   seasonal: number;
   diurnal: number;

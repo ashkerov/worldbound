@@ -3,7 +3,7 @@
 // Исход определяется характеристиками видов и условиями: списков приоритетов видов в модели нет.
 
 import { describe, expect, it } from 'vitest';
-import { MAX_WOODY_PER_CELL } from '../../src/sim/flora/system';
+import { MAX_WOODY_PER_CELL } from '../../src/sim/flora/state';
 import { DRY, WET, runBoundary, runShade, runSuccession, type SuccessionRun } from '../support/experiments';
 
 const at = (run: SuccessionRun['samples'], year: number) => run[year - 1]!;

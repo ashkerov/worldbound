@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { calendarFromTick, SEASON_LENGTHS, SEASON_NAMES } from '../shared/time';
-import { CLIMATES, CLIMATE_LABELS, DEFAULT_CONFIG, SCENARIOS, SCENARIO_LABELS, type ClimateName, type ScenarioName, type WorldConfig, type WorldSizeName } from '../shared/worldConfig';
+import { CLIMATES, CLIMATE_LABELS, DEFAULT_CONFIG, SCENARIOS, SCENARIO_LABELS, WILDLANDS_YEARS, type ClimateName, type ScenarioName, type WorldConfig, type WorldSizeName } from '../shared/worldConfig';
 import { seedFromString } from '../shared/rng';
 import { useUi } from './store';
 
@@ -96,9 +96,10 @@ export function CreateWorld() {
   const [days, setDays] = useState<number>(DEFAULT_CONFIG.daysPerSeason);
   const [climate, setClimate] = useState<ClimateName>(DEFAULT_CONFIG.climate);
   const [scenario, setScenario] = useState<ScenarioName>(DEFAULT_CONFIG.scenario);
+  const [isolated, setIsolated] = useState(DEFAULT_CONFIG.isolated);
   const seed = /^\d+$/.test(seedText.trim()) ? Number(seedText.trim()) >>> 0 : seedFromString(seedText.trim());
   const submit = () => {
-    const config: WorldConfig = { name, seed, size, daysPerSeason: days, climate, scenario, isolated: false };
+    const config: WorldConfig = { name, seed, size, daysPerSeason: days, climate, scenario, isolated };
     createWorld(config);
   };
   return (
@@ -154,10 +155,23 @@ export function CreateWorld() {
             </button>
           ))}
         </span>
-        <small className="wb-muted">
-          {scenario === 'genesis' ? 'Мир без растений: голая земля.' : 'Травяной покров и редкий подрост деревьев и кустарников по условиям среды.'}
+        <small className="wb-muted" data-testid="scenario-note">
+          {scenario === 'genesis'
+            ? 'Пустая земля без растений и семян. Жизнь придёт семенами из-за края мира (если он не изолирован) или от создателя.'
+            : `Природа уже сложилась: мир заранее проживает ${WILDLANDS_YEARS} лет той же симуляции — травы, кустарники и молодые деревья вырастают сами. Подготовка занимает от минуты до нескольких минут.`}
         </small>
       </div>
+      <label className="wb-field wb-check">
+        <span className="wb-inline">
+          <input type="checkbox" data-testid="world-isolated" checked={isolated} onChange={(e) => setIsolated(e.target.checked)} />
+          Изолированный мир
+        </span>
+        <small className="wb-muted">
+          {isolated
+            ? 'Семена извне не приходят: новые виды не появятся, вымерший вид сам не вернётся. Растения мира размножаются как обычно.'
+            : 'Семена диких видов приходят через сухопутные края мира и расселяются дальше сами.'}
+        </small>
+      </label>
       <div className="wb-field">
         <span>Длина сезона</span>
         <span className="wb-inline">
@@ -183,15 +197,40 @@ export function CreateWorld() {
   );
 }
 
+function formatEta(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} с`;
+  return `${Math.floor(seconds / 60)} мин ${Math.round(seconds % 60)} с`;
+}
+
 export function Progress() {
   const progress = useUi((s) => s.progress);
+  const cancelCreate = useUi((s) => s.cancelCreate);
+  const [cancelling, setCancelling] = useState(false);
   return (
     <div className="wb-panel wb-center" data-testid="progress">
       <div className="wb-title">Создание мира</div>
-      <div>{progress.stage || 'Подготовка…'}</div>
+      <div data-testid="progress-stage">{progress.stage || 'Подготовка…'}</div>
       <div className="wb-bar">
         <div className="wb-bar-fill" style={{ width: `${Math.round(progress.fraction * 100)}%` }} />
       </div>
+      <div className="wb-muted" data-testid="progress-detail">
+        {Math.round(progress.fraction * 100)} %{progress.detail ? ` · ${progress.detail}` : ''}
+        {progress.etaSeconds !== undefined ? ` · осталось около ${formatEta(progress.etaSeconds)}` : ''}
+      </div>
+      {progress.cancellable && (
+        <button
+          type="button"
+          className="wb-btn"
+          data-testid="progress-cancel"
+          disabled={cancelling}
+          onClick={() => {
+            setCancelling(true);
+            cancelCreate();
+          }}
+        >
+          {cancelling ? 'Отмена…' : 'Отменить создание'}
+        </button>
+      )}
     </div>
   );
 }

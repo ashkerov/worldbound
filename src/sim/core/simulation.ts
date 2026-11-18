@@ -4,8 +4,8 @@
 import type { Command, WorldInit } from '../../shared/protocol';
 import { SNAPSHOT_STRIDE } from '../../shared/protocol';
 import { EntityKind } from '../../shared/ids';
-import { TICKS_PER_DAY, TICKS_PER_HOUR } from '../../shared/time';
-import { normalizeConfig, type WorldConfig } from '../../shared/worldConfig';
+import { SEASONS_PER_YEAR, TICKS_PER_DAY, TICKS_PER_HOUR } from '../../shared/time';
+import { WILDLANDS_YEARS, normalizeConfig, type WorldConfig } from '../../shared/worldConfig';
 import { AgentStore } from './agentStore';
 import { StateHasher } from './hash';
 import { Scheduler, type Clock, type SystemTiming } from './scheduler';
@@ -18,13 +18,21 @@ import { weatherSystem } from '../env/weather';
 import { waterSystem } from '../env/water';
 import { floraSystem, refreshCover } from '../flora/system';
 import { createFlora } from '../flora/state';
-import { populateGenesis, populateWild } from '../flora/populate';
+import { populateGenesis, populateWildlands } from '../flora/populate';
+import { initBiomes } from '../flora/biomeState';
 import { spawnTestAgents, testAgentDecisionSystem, testAgentMoveSystem } from '../systems/testAgents';
 
 export const AGENT_CAPACITY = 16384;
 /** Мир начинается в середине весны, в 7:00. */
 export function startTick(daysPerSeason: number): number {
   return Math.floor(daysPerSeason / 2) * TICKS_PER_DAY + 7 * TICKS_PER_HOUR;
+}
+
+/** Подготовка Wildlands: такты от start до target идут с семенами региона на всю сушу. */
+export interface Preparation {
+  readonly startTick: number;
+  readonly targetTick: number;
+  readonly years: number;
 }
 
 export interface LoggedCommand {
@@ -52,6 +60,8 @@ export class Simulation {
   private readonly pending: Command[] = [];
   /** Журнал применённых команд: причина «вмешательство создателя» и воспроизведение в тестах. */
   readonly commandLog: LoggedCommand[] = [];
+  /** Идёт подготовка Wildlands (создание мира ещё не завершено); null — мир готов. */
+  preparation: Preparation | null = null;
 
   /**
    * @param generated готовый результат генератора для этого же config (повторное использование в тестах);
@@ -79,8 +89,15 @@ export class Simulation {
     // При загрузке сохранения растения приходят из секций, а не из начального заселения.
     if (init.populate !== false) {
       if (config.scenario === 'genesis') populateGenesis(this.world);
-      else populateWild(this.world);
+      else populateWildlands(this.world);
       refreshCover(this.world, true);
+      initBiomes(this.world);
+      if (config.scenario === 'wild') {
+        const years = init.prepareYears ?? WILDLANDS_YEARS;
+        const ticksPerYear = config.daysPerSeason * SEASONS_PER_YEAR * TICKS_PER_DAY;
+        this.preparation = { startTick: this.world.tick, targetTick: this.world.tick + Math.round(years * ticksPerYear), years };
+        if (years <= 0) this.finishPreparation();
+      }
     }
     this.scheduler = new Scheduler<World>(clock).add(weatherSystem).add(waterSystem).add(floraSystem).add(testAgentDecisionSystem).add(testAgentMoveSystem);
     spawnTestAgents(this.world, init.testAgents);
@@ -120,6 +137,32 @@ export class Simulation {
     this.applyCommands();
     this.scheduler.step(this.world, this.world.tick);
     this.world.tick++;
+    if (this.preparation && this.world.tick >= this.preparation.targetTick) this.finishPreparation();
+  }
+
+  /**
+   * Подготовка Wildlands — обычные такты той же симуляции (никаких отдельных генераторов растительности).
+   * Выполняет не больше maxTicks тактов; возвращает долю выполненной подготовки (1 — мир готов).
+   */
+  advancePreparation(maxTicks: number): number {
+    const p = this.preparation;
+    if (!p) return 1;
+    const end = Math.min(p.targetTick, this.world.tick + maxTicks);
+    while (this.world.tick < end) this.step();
+    return this.preparationFraction();
+  }
+
+  preparationFraction(): number {
+    const p = this.preparation;
+    if (!p) return 1;
+    return Math.min(1, (this.world.tick - p.startTick) / Math.max(1, p.targetTick - p.startTick));
+  }
+
+  private finishPreparation(): void {
+    const p = this.preparation!;
+    this.world.flora.regionalSeedRain = false;
+    this.world.flora.preparedYears = p.years;
+    this.preparation = null;
   }
 
   /** Сколько чисел Float32 нужно под снимок текущего состояния. */
@@ -205,8 +248,25 @@ export class Simulation {
       .addArray(f.treeCover)
       .addArray(f.shrubCover)
       .addArray(f.coniferCover)
+      .addArray(f.tallCover)
+      .addArray(f.biome.herb)
+      .addArray(f.biome.steppe)
+      .addArray(f.biome.wet)
+      .addArray(f.biome.pioneer)
+      .addArray(f.biome.moisture)
+      .addArray(f.biome.tree)
+      .addArray(f.biome.shrub)
+      .addArray(f.biome.conifer)
+      .addArray(f.biome.tall)
+      .addArray(f.biome.current)
+      .addArray(f.biome.candidate)
+      .addArray(f.biome.days)
+      .addArray(f.colonistMass)
+      .addArray(f.colonistFirst)
       .addArray(f.ledger)
       .addInt(f.lastSliceHour)
+      .addInt(Math.round(f.preparedYears * 1000))
+      .addInt(f.regionalSeedRain ? 1 : 0)
       .addInt(wd.count)
       .addArray(wd.x, wd.highWater)
       .addArray(wd.z, wd.highWater)

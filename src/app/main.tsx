@@ -64,7 +64,7 @@ async function start(): Promise<void> {
   const onMessage = (m: Exclude<FromWorker, { type: 'response' }>) => {
     switch (m.type) {
       case 'progress':
-        useUi.setState({ progress: { stage: m.stage, fraction: m.fraction } });
+        useUi.setState({ progress: { stage: m.stage, fraction: m.fraction, detail: m.detail, etaSeconds: m.etaSeconds, cancellable: m.cancellable } });
         break;
       case 'worldStatic':
         view.setWorld(m);
@@ -168,11 +168,14 @@ async function start(): Promise<void> {
         (e: unknown) => useUi.setState({ worlds: [], notice: `Не удалось прочитать список миров: ${message(e)}` }),
       );
     },
-    createWorld: (config: Parameters<typeof normalizeConfig>[0]) => {
+    createWorld: (config: Parameters<typeof normalizeConfig>[0], prepareYears?: number) => {
       useUi.setState({ screen: 'progress', progress: { stage: 'Подготовка', fraction: 0 } });
-      client.request({ kind: 'createWorld', config: normalizeConfig(config), testAgents }).then(enterWorld, (e: unknown) => {
+      client.request({ kind: 'createWorld', config: normalizeConfig(config), testAgents, prepareYears }).then(enterWorld, (e: unknown) => {
         useUi.setState({ screen: 'menu', notice: `Не удалось создать мир: ${message(e)}` });
       });
+    },
+    cancelCreate: () => {
+      client.request({ kind: 'cancelCreate' }).catch(() => undefined);
     },
     openWorld: (id: string) => {
       useUi.setState({ screen: 'progress', progress: { stage: 'Загрузка мира', fraction: 0 } });
@@ -250,13 +253,18 @@ async function start(): Promise<void> {
 
   setInterval(() => useUi.setState({ render: view.getStats() }), 500);
 
-  // Быстрый старт для автоматических проверок и стендов: ?autostart=1&seed=…&size=S|M
+  // Быстрый старт для автоматических проверок и стендов: ?autostart=1&seed=…&size=S|M[&scenario=wild|genesis]
+  // [&isolated=1][&prepare=лет подготовки Wildlands, по умолчанию как в игре]
   if (params.get('autostart') === '1') {
     const seedParam = params.get('seed') ?? 'worldbound';
     const seed = /^\d+$/.test(seedParam) ? Number(seedParam) >>> 0 : seedFromString(seedParam);
     const size = (params.get('size') === 'S' ? 'S' : 'M') as WorldSizeName;
     const days = Number(params.get('season') ?? 5);
-    actions.createWorld({ name: `Проверка ${seedParam}`, seed, size, daysPerSeason: days, climate: (params.get('climate') as 'temperate') ?? 'temperate', scenario: (params.get('scenario') as 'wild') ?? 'wild' });
+    const prepare = params.get('prepare');
+    actions.createWorld(
+      { name: `Проверка ${seedParam}`, seed, size, daysPerSeason: days, climate: (params.get('climate') as 'temperate') ?? 'temperate', scenario: (params.get('scenario') as 'wild') ?? 'wild', isolated: params.get('isolated') === '1' },
+      prepare === null ? undefined : Number(prepare),
+    );
   }
 }
 

@@ -21,7 +21,18 @@ export function generated(cfg: WorldConfig): GeneratedWorld {
   return g;
 }
 
-export function simulation(partial: Partial<WorldConfig> = {}, testAgents = 0): Simulation {
+/**
+ * @param prepareYears Wildlands: лет подготовки. В тестах по умолчанию 0 — мир Wildlands без предварительного
+ *                     прогона (банк семян, без растений); подготовку проверяют отдельные тесты и замеры.
+ */
+/** Мир Wildlands, прошедший подготовку заданной длины (в тестах — короткой): с травами и всходами. */
+export function preparedSimulation(partial: Partial<WorldConfig> = {}, years = 1, testAgents = 0): Simulation {
+  const sim = simulation({ ...partial, scenario: 'wild' }, testAgents, years);
+  while (sim.preparation) sim.advancePreparation(7200);
+  return sim;
+}
+
+export function simulation(partial: Partial<WorldConfig> = {}, testAgents = 0, prepareYears = 0): Simulation {
   const cfg = config(partial);
-  return new Simulation({ config: cfg, testAgents }, undefined, generated(cfg));
+  return new Simulation({ config: cfg, testAgents, prepareYears }, undefined, generated(cfg));
 }

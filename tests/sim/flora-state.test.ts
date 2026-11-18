@@ -14,34 +14,35 @@ describe('Начальное заселение', () => {
     expect(f.woody.count).toBe(0);
   });
 
-  it('Дикая природа: травяной покров на суше, редкий подрост древесных подходящих видов', () => {
-    const sim = simulation({ seed: 42 });
+  it('Genesis: нет и семян, подготовки нет', () => {
+    const sim = simulation({ seed: 42, scenario: 'genesis' });
+    expect(sim.world.flora.seedBank.every((v) => v === 0)).toBe(true);
+    expect(sim.preparation).toBeNull();
+    expect(sim.world.flora.regionalSeedRain).toBe(false);
+  });
+
+  it('Wildlands до подготовки: ни одного растения, почвенный банк семян только на суше, подготовка на 20 лет', () => {
+    const sim = simulation({ seed: 42 }, 0, 20);
     const { geo, flora } = sim.world;
+    const count = geo.n * geo.n;
+    let landWithBank = 0;
     let land = 0;
-    let covered = 0;
-    let onWater = 0;
-    for (let i = 0; i < geo.n * geo.n; i++) {
-      const b = herbBiomass(flora, i);
+    for (let i = 0; i < count; i++) {
+      expect(herbBiomass(flora, i)).toBe(0);
+      let bank = 0;
+      for (let h = 0; h < SPECIES.herbs.length; h++) bank += flora.seedBank[h * count + i]!;
       if (geo.waterKind[i] === WaterKind.None) {
         land++;
-        if (b > 0) covered++;
-      } else if (b > 0) onWater++;
+        if (bank > 0) landWithBank++;
+      } else expect(bank).toBe(0);
     }
-    expect(covered / land).toBeGreaterThan(0.7);
-    expect(onWater).toBe(0);
-    const w = flora.woody;
-    expect(w.count).toBeGreaterThan(50);
-    expect(w.count).toBeLessThan(land * 0.05);
-    for (let i = 0; i < w.highWater; i++) {
-      expect(SPECIES.woody[w.species[i]!]).toBe(1);
-      expect(geo.waterKind[w.cell[i]!]).toBe(WaterKind.None);
-    }
-    // В слотах трав — только травы.
-    for (let k = 0; k < flora.slotSpecies.length; k++) {
-      const s = flora.slotSpecies[k]!;
-      if (s !== NO_SPECIES) expect(PLANTS[s]!.form).toBe('herb');
-    }
+    expect(flora.woody.count).toBe(0);
+    expect(landWithBank / land).toBeGreaterThan(0.7);
+    expect(sim.preparation?.years).toBe(20);
+    expect(flora.regionalSeedRain).toBe(true);
+    expect(PLANTS.filter((p) => p.form === 'herb').length).toBe(SPECIES.herbs.length);
     expect(SLOTS).toBe(4);
+    expect(NO_SPECIES).toBe(255);
   });
 
   it('ведомость начинается с полного запаса и нулевых потоков', () => {

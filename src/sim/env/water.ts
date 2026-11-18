@@ -9,7 +9,7 @@ import { TICKS_PER_HOUR, hoursPerYear } from '../../shared/time';
 import type { System } from '../core/scheduler';
 import type { World } from '../core/world';
 import { WaterKind } from '../worldgen/geo';
-import { cellTemperature, chunkSample, timeContext, type TimeContext } from './climate';
+import { cellTemperature, chunkSampler, sampleChunks, timeContext, type TimeContext } from './climate';
 
 /** Ниже этой температуры осадки выпадают снегом, °C. */
 export const SNOW_THRESHOLD = 0.5;
@@ -49,14 +49,17 @@ export const waterSystem: System<World> = {
     const runoff = env.runoff;
     const flora = world.flora;
     let capillary = 0;
+    const sampler = chunkSampler(weather, geo);
+    // Множитель освещённости одинаков для всех ячеек в этот час: вычисляется один раз (то же значение).
+    const sunFactor = 0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y);
     for (let i = 0; i < count; i++) {
       const kind = geo.waterKind[i]!;
       if (kind === WaterKind.Sea) {
         runoff[i] = 0;
         continue;
       }
-      const cloud = chunkSample(weather, weather.chunkCloud, geo, i);
-      const precip = chunkSample(weather, weather.chunkAccum, geo, i) * d.pFactor[i]!;
+      const cloud = sampleChunks(sampler, weather.chunkCloud, i);
+      const precip = sampleChunks(sampler, weather.chunkAccum, i) * d.pFactor[i]!;
       landPrecip += precip;
       precipTotal += precip;
       if (kind !== WaterKind.None) {
@@ -92,7 +95,7 @@ export const waterSystem: System<World> = {
       // Испарение и транспирация: растут с температурой, светом и растительным покровом (голая почва — половина
       // потенциального испарения); под снегом почти нет.
       const cover = env.greenness[i]!;
-      const pet = t > -4 ? (t + 4) * PET_PER_DEGREE * compression * (0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y)) * (1 - 0.5 * cloud) * (0.5 + 0.5 * (cover > 1 ? 1 : cover)) : 0;
+      const pet = t > -4 ? (t + 4) * PET_PER_DEGREE * compression * sunFactor * (1 - 0.5 * cloud) * (0.5 + 0.5 * (cover > 1 ? 1 : cover)) : 0;
       const et = Math.min(m, pet * (m / cap) * (snow > 5 ? 0.2 : 1));
       m -= et;
       const drain = d.drainHour[i]! * m * (m / cap);

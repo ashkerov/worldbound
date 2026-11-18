@@ -1,16 +1,34 @@
 {
- "version": 1,
- "description": "Биомы. Правила проверяются по порядку, первое совпавшее даёт биом ячейки. Биом не хранится: вычисляется из фактической растительности и условий.",
+ "version": 2,
+ "description": "Биомы. Правила проверяются по порядку, первое совпавшее даёт биом ячейки. Биом вычисляется из фактической растительности и условий, сглаженных по вегетационному сезону (docs/PHASE3_PLAN.md, раздел 14); переключение — только если новый биом держится четверть года. Порядок записей — номер биома в сохранении (секция flora хранит и список id для сопоставления).",
  "biomes": [
   {
-   "id": "water",
-   "name": "Водоём",
+   "id": "sea",
+   "name": "Море",
+   "color": "#2f6f9f",
+   "rule": {
+    "water": [
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "lake",
+   "name": "Озеро",
    "color": "#3d7fb0",
    "rule": {
     "water": [
-     "river",
-     "lake",
-     "sea"
+     "lake"
+    ]
+   }
+  },
+  {
+   "id": "river",
+   "name": "Река",
+   "color": "#4a90c0",
+   "rule": {
+    "water": [
+     "river"
     ]
    }
   },
@@ -19,9 +37,19 @@
    "name": "Болото",
    "color": "#6f7d4a",
    "rule": {
-    "moistureMin": 0.85,
+    "moistureMin": 0.82,
+    "wetShareMin": 0.3,
     "treeCoverMax": 0.4,
-    "herbBiomassMin": 60
+    "herbBiomassMin": 20
+   }
+  },
+  {
+   "id": "young-forest",
+   "name": "Молодой лес",
+   "color": "#5f9a45",
+   "rule": {
+    "treeCoverMin": 0.35,
+    "tallShareMax": 0.3
    }
   },
   {
@@ -55,7 +83,7 @@
    "name": "Редколесье",
    "color": "#6e9a48",
    "rule": {
-    "treeCoverMin": 0.2
+    "treeCoverMin": 0.15
    }
   },
   {
@@ -63,7 +91,7 @@
    "name": "Кустарники",
    "color": "#8a9a4e",
    "rule": {
-    "shrubCoverMin": 0.3
+    "shrubCoverMin": 0.25
    }
   },
   {
@@ -72,7 +100,16 @@
    "color": "#9aa08a",
    "rule": {
     "tMeanMax": 0,
-    "herbBiomassMin": 20
+    "herbBiomassMin": 15
+   }
+  },
+  {
+   "id": "pioneer",
+   "name": "Пионерные травы",
+   "color": "#b59ab0",
+   "rule": {
+    "herbBiomassMin": 10,
+    "pioneerShareMin": 0.5
    }
   },
   {
@@ -80,8 +117,9 @@
    "name": "Луг",
    "color": "#8fbf5a",
    "rule": {
-    "herbBiomassMin": 150,
-    "moistureMin": 0.35
+    "herbBiomassMin": 60,
+    "moistureMin": 0.35,
+    "steppeShareMax": 0.4
    }
   },
   {
@@ -89,7 +127,16 @@
    "name": "Степь",
    "color": "#c2b46a",
    "rule": {
-    "herbBiomassMin": 40
+    "herbBiomassMin": 25,
+    "steppeShareMin": 0.3
+   }
+  },
+  {
+   "id": "sparse-grass",
+   "name": "Редкотравье",
+   "color": "#b8b98a",
+   "rule": {
+    "herbBiomassMin": 5
    }
   },
   {

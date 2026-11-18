@@ -1,13 +1,18 @@
-// Суточный шаг растительности (docs/PHASE3_PLAN.md, разделы 1–2), разнесённый по 24 часам:
-// каждый игровой час обрабатывается 1/24 ячеек (строки z ≡ час mod 24) и 1/24 древесных (индекс ≡ час mod 24),
-// поэтому каждая сущность обновляется ровно раз в сутки, а нагрузка не скапливается в одном такте.
-// Полог пересчитывается в начале суток. Все темпы заданы «за игровой год» и умножаются на долю года.
+// Суточный шаг растительности (docs/PHASE3_PLAN.md, разделы 1–2), разнесённый на 144 порции в сутки
+// (24 часа × 6 порций по 50 тактов, со сдвигом на полпорции от часового шага воды):
+// ячейки — строки z ≡ час (mod 24), в каждой порции свой отрезок столбцов; древесные — индекс ≡ час + 24·порция
+// (mod 144); край мира для колонизации — позиция ≡ час + 24·порция (mod 144). Каждая ячейка, растение и позиция
+// края обновляются ровно раз в сутки, нагрузка не скапливается в одном такте.
+// Полог пересчитывается в начале суток (порция 0). Все темпы заданы «за игровой год» и умножаются на долю года.
 //
 // Этап 3: размножение и расселение. Травы вкладывают часть биомассы в семена (сезон плодоношения),
 // семена разносятся по ядру расселения вида в почвенный банк, банк стареет, весной семена прорастают
 // там, где есть место и условия. Древесные после репродуктивной зрелости раз в год дают семена,
 // семена разлетаются по ядру вида, приживание — как вероятность от условий, света у земли, травостоя
 // и тесноты; всход проходит все стадии роста. Каждый грамм семян и всходов учтён в ведомости.
+//
+// Этап 4: колонизация извне (семена приходят через край мира, если мир не изолирован), семена региона
+// при подготовке Wildlands и динамический биом (flora/biomeState.ts).
 
 import { TWO_PI, clamp, dcos, dsin, smoothstep } from '../../shared/dmath';
 import { counterRandom } from '../../shared/rng';
@@ -15,14 +20,19 @@ import { SEASONS_PER_YEAR, TICKS_PER_HOUR, yearFraction } from '../../shared/tim
 import type { System } from '../core/scheduler';
 import type { World } from '../core/world';
 import { WaterKind } from '../worldgen/geo';
+import { EdgeKind } from '../worldgen/geo';
+import { climateMoisture } from '../env/envState';
+import { updateBiome } from './biomeState';
 import { NO_SPECIES, SPECIES } from './species';
-import { CANOPY_BOUNDS, CANOPY_LAYERS, Ledger, SLOTS } from './state';
-import { lightResponse, moistureResponse, nutrientResponse, soilResponse, tempResponse } from './suitability';
+import { CANOPY_BOUNDS, CANOPY_LAYERS, Ledger, MAX_WOODY_PER_CELL, SLOTS } from './state';
+import { lightResponse, moistureResponse, nutrientResponse, soilResponse, suitability, tempResponse } from './suitability';
 import { Stage } from './woodyStore';
 
 const SYS_WOODY_DEATH = 311;
 const SYS_HERB_SEED = 312;
 const SYS_WOODY_SEED = 313;
+const SYS_COLONIZE = 314;
+const SYS_SEED_RAIN = 315;
 /** Вклад голых ветвей лиственных зимой в затенение относительно облиственной кроны. */
 const BARE_CROWN = 0.3;
 /** Скорость разложения опада при оптимуме, год⁻¹: листья и травы (умножается на качество опада вида), древесина. */
@@ -51,14 +61,31 @@ const ROOT_RESERVE = 0.1;
 const MIN_GERMINATING_BANK = 0.002;
 /** Пакетов семян от одного дерева в год: ограничивает стоимость расчёта, не число семян. */
 const SEED_PACKETS = 8;
-/** Предельное число древесных в ячейке 8 × 8 м (всходы мелкие; взрослых ограничивает свет). */
-export const MAX_WOODY_PER_CELL = 12;
 /** Доля семян, дающих всход при установленной вероятности приживания вида и идеальных условиях. */
 const SEED_RECRUITMENT = 0.05;
 /** Начальная биомасса всхода, кг: масса семени плюс первый прирост (углерод из воздуха, питание из почвы ячейки). */
 export const SEEDLING_BIOMASS = 0.002;
 /** Добавочная смертность всходов ниже 0,5 м, год⁻¹. */
 const SEEDLING_MORTALITY = 0.35;
+/** Высота, с которой дерево входит в «высокий» полог (сложившийся лес), м. */
+export const TALL_TREE = 6;
+
+// Колонизация извне (docs/PHASE3_PLAN.md, раздел 14.3). За краем мира — такой же ландшафт, как у края внутри:
+// вид встречается там тем обильнее, чем больше его вес колониста и пригодность места, куда падают семена.
+// Семена летят через край по ядру расселения вида; дальше — те же банк семян, прорастание и приживание.
+// Через морской край семена не приходят.
+/** Семян трав за сезон плодоношения на 8 м края при весе колониста 1 и пригодности 1, г на м² ячейки-приёмника. */
+export const COLONIST_HERB_SEEDS = 0.4;
+/** Вероятность за год, что на 8 м края прилетит пакет семян древесного вида (вес 1, пригодность 1). */
+export const COLONIST_WOODY_PACKET = 0.25;
+/** Пакет колониста-древесного — семена с такой площади кроны региона, м²: число семян по плодовитости вида. */
+const COLONIST_WOODY_CROWN = 2;
+/** Пригодность места ниже этой — семена колонистов туда не приходят (вида нет в таком ландшафте за краем). */
+const COLONIST_MIN_SUIT = 0.05;
+// Подготовка Wildlands: семена приходят из окружающего региона на всю сушу (не только через край).
+// Те же величины на ячейку за год, что и у края, но меньше: регион — фон, а не опушка.
+export const RAIN_HERB_SEEDS = 0.15;
+export const RAIN_WOODY_PACKET = 1.0;
 
 /**
  * Высота древесного растения по аллометрии, м: H = Hmax·√(B/(B + B½)).
@@ -122,6 +149,7 @@ export function refreshCover(world: World, setGreenness: boolean): void {
   f.treeCover.fill(0);
   f.shrubCover.fill(0);
   f.coniferCover.fill(0);
+  f.tallCover.fill(0);
   f.woodyCount.fill(0);
   for (let i = 0; i < w.highWater; i++) {
     if (w.alive[i] !== 1) continue;
@@ -132,10 +160,12 @@ export function refreshCover(world: World, setGreenness: boolean): void {
     const cover = (PI * r * r * leafy) / area;
     const c = w.cell[i]!;
     if (f.woodyCount[c]! < 255) f.woodyCount[c] = f.woodyCount[c]! + 1;
-    const k = c * CANOPY_LAYERS + layerOf(woodyHeight(s, b));
+    const h = woodyHeight(s, b);
+    const k = c * CANOPY_LAYERS + layerOf(h);
     f.canopy[k] = Math.min(0.97, f.canopy[k]! + cover * (1 - SPECIES.transmission[s]!));
     if (SPECIES.tree[s] === 1) {
       f.treeCover[c] = Math.min(1, f.treeCover[c]! + cover);
+      if (h >= TALL_TREE) f.tallCover[c] = Math.min(1, f.tallCover[c]! + cover);
       if (SPECIES.conifer[s] === 1) f.coniferCover[c] = Math.min(1, f.coniferCover[c]! + cover);
     } else f.shrubCover[c] = Math.min(1, f.shrubCover[c]! + cover);
   }
@@ -170,6 +200,8 @@ interface DayContext {
   daysPerYear: number;
   day: number;
   cellArea: number;
+  /** Сколько суток подряд новый биом должен держаться, чтобы сменить текущий (четверть года). */
+  holdDays: number;
 }
 
 /** Опад в ячейку: масса г/м², элемент питания по виду, качество опада по виду. */
@@ -371,7 +403,9 @@ function processCell(world: World, c: number, ctx: DayContext): void {
   n += lfN + lwN;
   ledger[Ledger.decomposition]! += ((lf + lw) * area) / 1000;
   f.nutrient[c] = n;
+  if (f.regionalSeedRain) regionalSeedRain(world, c, cold, ctx);
   world.env.greenness[c] = greennessOf(world, c);
+  updateBiome(world, c, dt, yf, ctx.holdDays);
 }
 
 /** Семена трав: доля остаётся в своей ячейке, остальные — двумя «пакетами» по ядру расселения вида. */
@@ -473,7 +507,6 @@ function produceWoodySeeds(world: World, i: number, ctx: DayContext): void {
   const packets = Math.min(SEED_PACKETS, Math.ceil(seeds));
   const perPacket = seeds / packets;
   const packetKg = massKg / packets;
-  const area = ctx.cellArea;
   const id = w.idOf(i);
   for (let p = 0; p < packets; p++) {
     const target = dispersalTarget(world, w.x[i]!, w.z[i]!, s, id, p, ctx.day, SYS_WOODY_SEED);
@@ -482,29 +515,156 @@ function produceWoodySeeds(world: World, i: number, ctx: DayContext): void {
       f.ledger[Ledger.exported]! += packetKg * 1000 * t.nutrient[s]!;
       continue;
     }
-    // Вероятность, что хоть одно семя пакета приживётся: 1 − (1 − p)^n ≈ min(1, n·p) при малых p.
-    const space = Math.max(0, 1 - f.woodyCount[tc]! / MAX_WOODY_PER_CELL);
-    const pOne = t.establishment[s]! * seedlingFit(world, s, tc) * space * SEED_RECRUITMENT;
-    const pAny = Math.min(1, perPacket * pOne);
-    const needN = (SEEDLING_BIOMASS - t.seedMass[s]! * 0.001) * 1000 * t.nutrient[s]!;
-    const roll = counterRandom(world.seed, SYS_WOODY_SEED, id, ctx.day * 64 + 32 + p);
-    if (roll < pAny && f.woodyCount[tc]! < MAX_WOODY_PER_CELL && f.nutrient[tc]! * area > needN) {
-      const x = target.x;
-      const z = target.z;
-      const j = w.spawn(s, x, z, tc, Math.max(SEEDLING_BIOMASS, t.seedMass[s]! * 0.001), 0);
-      if (j >= 0) {
-        // Семя стало всходом; разница до массы всхода — первый прирост: питание из почвы ячейки.
-        const seedKg = t.seedMass[s]! * 0.001;
-        const grownKg = Math.max(0, SEEDLING_BIOMASS - seedKg);
-        f.nutrient[tc] = f.nutrient[tc]! - (grownKg * 1000 * t.nutrient[s]!) / area;
-        f.ledger[Ledger.photosynthesis]! += grownKg;
-        f.woodyCount[tc] = f.woodyCount[tc]! + 1;
-        deposit(world, tc, Math.max(0, packetKg - seedKg), s, false);
-        continue;
-      }
+    landWoodyPacket(world, s, target.x, target.z, tc, perPacket, packetKg, counterRandom(world.seed, SYS_WOODY_SEED, id, ctx.day * 64 + 32 + p), ctx);
+  }
+}
+
+/**
+ * Пакет семян древесного вида упал в ячейку суши tc: возможно, одно семя даёт всход, остальное — в опад.
+ * Общий путь для семян растений мира и колонистов извне. Вещество пакета уже учтено вызывающим
+ * (взято из растения или записано как приход извне).
+ * @param roll равномерное случайное [0, 1) — от (seed, источник, сутки)
+ */
+function landWoodyPacket(world: World, s: number, x: number, z: number, tc: number, seeds: number, packetKg: number, roll: number, ctx: DayContext): void {
+  const f = world.flora;
+  const w = f.woody;
+  const t = SPECIES;
+  const area = ctx.cellArea;
+  // Вероятность, что хоть одно семя пакета приживётся: 1 − (1 − p)^n ≈ min(1, n·p) при малых p.
+  const space = Math.max(0, 1 - f.woodyCount[tc]! / MAX_WOODY_PER_CELL);
+  // У предела ёмкости хранилища (последние 10 %) приживание плавно стихает: нет обрыва по порядку обработки.
+  const fill = w.count / w.capacity;
+  const storeRoom = fill < 0.9 ? 1 : Math.max(0, (1 - fill) * 10);
+  const pOne = t.establishment[s]! * seedlingFit(world, s, tc) * space * storeRoom * SEED_RECRUITMENT;
+  const pAny = Math.min(1, seeds * pOne);
+  const seedKg = t.seedMass[s]! * 0.001;
+  const grownKg = Math.max(0, SEEDLING_BIOMASS - seedKg);
+  const needN = grownKg * 1000 * t.nutrient[s]!;
+  if (roll < pAny && f.woodyCount[tc]! < MAX_WOODY_PER_CELL && f.nutrient[tc]! * area > needN) {
+    const j = w.spawn(s, x, z, tc, Math.max(SEEDLING_BIOMASS, seedKg), 0);
+    if (j >= 0) {
+      // Семя стало всходом; разница до массы всхода — первый прирост: питание из почвы ячейки.
+      f.nutrient[tc] = f.nutrient[tc]! - needN / area;
+      f.ledger[Ledger.photosynthesis]! += grownKg;
+      f.woodyCount[tc] = f.woodyCount[tc]! + 1;
+      deposit(world, tc, Math.max(0, packetKg - seedKg), s, false);
+      return;
     }
-    // Не прижились: семена пакета уходят в опад там, куда упали.
-    deposit(world, tc, packetKg, s, false);
+  }
+  // Не прижились (или хранилище заполнено): семена пакета уходят в опад там, куда упали.
+  deposit(world, tc, packetKg, s, false);
+}
+
+/** Пригодность места для прихода колонистов вида: климат сезона роста, климатическая влага, питание, почва. */
+function colonistSuit(world: World, s: number, c: number): number {
+  const geo = world.geo;
+  return suitability(SPECIES, s, geo.tMean[c]! + 0.6 * geo.tAmp[c]!, climateMoisture(geo.precip[c]!), 1, world.flora.nutrient[c]!, geo.soil[c]!);
+}
+
+function noteColonist(world: World, s: number, grams: number): void {
+  const f = world.flora;
+  f.colonistMass[s]! += grams;
+  if (f.colonistFirst[s]! < 0) f.colonistFirst[s] = world.tick;
+}
+
+/** Семена трав пришли в банк ячейки извне: приход вещества — в ведомость. */
+function addColonistHerbSeeds(world: World, c: number, s: number, perM2: number, ctx: DayContext): void {
+  const f = world.flora;
+  const count = world.geo.n * world.geo.n;
+  const o = SPECIES.herbSlot[s]! * count + c;
+  f.seedBank[o] = f.seedBank[o]! + perM2;
+  f.ledger[Ledger.external]! += perM2 * ctx.cellArea * SPECIES.nutrient[s]!;
+  noteColonist(world, s, perM2 * ctx.cellArea);
+}
+
+/** Пакет семян древесного вида пришёл извне в ячейку tc: приход — в ведомость, дальше обычное приживание. */
+function addColonistWoodyPacket(world: World, s: number, x: number, z: number, tc: number, seeds: number, roll: number, ctx: DayContext): void {
+  const packetKg = seeds * SPECIES.seedMass[s]! * 0.001;
+  world.flora.ledger[Ledger.external]! += packetKg * 1000 * SPECIES.nutrient[s]!;
+  noteColonist(world, s, packetKg * 1000);
+  landWoodyPacket(world, s, x, z, tc, seeds, packetKg, roll, ctx);
+}
+
+/** День прихода древесных колонистов вида: тот же сезон рассева, что у растений мира, со сдвигом. */
+function woodySeedDay(ctx: DayContext, k: number): number {
+  return (Math.floor(WOODY_SEED_FRACTION * ctx.daysPerYear) + (k % SEED_DAYS_SPREAD)) % ctx.daysPerYear;
+}
+
+/**
+ * Колонизация через одну позицию края мира (8 м края): для каждого вида — семена по ядру расселения вглубь мира.
+ * @param k номер позиции: сторона × n + номер ячейки вдоль стороны (стороны: север, восток, юг, запад)
+ */
+function colonizeEdge(world: World, k: number, ctx: DayContext): void {
+  const geo = world.geo;
+  const n = geo.n;
+  const side = Math.floor(k / n);
+  if (geo.edges[side] === EdgeKind.Sea) return;
+  const j = k - side * n;
+  const cs = geo.cellSize;
+  const size = world.worldSize;
+  // Точка на краю и направление внутрь мира.
+  const along = (j + 0.5) * cs;
+  const ex = side === 1 ? size : side === 3 ? 0 : along;
+  const ez = side === 0 ? 0 : side === 2 ? size : along;
+  const nx = side === 1 ? -1 : side === 3 ? 1 : 0;
+  const nz = side === 0 ? 1 : side === 2 ? -1 : 0;
+  const t = SPECIES;
+  const yf = ctx.yearFrac;
+  const herbSeason = yf >= HERB_SEED_SEASON[0] && yf < HERB_SEED_SEASON[1];
+  const seasonShare = ctx.dt / (HERB_SEED_SEASON[1] - HERB_SEED_SEASON[0]);
+  for (let s = 0; s < t.count; s++) {
+    const woody = t.woody[s] === 1;
+    if (!woody && !herbSeason) continue;
+    if (woody && ctx.dayOfYear !== woodySeedDay(ctx, k + s)) continue;
+    const weight = t.colonist[s]!;
+    if (weight <= 0) continue;
+    const key = k * 32 + s;
+    const u = counterRandom(world.seed, SYS_COLONIZE, key, ctx.day * 8);
+    const v = counterRandom(world.seed, SYS_COLONIZE, key, ctx.day * 8 + 1);
+    const d = Math.min(t.dispersalMax[s]!, 3 * t.dispersalMean[s]! * u * u) + 0.5;
+    const lateral = (v - 0.5) * cs;
+    const x = ex + nx * d + (nx === 0 ? lateral : 0);
+    const z = ez + nz * d + (nz === 0 ? lateral : 0);
+    const tc = landCellAt(world, x, z);
+    if (tc < 0) continue;
+    const suit = colonistSuit(world, s, tc);
+    if (suit < COLONIST_MIN_SUIT) continue;
+    if (!woody) {
+      // В холод семена в регионе не созревают.
+      if (world.flora.dayT[tc]! < 2) continue;
+      addColonistHerbSeeds(world, tc, s, COLONIST_HERB_SEEDS * weight * suit * seasonShare, ctx);
+    } else {
+      if (counterRandom(world.seed, SYS_COLONIZE, key, ctx.day * 8 + 2) >= COLONIST_WOODY_PACKET * weight * suit) continue;
+      addColonistWoodyPacket(world, s, x, z, tc, COLONIST_WOODY_CROWN * t.fecundity[s]!, counterRandom(world.seed, SYS_COLONIZE, key, ctx.day * 8 + 3), ctx);
+    }
+  }
+}
+
+/** Подготовка Wildlands: семена из окружающего региона падают на ячейку суши c (те же механизмы приживания). */
+function regionalSeedRain(world: World, c: number, cold: boolean, ctx: DayContext): void {
+  const t = SPECIES;
+  const yf = ctx.yearFrac;
+  const herbSeason = !cold && yf >= HERB_SEED_SEASON[0] && yf < HERB_SEED_SEASON[1];
+  const seasonShare = ctx.dt / (HERB_SEED_SEASON[1] - HERB_SEED_SEASON[0]);
+  const n = world.geo.n;
+  const cs = world.geo.cellSize;
+  for (let s = 0; s < t.count; s++) {
+    const woody = t.woody[s] === 1;
+    if (!woody && !herbSeason) continue;
+    if (woody && ctx.dayOfYear !== woodySeedDay(ctx, c + s)) continue;
+    const weight = t.colonist[s]!;
+    if (weight <= 0) continue;
+    const suit = colonistSuit(world, s, c);
+    if (suit < COLONIST_MIN_SUIT) continue;
+    if (!woody) {
+      addColonistHerbSeeds(world, c, s, RAIN_HERB_SEEDS * weight * suit * seasonShare, ctx);
+      continue;
+    }
+    const key = c * 32 + s;
+    if (counterRandom(world.seed, SYS_SEED_RAIN, key, ctx.day * 4) >= RAIN_WOODY_PACKET * weight * suit) continue;
+    const x = ((c % n) + counterRandom(world.seed, SYS_SEED_RAIN, key, ctx.day * 4 + 1)) * cs;
+    const z = (Math.floor(c / n) + counterRandom(world.seed, SYS_SEED_RAIN, key, ctx.day * 4 + 2)) * cs;
+    addColonistWoodyPacket(world, s, x, z, c, COLONIST_WOODY_CROWN * t.fecundity[s]!, counterRandom(world.seed, SYS_SEED_RAIN, key, ctx.day * 4 + 3), ctx);
   }
 }
 
@@ -593,19 +753,30 @@ function processWoody(world: World, i: number, ctx: DayContext): void {
   // Всходы гибнут чаще; запас крупного семени (жёлудь) повышает их выживание: деление на 1 + √(масса семени, г).
   const juvenile = h < 0.5 ? (SEEDLING_MORTALITY * (1 - h / 0.5)) / (1 + Math.sqrt(t.seedMass[s]!)) : 0;
   const p = (t.mortality[s]! + juvenile + 1.5 * (1 - health) * (1 - health) + senescence) * dt;
-  if (b <= 0.0005 || counterRandom(world.seed, SYS_WOODY_DEATH, w.idOf(i), ctx.day) < p) {
-    // Погибшее растение целиком уходит в опад: листва — в быстрый, остальное — в древесный.
-    const leafMass = t.leafFraction[s]! * leaf * Math.max(0, b);
-    if (b > 0) {
-      deposit(world, c, leafMass, s, false);
-      deposit(world, c, b - leafMass, s, true);
-    }
-    w.remove(i);
-    if (f.woodyCount[c]! > 0) f.woodyCount[c] = f.woodyCount[c]! - 1;
-  }
+  if (b <= 0.0005 || counterRandom(world.seed, SYS_WOODY_DEATH, w.idOf(i), ctx.day) < p) killWoody(world, i);
 }
 
-const ctx: DayContext = { dt: 0, yearFrac: 0, dayOfYear: 0, daysPerYear: 20, day: 0, cellArea: 64 };
+/**
+ * Гибель древесного растения (старость, болезнь, вырубка): всё вещество уходит в опад ячейки —
+ * листва в быстрый, остальное в древесный; растение удаляется, счётчик ячейки уменьшается.
+ */
+export function killWoody(world: World, i: number): void {
+  const f = world.flora;
+  const w = f.woody;
+  if (w.alive[i] !== 1) return;
+  const s = w.species[i]!;
+  const c = w.cell[i]!;
+  const b = w.biomass[i]!;
+  const leafMass = SPECIES.leafFraction[s]! * w.leaf[i]! * Math.max(0, b);
+  if (b > 0) {
+    deposit(world, c, leafMass, s, false);
+    deposit(world, c, b - leafMass, s, true);
+  }
+  w.remove(i);
+  if (f.woodyCount[c]! > 0) f.woodyCount[c] = f.woodyCount[c]! - 1;
+}
+
+const ctx: DayContext = { dt: 0, yearFrac: 0, dayOfYear: 0, daysPerYear: 20, day: 0, cellArea: 64, holdDays: 5 };
 
 /** Частей в игровом часе: доля суток каждого часа обрабатывается ещё 6 порциями по 50 тактов. */
 const SUBSTEPS = 6;
@@ -628,6 +799,7 @@ export const floraSystem: System<World> = {
     ctx.day = Math.floor(hour / 24);
     ctx.dayOfYear = ctx.day % ctx.daysPerYear;
     ctx.cellArea = geo.cellSize * geo.cellSize;
+    ctx.holdDays = Math.max(2, Math.round(ctx.daysPerYear / 4));
     if (slice === 0 && sub === 0) refreshCover(world, false);
     const n = geo.n;
     // Ячейки: строки z ≡ час (mod 24), в каждой порции — свой отрезок столбцов.
@@ -644,6 +816,11 @@ export const floraSystem: System<World> = {
     const high = w.highWater;
     const stride = 24 * SUBSTEPS;
     for (let i = slice + 24 * sub; i < high; i += stride) if (w.alive[i] === 1) processWoody(world, i, ctx);
+    // Край мира: колонизация извне, если мир не изолирован.
+    if (!world.config.isolated) {
+      const edge = 4 * n;
+      for (let k = slice + 24 * sub; k < edge; k += stride) colonizeEdge(world, k, ctx);
+    }
     if (sub === SUBSTEPS - 1) f.lastSliceHour = hour;
   },
 };

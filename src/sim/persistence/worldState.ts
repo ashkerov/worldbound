@@ -3,6 +3,8 @@
 // а совпадение проверяется по хешу генерации. Каждая секция версионируется отдельно.
 
 import { cellAt, type World } from '../core/world';
+import { initBiomes } from '../flora/biomeState';
+import { BIOMES } from '../flora/biomes';
 import { populateFromGreenness } from '../flora/populate';
 import { refreshCover } from '../flora/system';
 import { SectionReader, SectionWriter } from './binary';
@@ -11,14 +13,25 @@ export const SECTION_SCHEMAS = {
   core: 1,
   env: 1,
   agents: 1,
-  /** 2 — этап 3 фазы 3: банк семян трав, качество опада, число древесных в ячейке. */
-  flora: 2,
+  /**
+   * 2 — этап 3 фазы 3: банк семян трав, качество опада, число древесных в ячейке.
+   * 3 — этап 4: покрытие высокими деревьями, сглаженные показатели и устойчивый биом (со списком id биомов),
+   *     колонизация извне по видам, срок подготовки Wildlands.
+   */
+  flora: 3,
 } as const;
 export type SectionId = keyof typeof SECTION_SCHEMAS;
 /** Без этих секций мир не загружается; остальные при отсутствии восстанавливаются миграцией. */
 export const REQUIRED_SECTIONS: readonly SectionId[] = ['core', 'env'];
 
+/** Id каталогов — латиница, цифры и дефис (ID_PATTERN): кодируются байтами без внешних API. */
+function asciiBytes(text: string): Uint8Array {
+  return Uint8Array.from(text, (ch) => ch.charCodeAt(0));
+}
+
 export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
+  // Мир Wildlands во время подготовки — ещё не созданный мир: сохраняется только готовый.
+  if (world.flora.regionalSeedRain) throw new Error('Мир ещё готовится (Wildlands): сохранить можно только готовый мир');
   const e = world.env;
   const a = world.agents;
   const core = new SectionWriter().f64(world.tick).f64(world.speed).finish('core', SECTION_SCHEMAS.core);
@@ -92,12 +105,29 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
     .array(w.stressL.subarray(0, wh))
     .array(w.alive.subarray(0, wh))
     .array(w.generation.subarray(0, wh))
+    .array(f.tallCover)
+    .array(asciiBytes(BIOMES.map((b) => b.id).join(',')))
+    .array(f.biome.herb)
+    .array(f.biome.steppe)
+    .array(f.biome.wet)
+    .array(f.biome.pioneer)
+    .array(f.biome.moisture)
+    .array(f.biome.tree)
+    .array(f.biome.shrub)
+    .array(f.biome.conifer)
+    .array(f.biome.tall)
+    .array(f.biome.current)
+    .array(f.biome.candidate)
+    .array(f.biome.days)
+    .array(f.colonistMass)
+    .array(f.colonistFirst)
+    .f64(f.preparedYears)
     .finish('flora', SECTION_SCHEMAS.flora);
   return { core, env, agents, flora };
 }
 
 /** Что пришлось восстановить миграцией при загрузке. */
-export type Migration = 'agents:absent' | 'flora:from-greenness' | 'flora:schema1';
+export type Migration = 'agents:absent' | 'flora:from-greenness' | 'flora:schema1' | 'flora:schema2' | 'flora:biome-catalog';
 
 const SPEEDS = [0, 1, 2, 4, 8];
 
@@ -136,12 +166,12 @@ export function applySections(world: World, sections: Partial<Record<SectionId, 
   if (!sections.agents) migrations.push('agents:absent');
   else readAgents(world, sections.agents);
 
-  if (sections.flora) {
-    if (readFlora(world, sections.flora)) migrations.push('flora:schema1');
-  } else {
+  if (sections.flora) migrations.push(...readFlora(world, sections.flora));
+  else {
     // Сохранение фазы 2: растений не было — травяной ярус восстанавливается из сохранённого индекса зелени.
     populateFromGreenness(world);
     refreshCover(world, false);
+    initBiomes(world);
     migrations.push('flora:from-greenness');
   }
   return migrations;
@@ -167,15 +197,20 @@ function readAgents(world: World, bytes: Uint8Array): void {
 }
 
 /**
- * Читает секцию flora. Схема 2 — текущая. Схема 1 существовала в двух раскладках (сборки 824aa8f и 8a3be81
- * этапов 1–2 фазы 3): без суточных средних и полога и с ними; распознаются обе. Возвращает true, если была миграция.
+ * Читает секцию flora. Схема 3 — текущая. Схема 2 — этап 3 фазы 3 (без биомов и колонизации). Схема 1 существовала
+ * в двух раскладках (сборки 824aa8f и 8a3be81 этапов 1–2 фазы 3): без суточных средних и полога и с ними;
+ * распознаются обе. Возвращает выполненные миграции.
  */
-function readFlora(world: World, bytes: Uint8Array): boolean {
+function readFlora(world: World, bytes: Uint8Array): Migration[] {
   const probe = new SectionReader(bytes, 'flora');
   const schema = probe.header.schema;
+  if (schema === 3) return readFloraLayout(world, new SectionReader(bytes, 'flora'), 'v3');
   if (schema === 2) {
     readFloraLayout(world, new SectionReader(bytes, 'flora'), 'v2');
-    return false;
+    // Миграция схемы 2: покрытие высокими деревьями — по растениям, биом — по текущей растительности, колонизации не было.
+    refreshCover(world, false);
+    initBiomes(world);
+    return ['flora:schema2'];
   }
   if (schema !== 1) throw new Error(`Секция flora: неизвестная версия схемы ${schema}`);
   try {
@@ -188,17 +223,20 @@ function readFlora(world: World, bytes: Uint8Array): boolean {
   for (let i = 0; i < f.litterFast.length; i++) f.litterFastQ[i] = f.litterFast[i]!;
   f.seedBank.fill(0);
   refreshCover(world, false);
-  return true;
+  initBiomes(world);
+  return ['flora:schema1'];
 }
 
-function readFloraLayout(world: World, r: SectionReader, layout: 'v1a' | 'v1b' | 'v2'): void {
+function readFloraLayout(world: World, r: SectionReader, layout: 'v1a' | 'v1b' | 'v2' | 'v3'): Migration[] {
+  const migrations: Migration[] = [];
   const f = world.flora;
   f.lastSliceHour = r.f64();
   r.into(f.slotSpecies);
   r.into(f.slotBiomass);
   r.into(f.litterFast);
   r.into(f.litterFastN);
-  if (layout === 'v2') r.into(f.litterFastQ);
+  const modern = layout === 'v2' || layout === 'v3';
+  if (modern) r.into(f.litterFastQ);
   r.into(f.litterWood);
   r.into(f.litterWoodN);
   r.into(f.nutrient);
@@ -216,7 +254,7 @@ function readFloraLayout(world: World, r: SectionReader, layout: 'v1a' | 'v1b' |
     r.into(f.shrubCover);
     r.into(f.coniferCover);
   }
-  if (layout === 'v2') {
+  if (modern) {
     r.into(f.seedBank);
     r.into(f.woodyCount);
   }
@@ -238,7 +276,45 @@ function readFloraLayout(world: World, r: SectionReader, layout: 'v1a' | 'v1b' |
   r.into(w.stressL.subarray(0, wh));
   r.into(w.alive.subarray(0, wh));
   r.into(w.generation.subarray(0, wh));
+  if (layout === 'v3') {
+    r.into(f.tallCover);
+    const ids = String.fromCharCode(...r.uint8()).split(',');
+    const b = f.biome;
+    r.into(b.herb);
+    r.into(b.steppe);
+    r.into(b.wet);
+    r.into(b.pioneer);
+    r.into(b.moisture);
+    r.into(b.tree);
+    r.into(b.shrub);
+    r.into(b.conifer);
+    r.into(b.tall);
+    r.into(b.current);
+    r.into(b.candidate);
+    r.into(b.days);
+    // Колонизация по видам: новые виды каталога (добавляются только в конец) начинают с нуля.
+    const mass = r.float64();
+    const first = r.float64();
+    if (mass.length > f.colonistMass.length || first.length !== mass.length) throw new Error('Секция flora: неверная колонизация');
+    f.colonistMass.set(mass);
+    f.colonistFirst.set(first);
+    f.preparedYears = r.f64();
+    // Каталог биомов изменился: номера сопоставляются по id, неизвестные — классифицируются заново.
+    if (ids.length !== BIOMES.length || ids.some((id, k) => BIOMES[k]!.id !== id)) {
+      const map = ids.map((id) => BIOMES.findIndex((x) => x.id === id));
+      if (map.some((k) => k < 0)) {
+        initBiomes(world);
+      } else {
+        for (let c = 0; c < b.current.length; c++) {
+          b.current[c] = map[b.current[c]!] ?? 0;
+          b.candidate[c] = map[b.candidate[c]!] ?? 0;
+        }
+      }
+      migrations.push('flora:biome-catalog');
+    }
+  }
   r.end();
   w.restore(wh, count, free);
   for (let i = 0; i < wh; i++) w.cell[i] = cellAt(world, w.x[i]!, w.z[i]!);
+  return migrations;
 }

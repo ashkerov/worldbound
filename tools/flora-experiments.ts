@@ -9,6 +9,7 @@ import { plotSimulation, runDays } from '../tests/support/plot';
 import { PLANTS, SPECIES } from '../src/sim/flora/species';
 import { woodyHeight } from '../src/sim/flora/system';
 import { writeCharts, type ExperimentData } from './flora-charts';
+import { codeVersion } from './lib/commit';
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -20,7 +21,7 @@ const SEEDS = arg('seeds', '1,2,3').split(',').map(Number);
 mkdirSync('docs/measurements', { recursive: true });
 
 const now = () => performance.now();
-const result: Record<string, unknown> = { generated: new Date().toISOString(), years: YEARS, seeds: SEEDS };
+const result: Record<string, unknown> = { tool: 'tools/flora-experiments.ts', ...codeVersion(), years: YEARS, seeds: SEEDS };
 
 // ── A и B: зарастание влажного и сухого участков на нескольких seed.
 const runs: Record<'wet' | 'dry', SuccessionRun[]> = { wet: [], dry: [] };
@@ -56,7 +57,7 @@ result.boundary = { west: boundary.west, east: boundary.east, eastNearBoundary: 
 // (измерено). Потомство и самосев каждый год убираются — растения растут без соседей.
 const woody = PLANTS.map((p, i) => [p, i] as const).filter(([p]) => p.form !== 'herb');
 const n = 96;
-const sim = plotSimulation({ precip: 700, soil: 'loam', fertility: 0.8, n }, { scenario: 'genesis', seed: 11 });
+const sim = plotSimulation({ precip: 700, soil: 'loam', fertility: 0.8, n }, { scenario: 'genesis', isolated: true, seed: 11 });
 const w = sim.world.flora.woody;
 const R = 8;
 const ids = woody.map(([, s], k) =>

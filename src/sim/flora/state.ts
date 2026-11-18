@@ -4,6 +4,7 @@
 import type { Geo } from '../worldgen/geo';
 import { WaterKind } from '../worldgen/geo';
 import { NO_SPECIES, SPECIES } from './species';
+import { MAX_INDEX } from '../../shared/ids';
 import { WoodyStore } from './woodyStore';
 
 /** Слотов видов травяного яруса на ячейку. */
@@ -72,14 +73,77 @@ export interface FloraState {
   readonly treeCover: Float32Array;
   readonly shrubCover: Float32Array;
   readonly coniferCover: Float32Array;
+  /** Покрытие кронами высоких деревьев (≥ 6 м) — для различения молодого и сложившегося леса. */
+  readonly tallCover: Float32Array;
+  /** Сглаженные входы классификатора биомов и текущий биом ячейки (flora/biomeState.ts). */
+  readonly biome: BiomeTrack;
+  /** Колонизация извне по видам: принесено семян, г сухого вещества; такт первого прихода (−1 — не было). */
+  readonly colonistMass: Float64Array;
+  readonly colonistFirst: Float64Array;
   readonly ledger: Float64Array;
   /** Номер последней обработанной часовой части суток (абсолютный номер игрового часа), −1 — не было. */
   lastSliceHour: number;
+  /** Сколько игровых лет мир готовился предварительным прогоном (Wildlands), 0 — не готовился. */
+  preparedYears: number;
+  /**
+   * Идёт подготовка Wildlands: семена приходят из окружающего региона на всю сушу, а не только через край мира.
+   * Действует только во время создания мира, в сохранение не попадает (сохраняется уже готовый мир).
+   */
+  regionalSeedRain: boolean;
 }
 
+/** Сглаженные по вегетационному сезону показатели ячейки и устойчивый биом. */
+export interface BiomeTrack {
+  /** Биомасса трав всего и по типам сообществ (степные, болотные, пионерные), г/м². */
+  readonly herb: Float32Array;
+  readonly steppe: Float32Array;
+  readonly wet: Float32Array;
+  readonly pioneer: Float32Array;
+  /** Относительная влага почвы. */
+  readonly moisture: Float32Array;
+  /** Покрытие кронами: деревья, кустарники, хвойные, высокие деревья (по облиственной кроне лета). */
+  readonly tree: Float32Array;
+  readonly shrub: Float32Array;
+  readonly conifer: Float32Array;
+  readonly tall: Float32Array;
+  /** Текущий биом (индекс каталога), кандидат на смену и сколько суток кандидат держится. */
+  readonly current: Uint8Array;
+  readonly candidate: Uint8Array;
+  readonly days: Uint8Array;
+}
+
+export function createBiomeTrack(count: number): BiomeTrack {
+  const f = () => new Float32Array(count);
+  return {
+    herb: f(),
+    steppe: f(),
+    wet: f(),
+    pioneer: f(),
+    moisture: f(),
+    tree: f(),
+    shrub: f(),
+    conifer: f(),
+    tall: f(),
+    current: new Uint8Array(count),
+    candidate: new Uint8Array(count),
+    days: new Uint8Array(count),
+  };
+}
+
+/**
+ * Ограничения численности древесных (docs/PHASE3_PLAN.md, раздел 14.1):
+ *  • в одной ячейке 8 × 8 м — не больше MAX_WOODY_PER_CELL (всходы мелкие, взрослых ограничивает свет);
+ *  • во всём мире — WOODY_PER_CELL_MEAN на ячейку в среднем, но не больше адресуемого идентификатором
+ *    (20 бит индекса, MAX_INDEX + 1 = 1 048 576). Для мира M (512² ячеек) оба предела совпадают: 1 048 576,
+ *    для S — 262 144. Формат идентификатора не меняется.
+ * Глобальный предел меньше суммы локальных: густой подрост возможен местами, но не на всей суше сразу.
+ * У предела приживание плавно снижается (последние 10 % ёмкости), а не обрывается по порядку обработки.
+ */
+export const MAX_WOODY_PER_CELL = 12;
+export const WOODY_PER_CELL_MEAN = 4;
+
 export function woodyCapacity(geo: Geo): number {
-  // До 4 растений на ячейку 8 × 8 м — плотность густого леса; предел — адресуемость идентификатора.
-  return Math.min(1 << 20, geo.n * geo.n * 4);
+  return Math.min(MAX_INDEX + 1, geo.n * geo.n * WOODY_PER_CELL_MEAN);
 }
 
 /** Начальный запас доступного элемента питания по плодородию почвы, г/м². */
@@ -118,8 +182,14 @@ export function createFlora(geo: Geo): FloraState {
     treeCover: new Float32Array(count),
     shrubCover: new Float32Array(count),
     coniferCover: new Float32Array(count),
+    tallCover: new Float32Array(count),
+    biome: createBiomeTrack(count),
+    colonistMass: new Float64Array(SPECIES.count),
+    colonistFirst: new Float64Array(SPECIES.count).fill(-1),
     ledger: new Float64Array(LEDGER_SIZE),
     lastSliceHour: -1,
+    preparedYears: 0,
+    regionalSeedRain: false,
   };
 }
 

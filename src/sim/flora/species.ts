@@ -9,6 +9,10 @@ export const PLANT_FORMS = ['herb', 'shrub', 'tree'] as const;
 export type PlantForm = (typeof PLANT_FORMS)[number];
 export const LEAF_HABITS = ['annualDieback', 'deciduous', 'evergreen'] as const;
 export type LeafHabit = (typeof LEAF_HABITS)[number];
+/** Тип сообщества травы — для классификатора биомов (не влияет на рост). */
+export const HERB_COMMUNITIES = ['meadow', 'steppe', 'wetland', 'forest', 'pioneer'] as const;
+export type HerbCommunity = (typeof HERB_COMMUNITIES)[number];
+export const Community = { meadow: 0, steppe: 1, wetland: 2, forest: 3, pioneer: 4, none: 255 } as const;
 
 interface Range4 {
   min: number;
@@ -22,6 +26,8 @@ export interface PlantSpecies {
   name: string;
   form: PlantForm;
   leafHabit: LeafHabit;
+  /** Травы: тип сообщества (луговое, степное, болотное, лесное, пионерное). */
+  community?: HerbCommunity;
   /** Среднесуточная температура роста, °C. */
   temperature: Range4;
   /** Среднесуточная температура, ниже которой растение повреждается даже в покое, °C. */
@@ -92,6 +98,7 @@ export const PLANTS_SCHEMA: CatalogSchema = {
     name: { kind: 'string' },
     form: { kind: 'enum', values: PLANT_FORMS },
     leafHabit: { kind: 'enum', values: LEAF_HABITS },
+    community: { kind: 'enum', values: HERB_COMMUNITIES, optional: true },
     temperature: range4(-30, 45),
     frostKill: { kind: 'number', min: -70, max: 5 },
     moisture: range4(0, 2),
@@ -126,8 +133,9 @@ export const PLANTS_SCHEMA: CatalogSchema = {
   },
   check: (e) => {
     const woody = e.form !== 'herb';
-    const needed = woody ? ['halfBiomass', 'maxHeight', 'maxCrownRadius', 'leafFraction', 'maturityYears', 'lifespanYears', 'fecundity', 'dispersal', 'canopyTransmission'] : ['seedAllocation', 'seedBankYears', 'dispersal'];
+    const needed = woody ? ['halfBiomass', 'maxHeight', 'maxCrownRadius', 'leafFraction', 'maturityYears', 'lifespanYears', 'fecundity', 'dispersal', 'canopyTransmission'] : ['seedAllocation', 'seedBankYears', 'dispersal', 'community'];
     for (const key of needed) if (e[key] === undefined) return `для формы «${String(e.form)}» обязательно поле ${key}`;
+    if (woody && e.community !== undefined) return 'тип сообщества задаётся только травам';
     if (woody && e.leafHabit === 'annualDieback') return 'древесные не отмирают до корня на зиму: leafHabit должен быть deciduous или evergreen';
     if (woody && (e.maturityYears as number) >= (e.lifespanYears as number)) return 'зрелость должна наступать раньше конца жизни';
     return null;
@@ -187,6 +195,8 @@ export interface SpeciesTable {
   fixes: Float64Array;
   litterQuality: Float64Array;
   colonist: Float64Array;
+  /** Травы: тип сообщества (Community), древесные — Community.none. */
+  community: Uint8Array;
   conifer: Uint8Array;
   /** soil[species × soilCount + soil] — предпочтение почвы. */
   soil: Float64Array;
@@ -235,6 +245,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     fixes: f(),
     litterQuality: f(),
     colonist: f(),
+    community: new Uint8Array(n).fill(Community.none),
     conifer: new Uint8Array(n),
     soil: new Float64Array(n * SOILS.length),
   };
@@ -279,6 +290,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     t.fixes[i] = p.fixesNutrient ?? 0;
     t.litterQuality[i] = p.litterQuality;
     t.colonist[i] = p.colonistWeight;
+    if (p.community) t.community[i] = Community[p.community];
     t.conifer[i] = p.form === 'tree' && p.leafHabit === 'evergreen' ? 1 : 0;
     SOILS.forEach((s, k) => (t.soil[i * SOILS.length + k] = p.soilPreference?.[s.id] ?? 0.6));
   });

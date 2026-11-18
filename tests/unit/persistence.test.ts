@@ -5,7 +5,7 @@ import { TICKS_PER_HOUR } from '../../src/shared/time';
 import { MemoryStorage } from '../../src/platform/storage/memory';
 import { SectionReader, SectionWriter, crc32 } from '../../src/sim/persistence/binary';
 import { WorldStore } from '../../src/worker/worldStore';
-import { simulation } from '../support/worlds';
+import { preparedSimulation, simulation } from '../support/worlds';
 
 const meta = { id: 'wtest', createdAt: '2026-11-16T00:00:00.000Z' };
 
@@ -136,7 +136,7 @@ describe('Совместимость и растения', () => {
 
   it('растения, опад и запас питания переживают сохранение и загрузку побитно', async () => {
     const store = new WorldStore(new MemoryStorage());
-    const sim = simulation({ seed: 42 });
+    const sim = preparedSimulation({ seed: 42 });
     const w = sim.world.flora.woody;
     expect(w.count).toBeGreaterThan(0);
     // Освободим слот в середине, чтобы проверить и стек свободных слотов.

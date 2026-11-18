@@ -8,7 +8,7 @@ import { cellTemperature, chunkSample, timeContext } from '../../src/sim/env/cli
 import { WaterKind } from '../../src/sim/worldgen/geo';
 import { buildSurface, cellInfo, chunkTemperatures, layerImage } from '../../src/sim/view/views';
 import { LAYERS } from '../../src/shared/protocol';
-import { simulation } from '../support/worlds';
+import { preparedSimulation, simulation } from '../support/worlds';
 
 interface SeasonSample {
   temp: number;
@@ -43,12 +43,14 @@ function storage(sim: Simulation): number {
   return s;
 }
 
-/** Прогон года с выборкой в середине каждого сезона (полдень). */
+/** Прогон текущего года мира с выборкой в середине каждого сезона (полдень). */
 function runYear(sim: Simulation): SeasonSample[] {
   const days = sim.world.config.daysPerSeason;
+  const yearTicks = hoursPerYear(days) * TICKS_PER_HOUR;
+  const base = Math.floor(sim.world.tick / yearTicks) * yearTicks;
   const out: SeasonSample[] = [];
   for (let season = 0; season < 4; season++) {
-    const target = Math.floor((season * days + days / 2) * TICKS_PER_DAY) + 12 * TICKS_PER_HOUR;
+    const target = base + Math.floor((season * days + days / 2) * TICKS_PER_DAY) + 12 * TICKS_PER_HOUR;
     while (sim.world.tick < target) sim.step();
     out.push(sample(sim));
   }
@@ -56,14 +58,20 @@ function runYear(sim: Simulation): SeasonSample[] {
 }
 
 describe('Сезоны, погода и вода (малый мир, умеренный климат, сезон 5 суток)', () => {
-  const sim = simulation({ seed: 42 });
+  // Мир с растительностью (Wildlands, подготовка 1 год): покров меняется по сезонам.
+  const sim = preparedSimulation({ seed: 42 });
   const initialStorage = storage(sim);
+  // Суммы потоков — за год наблюдения (подготовка мира уже накопила свои).
+  const totals0 = Float64Array.from(sim.world.env.waterTotals);
+  const capillary0 = sim.world.flora.capillary[0]!;
+  const yearStart = Math.floor(sim.world.tick / (hoursPerYear(sim.world.config.daysPerSeason) * TICKS_PER_HOUR));
   const seasons = runYear(sim);
   const [spring, summer, autumn, winter] = seasons as [SeasonSample, SeasonSample, SeasonSample, SeasonSample];
   // Дойти до конца года для годовых сумм.
   const yearTicks = hoursPerYear(sim.world.config.daysPerSeason) * TICKS_PER_HOUR;
-  while (sim.world.tick < yearTicks) sim.step();
-  const totals = sim.world.env.waterTotals;
+  while (sim.world.tick < (yearStart + 1) * yearTicks) sim.step();
+  const totals = sim.world.env.waterTotals.map((v, k) => v - totals0[k]!);
+  const capillary = sim.world.flora.capillary[0]! - capillary0;
   const landCells = sim.world.derived.landCells;
 
   it('лето теплее зимы, весна и осень между ними', () => {
@@ -92,7 +100,7 @@ describe('Сезоны, погода и вода (малый мир, умере�
   it('баланс воды сходится: изменение запасов = осадки + подпитка у воды − испарение − сток', () => {
     const delta = storage(sim) - initialStorage;
     // Подпитка почвы из рек и озёр (фаза 3) — приход в баланс почвенной влаги.
-    const budget = totals[0]! - totals[1]! - totals[3]! + sim.world.flora.capillary[0]!;
+    const budget = totals[0]! - totals[1]! - totals[3]! + capillary;
     expect(Math.abs(delta - budget) / totals[0]!).toBeLessThan(1e-4);
     // Весь сток по дереву стока доходит до моря (маршрутизация без потерь).
     expect(Math.abs(totals[2]! - totals[3]!) / totals[3]!).toBeLessThan(1e-4);
