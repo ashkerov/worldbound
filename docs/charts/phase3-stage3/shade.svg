@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 360" width="820" height="360" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+<rect width="820" height="360" fill="#fbfaf6"/>
+<text x="64" y="24" font-size="15" font-weight="600" fill="#2a2a2a">Опыт C — конкуренция за свет (пунктир — открытый участок)</text>
+<line x1="64" x2="600" y1="312" y2="312" stroke="#e3e0d6"/>
+<text x="58" y="316" text-anchor="end" fill="#666">0</text>
+<line x1="64" x2="600" y1="221.33333333333334" y2="221.33333333333334" stroke="#e3e0d6"/>
+<text x="58" y="225.33333333333334" text-anchor="end" fill="#666">100</text>
+<line x1="64" x2="600" y1="130.66666666666669" y2="130.66666666666669" stroke="#e3e0d6"/>
+<text x="58" y="134.66666666666669" text-anchor="end" fill="#666">200</text>
+<line x1="64" x2="600" y1="40" y2="40" stroke="#e3e0d6"/>
+<text x="58" y="44" text-anchor="end" fill="#666">300</text>
+<text x="176.8421052631579" y="328" text-anchor="middle" fill="#666">10</text>
+<text x="317.89473684210526" y="328" text-anchor="middle" fill="#666">20</text>
+<text x="458.9473684210526" y="328" text-anchor="middle" fill="#666">30</text>
+<text x="600" y="328" text-anchor="middle" fill="#666">40</text>
+<line x1="64" x2="600" y1="312" y2="312" stroke="#999"/>
+<text x="332" y="350" text-anchor="middle" fill="#444">игровые годы</text>
+<text x="16" y="176" text-anchor="middle" fill="#444" transform="rotate(-90 16 176)">г/м²</text>
+<path d="M64.0,89.9 L106.3,94.3 L176.8,73.0 L247.4,96.1 L317.9,59.2 L458.9,104.0 L600.0,104.2" fill="none" stroke="#3b7d3a" stroke-width="2" stroke-dasharray="6 4"/>
+<line x1="614" x2="634" y1="50" y2="50" stroke="#3b7d3a" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="640" y="54" fill="#333">мятлик — открыто</text>
+<path d="M64.0,275.8 L106.3,290.0 L176.8,301.4 L247.4,306.0 L317.9,308.9 L458.9,311.0 L600.0,311.6" fill="none" stroke="#9a4fa0" stroke-width="2" stroke-dasharray="6 4"/>
+<line x1="614" x2="634" y1="68" y2="68" stroke="#9a4fa0" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="640" y="72" fill="#333">черника + мох — открыто</text>
+<path d="M64.0,278.5 L106.3,295.5 L176.8,286.2 L247.4,278.5 L317.9,272.6 L458.9,279.3 L600.0,285.0" fill="none" stroke="#3b7d3a" stroke-width="2"/>
+<line x1="614" x2="634" y1="86" y2="86" stroke="#3b7d3a" stroke-width="2"/>
+<text x="640" y="90" fill="#333">мятлик — под пологом</text>
+<path d="M64.0,265.9 L106.3,221.6 L176.8,186.2 L247.4,183.3 L317.9,183.3 L458.9,205.8 L600.0,239.9" fill="none" stroke="#9a4fa0" stroke-width="2"/>
+<line x1="614" x2="634" y1="104" y2="104" stroke="#9a4fa0" stroke-width="2"/>
+<text x="640" y="108" fill="#333">черника + мох — под пологом</text>
+</svg>

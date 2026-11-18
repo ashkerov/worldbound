@@ -1,0 +1,47 @@
+{
+  "seed": 42,
+  "size": "M",
+  "generationMs": 1564,
+  "geoHash": "40debae61cc997b3",
+  "ticks": 288000,
+  "agents": 0,
+  "gameDays": 40,
+  "totalMs": 34880.1,
+  "msPerTick": 0.1211,
+  "woodyPlants": 4496,
+  "heapMb": 12,
+  "rssMb": 159,
+  "stateHash": "d05c5f9fdb93f89d",
+  "systems": [
+    {
+      "name": "env.weather",
+      "runs": 5760,
+      "avgMs": 0.1712,
+      "maxMs": 2.959
+    },
+    {
+      "name": "env.water",
+      "runs": 960,
+      "avgMs": 28.9461,
+      "maxMs": 41.342
+    },
+    {
+      "name": "flora.day",
+      "runs": 960,
+      "avgMs": 6.2427,
+      "maxMs": 28.931
+    },
+    {
+      "name": "testAgents.decide",
+      "runs": 288000,
+      "avgMs": 0.0001,
+      "maxMs": 0.541
+    },
+    {
+      "name": "testAgents.move",
+      "runs": 288000,
+      "avgMs": 0.0001,
+      "maxMs": 0.091
+    }
+  ]
+}

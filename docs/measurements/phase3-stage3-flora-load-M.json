@@ -1,0 +1,28 @@
+{
+  "treesAtStart": 300000,
+  "treesAtEnd": 331221,
+  "gameDays": 12,
+  "totalMs": 13065,
+  "msPerGameDay": 1089,
+  "rssMb": 174,
+  "systems": [
+    {
+      "name": "env.weather",
+      "runs": 1728,
+      "avgMs": 0.19,
+      "maxMs": 2.1
+    },
+    {
+      "name": "env.water",
+      "runs": 288,
+      "avgMs": 27.34,
+      "maxMs": 44
+    },
+    {
+      "name": "flora.day",
+      "runs": 1728,
+      "avgMs": 2.79,
+      "maxMs": 52.3
+    }
+  ]
+}
