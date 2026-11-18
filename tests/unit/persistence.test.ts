@@ -150,3 +150,57 @@ describe('Совместимость и растения', () => {
     expect(loaded.world.flora.woody.freeSlots()).toEqual(w.freeSlots());
   }, 60_000);
 });
+
+describe('Миграция секции flora схемы 1 → 2', () => {
+  // Раскладки схемы 1, записанные сборками этапов 1–2 фазы 3 (824aa8f — без суточных средних и полога; 8a3be81 — с ними).
+  async function floraSchema1(full: boolean) {
+    const { SectionWriter } = await import('../../src/sim/persistence/binary');
+    const sim = simulation({ seed: 42 });
+    for (let t = 0; t < 300; t++) sim.step();
+    const f = sim.world.flora;
+    const w = f.woody;
+    const wh = w.highWater;
+    const writer = new SectionWriter()
+      .f64(f.lastSliceHour)
+      .array(f.slotSpecies)
+      .array(f.slotBiomass)
+      .array(f.litterFast)
+      .array(f.litterFastN)
+      .array(f.litterWood)
+      .array(f.litterWoodN)
+      .array(f.nutrient)
+      .array(f.accT)
+      .array(f.accW)
+      .array(f.accRunoff)
+      .array(f.accMinT)
+      .array(f.accHours);
+    if (full) writer.array(f.dayT).array(f.dayW).array(f.capillary).array(f.canopy).array(f.treeCover).array(f.shrubCover).array(f.coniferCover);
+    writer.array(f.ledger).f64(wh).f64(w.count).array(w.freeSlots());
+    for (const col of [w.x, w.z, w.species, w.age, w.biomass, w.leaf, w.health, w.stage, w.stressW, w.stressL, w.alive, w.generation]) writer.array(col.subarray(0, wh));
+    return { sim, bytes: writer.finish('flora', 1) };
+  }
+
+  for (const full of [false, true]) {
+    it(`раскладка ${full ? '8a3be81' : '824aa8f'}: растения и опад переносятся, банк семян пуст, опад — среднего качества`, async () => {
+      const { serializeWorld, applySections } = await import('../../src/sim/persistence/worldState');
+      const { sim, bytes } = await floraSchema1(full);
+      const sections = { ...serializeWorld(sim.world), flora: bytes };
+      const target = simulation({ seed: 42, scenario: 'genesis' });
+      const migrations = applySections(target.world, sections);
+      expect(migrations).toEqual(['flora:schema1']);
+      const a = sim.world.flora;
+      const b = target.world.flora;
+      expect(Array.from(b.slotBiomass)).toEqual(Array.from(a.slotBiomass));
+      expect(b.woody.count).toBe(a.woody.count);
+      expect(Array.from(b.woody.biomass.subarray(0, a.woody.highWater))).toEqual(Array.from(a.woody.biomass.subarray(0, a.woody.highWater)));
+      expect(Array.from(b.litterFastQ)).toEqual(Array.from(b.litterFast));
+      expect(b.seedBank.every((v) => v === 0)).toBe(true);
+      // Счётчики древесных по ячейкам пересчитаны по растениям.
+      let counted = 0;
+      for (let i = 0; i < b.woodyCount.length; i++) counted += b.woodyCount[i]!;
+      expect(counted).toBe(b.woody.count);
+      // Мир после миграции идёт дальше без ошибок.
+      for (let t = 0; t < 600; t++) target.step();
+    });
+  }
+});

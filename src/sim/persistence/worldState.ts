@@ -11,7 +11,8 @@ export const SECTION_SCHEMAS = {
   core: 1,
   env: 1,
   agents: 1,
-  flora: 1,
+  /** 2 — этап 3 фазы 3: банк семян трав, качество опада, число древесных в ячейке. */
+  flora: 2,
 } as const;
 export type SectionId = keyof typeof SECTION_SCHEMAS;
 /** Без этих секций мир не загружается; остальные при отсутствии восстанавливаются миграцией. */
@@ -57,6 +58,7 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
     .array(f.slotBiomass)
     .array(f.litterFast)
     .array(f.litterFastN)
+    .array(f.litterFastQ)
     .array(f.litterWood)
     .array(f.litterWoodN)
     .array(f.nutrient)
@@ -72,6 +74,8 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
     .array(f.treeCover)
     .array(f.shrubCover)
     .array(f.coniferCover)
+    .array(f.seedBank)
+    .array(f.woodyCount)
     .array(f.ledger)
     .f64(wh)
     .f64(w.count)
@@ -93,7 +97,7 @@ export function serializeWorld(world: World): Record<SectionId, Uint8Array> {
 }
 
 /** Что пришлось восстановить миграцией при загрузке. */
-export type Migration = 'agents:absent' | 'flora:from-greenness';
+export type Migration = 'agents:absent' | 'flora:from-greenness' | 'flora:schema1';
 
 const SPEEDS = [0, 1, 2, 4, 8];
 
@@ -132,8 +136,9 @@ export function applySections(world: World, sections: Partial<Record<SectionId, 
   if (!sections.agents) migrations.push('agents:absent');
   else readAgents(world, sections.agents);
 
-  if (sections.flora) readFlora(world, sections.flora);
-  else {
+  if (sections.flora) {
+    if (readFlora(world, sections.flora)) migrations.push('flora:schema1');
+  } else {
     // Сохранение фазы 2: растений не было — травяной ярус восстанавливается из сохранённого индекса зелени.
     populateFromGreenness(world);
     refreshCover(world, false);
@@ -161,15 +166,39 @@ function readAgents(world: World, bytes: Uint8Array): void {
   a.restore(hw, count, free);
 }
 
-function readFlora(world: World, bytes: Uint8Array): void {
-  const r = new SectionReader(bytes, 'flora');
-  if (r.header.schema !== SECTION_SCHEMAS.flora) throw new Error(`Секция flora: неизвестная версия схемы ${r.header.schema}`);
+/**
+ * Читает секцию flora. Схема 2 — текущая. Схема 1 существовала в двух раскладках (сборки 824aa8f и 8a3be81
+ * этапов 1–2 фазы 3): без суточных средних и полога и с ними; распознаются обе. Возвращает true, если была миграция.
+ */
+function readFlora(world: World, bytes: Uint8Array): boolean {
+  const probe = new SectionReader(bytes, 'flora');
+  const schema = probe.header.schema;
+  if (schema === 2) {
+    readFloraLayout(world, new SectionReader(bytes, 'flora'), 'v2');
+    return false;
+  }
+  if (schema !== 1) throw new Error(`Секция flora: неизвестная версия схемы ${schema}`);
+  try {
+    readFloraLayout(world, new SectionReader(bytes, 'flora'), 'v1b');
+  } catch {
+    readFloraLayout(world, new SectionReader(bytes, 'flora'), 'v1a');
+  }
+  // Миграция схемы 1: опад считается опадом среднего качества, банк семян пуст (его не было), полог и счётчики — по растениям.
+  const f = world.flora;
+  for (let i = 0; i < f.litterFast.length; i++) f.litterFastQ[i] = f.litterFast[i]!;
+  f.seedBank.fill(0);
+  refreshCover(world, false);
+  return true;
+}
+
+function readFloraLayout(world: World, r: SectionReader, layout: 'v1a' | 'v1b' | 'v2'): void {
   const f = world.flora;
   f.lastSliceHour = r.f64();
   r.into(f.slotSpecies);
   r.into(f.slotBiomass);
   r.into(f.litterFast);
   r.into(f.litterFastN);
+  if (layout === 'v2') r.into(f.litterFastQ);
   r.into(f.litterWood);
   r.into(f.litterWoodN);
   r.into(f.nutrient);
@@ -178,13 +207,19 @@ function readFlora(world: World, bytes: Uint8Array): void {
   r.into(f.accRunoff);
   r.into(f.accMinT);
   r.into(f.accHours);
-  r.into(f.dayT);
-  r.into(f.dayW);
-  r.into(f.capillary);
-  r.into(f.canopy);
-  r.into(f.treeCover);
-  r.into(f.shrubCover);
-  r.into(f.coniferCover);
+  if (layout !== 'v1a') {
+    r.into(f.dayT);
+    r.into(f.dayW);
+    r.into(f.capillary);
+    r.into(f.canopy);
+    r.into(f.treeCover);
+    r.into(f.shrubCover);
+    r.into(f.coniferCover);
+  }
+  if (layout === 'v2') {
+    r.into(f.seedBank);
+    r.into(f.woodyCount);
+  }
   r.into(f.ledger);
   const w = f.woody;
   const wh = r.f64();
@@ -203,6 +238,7 @@ function readFlora(world: World, bytes: Uint8Array): void {
   r.into(w.stressL.subarray(0, wh));
   r.into(w.alive.subarray(0, wh));
   r.into(w.generation.subarray(0, wh));
+  r.end();
   w.restore(wh, count, free);
   for (let i = 0; i < wh; i++) w.cell[i] = cellAt(world, w.x[i]!, w.z[i]!);
 }

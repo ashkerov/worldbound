@@ -76,7 +76,7 @@ describe('Рост дерева по аллометрии и сезонност�
     const sim = plotSimulation(WET, { scenario: 'genesis' });
     const w = sim.world.flora.woody;
     const birch = speciesIndex('birch');
-    const id = w.spawn(birch, 128, 128, 16 * 32 + 16, 0.05, 1);
+    const id = w.spawn(birch, 128, 128, 16 * 32 + 16, 0.5, 2);
     midsummerOf(sim, 1);
     expect(w.leaf[id]).toBeGreaterThan(0.9);
     const summer = w.biomass[id]!;
@@ -92,7 +92,7 @@ describe('Рост дерева по аллометрии и сезонност�
   it('вечнозелёная сосна остаётся с хвоей зимой', () => {
     const sim = plotSimulation(DRY, { scenario: 'genesis' });
     const w = sim.world.flora.woody;
-    const id = w.spawn(speciesIndex('pine'), 128, 128, 16 * 32 + 16, 0.05, 1);
+    const id = w.spawn(speciesIndex('pine'), 128, 128, 16 * 32 + 16, 0.5, 2);
     runDays(sim, 15);
     expect(w.leaf[id]).toBe(1);
   });

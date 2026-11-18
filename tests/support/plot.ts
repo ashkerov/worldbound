@@ -16,6 +16,8 @@ export interface PlotOptions {
   fertility?: number;
   /** Столбцы ячеек, занятые рекой (вода у западного края). */
   riverColumns?: number;
+  /** Другие условия в восточной половине участка (x ≥ n/2): для опытов с границей пригодности. */
+  east?: { soil?: keyof typeof SOIL; precip?: number; fertility?: number };
 }
 
 export function plotGeo(o: PlotOptions = {}): Geo {
@@ -33,6 +35,19 @@ export function plotGeo(o: PlotOptions = {}): Geo {
     }
   }
   const height = new Float32Array(count).fill(50);
+  const soil = new Uint8Array(count).fill(SOIL[o.soil ?? 'loam']);
+  const precip = new Float32Array(count).fill(o.precip ?? 800);
+  const fertility = new Float32Array(count).fill(o.fertility ?? 0.75);
+  if (o.east) {
+    for (let z = 0; z < n; z++) {
+      for (let x = n >> 1; x < n; x++) {
+        const i = z * n + x;
+        if (o.east.soil) soil[i] = SOIL[o.east.soil];
+        if (o.east.precip !== undefined) precip[i] = o.east.precip;
+        if (o.east.fertility !== undefined) fertility[i] = o.east.fertility;
+      }
+    }
+  }
   const samples = (n * cs) / 2 + 1;
   return {
     n,
@@ -51,9 +66,9 @@ export function plotGeo(o: PlotOptions = {}): Geo {
     lakes: [],
     tMean: new Float32Array(count).fill(o.tMean ?? 9),
     tAmp: new Float32Array(count).fill(o.tAmp ?? 10),
-    precip: new Float32Array(count).fill(o.precip ?? 800),
-    soil: new Uint8Array(count).fill(SOIL[o.soil ?? 'loam']),
-    fertility: new Float32Array(count).fill(o.fertility ?? 0.75),
+    precip,
+    soil,
+    fertility,
     deposit: new Uint8Array(count),
     depositRichness: new Uint8Array(count),
     province: new Uint16Array(count).fill(1),

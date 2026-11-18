@@ -89,9 +89,10 @@ export const waterSystem: System<World> = {
         m += add;
         capillary += add;
       }
-      // Испарение и транспирация: растут с температурой, светом и растительным покровом; под снегом почти нет.
+      // Испарение и транспирация: растут с температурой, светом и растительным покровом (голая почва — половина
+      // потенциального испарения); под снегом почти нет.
       const cover = env.greenness[i]!;
-      const pet = t > -4 ? (t + 4) * PET_PER_DEGREE * compression * (0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y)) * (1 - 0.5 * cloud) * (0.3 + 0.7 * (cover > 1 ? 1 : cover)) : 0;
+      const pet = t > -4 ? (t + 4) * PET_PER_DEGREE * compression * (0.35 + 0.65 * smoothstep(-0.05, 0.5, ctx.sun.y)) * (1 - 0.5 * cloud) * (0.5 + 0.5 * (cover > 1 ? 1 : cover)) : 0;
       const et = Math.min(m, pet * (m / cap) * (snow > 5 ? 0.2 : 1));
       m -= et;
       const drain = d.drainHour[i]! * m * (m / cap);

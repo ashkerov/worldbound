@@ -44,6 +44,9 @@ export interface PlantSpecies {
   nutrientContent: number;
   /** Древесные: доля листвы в биомассе. */
   leafFraction?: number;
+  /** Древесные: доля света, проходящая сквозь сомкнутую крону (ель ≈ 0,07, берёза ≈ 0,35). */
+  canopyTransmission?: number;
+  /** Древесные: возраст репродуктивной зрелости (начало плодоношения), лет — не время достижения предельного размера. */
   maturityYears?: number;
   lifespanYears?: number;
   /** Травы — оборот биомассы за год; древесные — фоновая смертность за год. */
@@ -55,8 +58,10 @@ export interface PlantSpecies {
   dispersal?: { mean: number; max: number };
   /** Вероятность приживания при подходящих условиях. */
   establishment: number;
-  /** Травы: доля биомассы, уходящая за год в соседние ячейки (расселение). */
-  spreadRate?: number;
+  /** Травы: доля биомассы, вкладываемая в семена за год. */
+  seedAllocation?: number;
+  /** Травы: средний срок жизни семян в почвенном банке, лет. */
+  seedBankYears?: number;
   /** Фиксация элемента питания при полном развитии, г/м² за год. */
   fixesNutrient?: number;
   /** Скорость разложения опада относительно средней. */
@@ -99,6 +104,7 @@ export const PLANTS_SCHEMA: CatalogSchema = {
     maxCrownRadius: { kind: 'number', min: 0.2, max: 20, optional: true },
     nutrientContent: { kind: 'number', min: 0.001, max: 0.06 },
     leafFraction: { kind: 'number', min: 0.01, max: 0.5, optional: true },
+    canopyTransmission: { kind: 'number', min: 0.01, max: 0.9, optional: true },
     maturityYears: { kind: 'number', min: 1, max: 200, optional: true },
     lifespanYears: { kind: 'number', min: 2, max: 2000, optional: true },
     baseMortality: { kind: 'number', min: 0, max: 5 },
@@ -111,7 +117,8 @@ export const PLANTS_SCHEMA: CatalogSchema = {
       check: ordered('mean', 'max'),
     },
     establishment: { kind: 'number', min: 0, max: 1 },
-    spreadRate: { kind: 'number', min: 0, max: 20, optional: true },
+    seedAllocation: { kind: 'number', min: 0, max: 0.8, optional: true },
+    seedBankYears: { kind: 'number', min: 0.1, max: 50, optional: true },
     fixesNutrient: { kind: 'number', min: 0, max: 20, optional: true },
     litterQuality: { kind: 'number', min: 0.05, max: 5 },
     colonistWeight: { kind: 'number', min: 0, max: 1 },
@@ -119,7 +126,7 @@ export const PLANTS_SCHEMA: CatalogSchema = {
   },
   check: (e) => {
     const woody = e.form !== 'herb';
-    const needed = woody ? ['halfBiomass', 'maxHeight', 'maxCrownRadius', 'leafFraction', 'maturityYears', 'lifespanYears', 'fecundity', 'dispersal'] : ['spreadRate'];
+    const needed = woody ? ['halfBiomass', 'maxHeight', 'maxCrownRadius', 'leafFraction', 'maturityYears', 'lifespanYears', 'fecundity', 'dispersal', 'canopyTransmission'] : ['seedAllocation', 'seedBankYears', 'dispersal'];
     for (const key of needed) if (e[key] === undefined) return `для формы «${String(e.form)}» обязательно поле ${key}`;
     if (woody && e.leafHabit === 'annualDieback') return 'древесные не отмирают до корня на зиму: leafHabit должен быть deciduous или evergreen';
     if (woody && (e.maturityYears as number) >= (e.lifespanYears as number)) return 'зрелость должна наступать раньше конца жизни';
@@ -162,6 +169,7 @@ export interface SpeciesTable {
   maxCrown: Float64Array;
   nutrient: Float64Array;
   leafFraction: Float64Array;
+  transmission: Float64Array;
   maturityYears: Float64Array;
   lifespanYears: Float64Array;
   mortality: Float64Array;
@@ -170,7 +178,12 @@ export interface SpeciesTable {
   dispersalMean: Float64Array;
   dispersalMax: Float64Array;
   establishment: Float64Array;
-  spread: Float64Array;
+  seedAlloc: Float64Array;
+  seedBankYears: Float64Array;
+  /** Индекс вида в банке семян трав (−1 — не трава). */
+  herbSlot: Int16Array;
+  /** Виды травяного яруса по порядку каталога — порядок банков семян. */
+  herbs: number[];
   fixes: Float64Array;
   litterQuality: Float64Array;
   colonist: Float64Array;
@@ -206,6 +219,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     maxCrown: f(),
     nutrient: f(),
     leafFraction: f(),
+    transmission: f(),
     maturityYears: f(),
     lifespanYears: f(),
     mortality: f(),
@@ -214,7 +228,10 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     dispersalMean: f(),
     dispersalMax: f(),
     establishment: f(),
-    spread: f(),
+    seedAlloc: f(),
+    seedBankYears: f(),
+    herbSlot: new Int16Array(n).fill(-1),
+    herbs: [],
     fixes: f(),
     litterQuality: f(),
     colonist: f(),
@@ -235,7 +252,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     t.wOptMin[i] = p.moisture.optMin;
     t.wOptMax[i] = p.moisture.optMax;
     t.wMax[i] = p.moisture.max;
-    t.lightNeed[i] = 1 - 0.85 * p.shadeTolerance;
+    t.lightNeed[i] = 1 - 0.92 * p.shadeTolerance;
     t.nutrientHalf[i] = 0.2 + 1.2 * p.nutrientDemand;
     t.growth[i] = p.growthRate;
     t.maxBiomass[i] = p.maxBiomass;
@@ -244,6 +261,7 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     t.maxCrown[i] = p.maxCrownRadius ?? 0;
     t.nutrient[i] = p.nutrientContent;
     t.leafFraction[i] = p.leafFraction ?? 0;
+    t.transmission[i] = p.canopyTransmission ?? 1;
     t.maturityYears[i] = p.maturityYears ?? 0;
     t.lifespanYears[i] = p.lifespanYears ?? 0;
     t.mortality[i] = p.baseMortality;
@@ -252,7 +270,12 @@ export function speciesTable(plants: readonly PlantSpecies[]): SpeciesTable {
     t.dispersalMean[i] = p.dispersal?.mean ?? 0;
     t.dispersalMax[i] = p.dispersal?.max ?? 0;
     t.establishment[i] = p.establishment;
-    t.spread[i] = p.spreadRate ?? 0;
+    t.seedAlloc[i] = p.seedAllocation ?? 0;
+    t.seedBankYears[i] = p.seedBankYears ?? 1;
+    if (p.form === 'herb') {
+      t.herbSlot[i] = t.herbs.length;
+      t.herbs.push(i);
+    }
     t.fixes[i] = p.fixesNutrient ?? 0;
     t.litterQuality[i] = p.litterQuality;
     t.colonist[i] = p.colonistWeight;

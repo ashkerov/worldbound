@@ -47,6 +47,8 @@ function setHerbs(world: World, cell: number, picks: { s: number; suit: number }
     if (b < 1) return;
     f.slotSpecies[cell * SLOTS + k] = p.s;
     f.slotBiomass[cell * SLOTS + k] = b;
+    // Сложившийся травостой имеет и почвенный банк своих семян.
+    f.seedBank[SPECIES.herbSlot[p.s]! * world.geo.n * world.geo.n + cell] = 0.02 * b;
   });
 }
 
@@ -97,6 +99,7 @@ export function populateWild(world: World): void {
     const z = (Math.floor(i / geo.n) + counterRandom(world.seed, SYS_POPULATE, i, 3)) * geo.cellSize;
     const age = 1 + 5 * counterRandom(world.seed, SYS_POPULATE, i, 4);
     f.woody.spawn(s, x, z, i, 0.02 + 0.3 * age * age * 0.05, age);
+    f.woodyCount[i] = f.woodyCount[i]! + 1;
   }
   finish(world);
 }

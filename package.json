@@ -25,7 +25,10 @@
     "verify": "npm run typecheck && npm run lint && npm run check:boundaries && npm run check:assets && npm run check:content && npm run test",
     "build:bench": "npm run typecheck && vite build --mode bench",
     "worldgen": "tsx tools/worldgen-preview.ts",
-    "check:content": "tsx tools/check-content.ts"
+    "check:content": "tsx tools/check-content.ts",
+    "flora:experiments": "tsx tools/flora-experiments.ts",
+    "flora:load": "tsx tools/flora-load.ts",
+    "flora:charts": "tsx tools/flora-charts.ts"
   },
   "dependencies": {
     "react": "19.3.1",

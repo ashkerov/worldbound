@@ -24,7 +24,7 @@ export const Ledger = {
   creator: 3,
   /** Принесено семенами колонистов извне. */
   external: 4,
-  /** Унесено семенами за границу мира. */
+  /** Унесено семенами за пределы суши мира (за границу или в воду). */
   exported: 5,
   /** Сухое вещество: прирост фотосинтезом. */
   photosynthesis: 6,
@@ -44,6 +44,8 @@ export interface FloraState {
   /** Опад листьев и трав, г/м², и элемент питания в нём, г/м². */
   readonly litterFast: Float32Array;
   readonly litterFastN: Float32Array;
+  /** Σ (масса × качество опада вида) быстрого опада, г/м²: средняя скорость разложения = Q / масса. */
+  readonly litterFastQ: Float32Array;
   /** Опад древесины, г/м², и элемент питания в нём. */
   readonly litterWood: Float32Array;
   readonly litterWoodN: Float32Array;
@@ -61,6 +63,10 @@ export interface FloraState {
   /** Вода, поднятая в почву из рек и озёр капиллярной подпиткой, мм·ячейка (учёт баланса воды). */
   readonly capillary: Float64Array;
   readonly woody: WoodyStore;
+  /** Почвенный банк семян трав: [вид травы × ячейка], г семян на м². Порядок видов — SPECIES.herbs. */
+  readonly seedBank: Float32Array;
+  /** Число живых древесных в ячейке (ограничение места для всходов). */
+  readonly woodyCount: Uint8Array;
   /** Полог: покрытие кронами по ярусам, деревьями, кустарниками, хвойными. Пересчитывается в начале суток и сохраняется (между пересчётами растения растут). */
   readonly canopy: Float32Array;
   readonly treeCover: Float32Array;
@@ -72,7 +78,8 @@ export interface FloraState {
 }
 
 export function woodyCapacity(geo: Geo): number {
-  return Math.min(1_000_000, Math.ceil(geo.n * geo.n * 2.3));
+  // До 4 растений на ячейку 8 × 8 м — плотность густого леса; предел — адресуемость идентификатора.
+  return Math.min(1 << 20, geo.n * geo.n * 4);
 }
 
 /** Начальный запас доступного элемента питания по плодородию почвы, г/м². */
@@ -92,6 +99,7 @@ export function createFlora(geo: Geo): FloraState {
     slotBiomass: new Float32Array(count * SLOTS),
     litterFast: new Float32Array(count),
     litterFastN: new Float32Array(count),
+    litterFastQ: new Float32Array(count),
     litterWood: new Float32Array(count),
     litterWoodN: new Float32Array(count),
     nutrient,
@@ -104,6 +112,8 @@ export function createFlora(geo: Geo): FloraState {
     dayW: new Float32Array(count),
     capillary: new Float64Array(1),
     woody: new WoodyStore(woodyCapacity(geo)),
+    seedBank: new Float32Array(SPECIES.herbs.length * count),
+    woodyCount: new Uint8Array(count),
     canopy: new Float32Array(count * CANOPY_LAYERS),
     treeCover: new Float32Array(count),
     shrubCover: new Float32Array(count),
@@ -120,6 +130,10 @@ export function nutrientStock(flora: FloraState, geo: Geo): number {
   let cells = 0;
   for (let i = 0; i < count; i++) cells += flora.nutrient[i]! + flora.litterFastN[i]! + flora.litterWoodN[i]!;
   let herbs = 0;
+  for (let h = 0; h < SPECIES.herbs.length; h++) {
+    const c = SPECIES.nutrient[SPECIES.herbs[h]!]!;
+    for (let i = 0; i < count; i++) herbs += flora.seedBank[h * count + i]! * c;
+  }
   for (let k = 0; k < count * SLOTS; k++) {
     const s = flora.slotSpecies[k]!;
     if (s !== NO_SPECIES) herbs += flora.slotBiomass[k]! * SPECIES.nutrient[s]!;

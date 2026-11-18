@@ -1,6 +1,17 @@
 {
  "version": 1,
- "description": "Виды растений. [Предварительно] — состав видов не утверждён заказчиком (docs/PHASE3_PLAN.md, раздел 10). Порядок записей — числовой идентификатор вида в сохранениях: новые виды добавляются только в конец. Температура — среднесуточная, °C; влага — доля полевой влагоёмкости; темпы — за игровой год; биомасса трав — г/м², древесных — кг на растение.",
+ "description": "Виды растений. Состав из 18 видов принят заказчиком 2026-11-16 как предварительный; характеристики уточняются экспериментами (docs/PHASE3_PLAN.md, раздел 10). Порядок записей — числовой идентификатор вида в сохранениях: новые виды добавляются только в конец, порядок не меняется. Температура — среднесуточная, °C; влага — доля полевой влагоёмкости; темпы — за игровой год; биомасса трав — г/м², древесных — кг на растение. maturityYears — возраст репродуктивной зрелости (начало плодоношения), а не время достижения предельного размера.",
+ "calibration": {
+  "status": "Экспериментальная балансировка этапа 3 фазы 3 (2026-11-16). Состав и порядок видов утверждены заказчиком; перечисленные здесь числа — результат опытов исполнителя и не утверждены. Подробности — docs/PHASE3_PLAN.md, раздел 12.",
+  "fields": {
+   "growthRate": "Древесные: калибровка по высоте одиночного растения в 20 лет на хорошем участке (tools/flora-experiments.ts); у каждого вида свой множитель 0,71–1,77, общего ускорения нет.",
+   "moisture": "Верхние границы оптимума у мезофитов подняты до 0,88–0,92 влагоёмкости (влажная почва — не заболоченная); нижние пороги древесных подняты по засухоустойчивости (сухой участок 260 мм остаётся степью).",
+   "seedAllocation, dispersal, seedBankYears, seedMass": "Травы: новые характеристики размножения этапа 3 (доля биомассы в семена 3–10 % за год, дальность, срок жизни семян в почве, масса семени).",
+   "canopyTransmission": "Древесные: новая характеристика — доля света под сомкнутой кроной (ель 0,07 … шиповник 0,4).",
+   "baseMortality (иван-чай)": "0,6 → 1,4: короткоживущие побеги первопроходца.",
+   "seedBankYears (иван-чай)": "1 год: семена иван-чая недолговечны."
+  }
+ },
  "plants": [
   {
    "id": "meadow-grass",
@@ -17,7 +28,7 @@
    "moisture": {
     "min": 0.2,
     "optMin": 0.4,
-    "optMax": 0.85,
+    "optMax": 0.9,
     "max": 1.05
    },
    "shadeTolerance": 0.25,
@@ -26,9 +37,8 @@
    "maxBiomass": 450,
    "nutrientContent": 0.015,
    "baseMortality": 0.6,
-   "spreadRate": 0.6,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.0003,
    "litterQuality": 1.0,
    "colonistWeight": 0.8,
    "soilPreference": {
@@ -38,7 +48,13 @@
     "sand": 0.5,
     "peat": 0.35,
     "rock": 0.15
-   }
+   },
+   "seedAllocation": 0.08,
+   "dispersal": {
+    "mean": 6,
+    "max": 30
+   },
+   "seedBankYears": 2
   },
   {
    "id": "feather-grass",
@@ -55,8 +71,8 @@
    "moisture": {
     "min": 0.06,
     "optMin": 0.14,
-    "optMax": 0.45,
-    "max": 0.8
+    "optMax": 0.55,
+    "max": 0.9
    },
    "shadeTolerance": 0.05,
    "nutrientDemand": 0.2,
@@ -64,9 +80,8 @@
    "maxBiomass": 300,
    "nutrientContent": 0.01,
    "baseMortality": 0.6,
-   "spreadRate": 0.4,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.003,
    "litterQuality": 1.0,
    "colonistWeight": 0.6,
    "soilPreference": {
@@ -74,7 +89,13 @@
     "loam": 0.8,
     "rock": 0.5,
     "peat": 0.1
-   }
+   },
+   "seedAllocation": 0.07,
+   "dispersal": {
+    "mean": 10,
+    "max": 60
+   },
+   "seedBankYears": 1
   },
   {
    "id": "sedge",
@@ -100,9 +121,8 @@
    "maxBiomass": 500,
    "nutrientContent": 0.014,
    "baseMortality": 0.6,
-   "spreadRate": 0.4,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.001,
    "litterQuality": 1.0,
    "colonistWeight": 0.6,
    "soilPreference": {
@@ -111,7 +131,13 @@
     "clay": 0.8,
     "sand": 0.3,
     "rock": 0.1
-   }
+   },
+   "seedAllocation": 0.05,
+   "dispersal": {
+    "mean": 5,
+    "max": 25
+   },
+   "seedBankYears": 3
   },
   {
    "id": "clover",
@@ -128,8 +154,8 @@
    "moisture": {
     "min": 0.25,
     "optMin": 0.45,
-    "optMax": 0.85,
-    "max": 1.0
+    "optMax": 0.9,
+    "max": 1.05
    },
    "shadeTolerance": 0.2,
    "nutrientDemand": 0.3,
@@ -137,9 +163,8 @@
    "maxBiomass": 300,
    "nutrientContent": 0.03,
    "baseMortality": 0.6,
-   "spreadRate": 0.5,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.0015,
    "litterQuality": 1.6,
    "colonistWeight": 0.5,
    "fixesNutrient": 1.5,
@@ -150,7 +175,13 @@
     "sand": 0.5,
     "peat": 0.35,
     "rock": 0.15
-   }
+   },
+   "seedAllocation": 0.08,
+   "dispersal": {
+    "mean": 4,
+    "max": 20
+   },
+   "seedBankYears": 5
   },
   {
    "id": "meadow-flowers",
@@ -167,8 +198,8 @@
    "moisture": {
     "min": 0.2,
     "optMin": 0.4,
-    "optMax": 0.8,
-    "max": 1.0
+    "optMax": 0.9,
+    "max": 1.05
    },
    "shadeTolerance": 0.2,
    "nutrientDemand": 0.5,
@@ -176,9 +207,8 @@
    "maxBiomass": 250,
    "nutrientContent": 0.016,
    "baseMortality": 0.6,
-   "spreadRate": 0.35,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.0003,
    "litterQuality": 1.3,
    "colonistWeight": 0.6,
    "soilPreference": {
@@ -188,7 +218,13 @@
     "sand": 0.5,
     "peat": 0.35,
     "rock": 0.15
-   }
+   },
+   "seedAllocation": 0.1,
+   "dispersal": {
+    "mean": 6,
+    "max": 30
+   },
+   "seedBankYears": 3
   },
   {
    "id": "fireweed",
@@ -205,18 +241,17 @@
    "moisture": {
     "min": 0.2,
     "optMin": 0.4,
-    "optMax": 0.85,
-    "max": 1.0
+    "optMax": 0.9,
+    "max": 1.05
    },
    "shadeTolerance": 0.1,
    "nutrientDemand": 0.6,
    "growthRate": 26,
    "maxBiomass": 400,
    "nutrientContent": 0.017,
-   "baseMortality": 0.6,
-   "spreadRate": 1.2,
+   "baseMortality": 1.4,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 5e-05,
    "litterQuality": 1.4,
    "colonistWeight": 1.0,
    "soilPreference": {
@@ -226,7 +261,13 @@
     "sand": 0.5,
     "peat": 0.35,
     "rock": 0.15
-   }
+   },
+   "seedAllocation": 0.08,
+   "dispersal": {
+    "mean": 60,
+    "max": 400
+   },
+   "seedBankYears": 1
   },
   {
    "id": "bilberry",
@@ -252,9 +293,8 @@
    "maxBiomass": 350,
    "nutrientContent": 0.012,
    "baseMortality": 0.25,
-   "spreadRate": 0.15,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 0.0004,
    "litterQuality": 0.6,
    "colonistWeight": 0.3,
    "soilPreference": {
@@ -264,7 +304,13 @@
     "clay": 0.3,
     "rock": 0.4,
     "alluvial": 0.3
-   }
+   },
+   "seedAllocation": 0.03,
+   "dispersal": {
+    "mean": 30,
+    "max": 200
+   },
+   "seedBankYears": 1
   },
   {
    "id": "moss",
@@ -290,9 +336,8 @@
    "maxBiomass": 250,
    "nutrientContent": 0.008,
    "baseMortality": 0.2,
-   "spreadRate": 0.2,
    "establishment": 0.5,
-   "seedMass": 0.0005,
+   "seedMass": 1e-05,
    "litterQuality": 0.4,
    "colonistWeight": 0.5,
    "soilPreference": {
@@ -302,7 +347,13 @@
     "loam": 0.35,
     "clay": 0.35,
     "alluvial": 0.3
-   }
+   },
+   "seedAllocation": 0.04,
+   "dispersal": {
+    "mean": 80,
+    "max": 500
+   },
+   "seedBankYears": 2
   },
   {
    "id": "hazel",
@@ -317,14 +368,14 @@
    },
    "frostKill": -35,
    "moisture": {
-    "min": 0.3,
+    "min": 0.33,
     "optMin": 0.5,
-    "optMax": 0.85,
-    "max": 1.0
+    "optMax": 0.9,
+    "max": 1.05
    },
    "shadeTolerance": 0.7,
    "nutrientDemand": 0.6,
-   "growthRate": 3.5,
+   "growthRate": 3.9,
    "maxBiomass": 120,
    "halfBiomass": 25,
    "maxHeight": 5,
@@ -342,7 +393,8 @@
    },
    "establishment": 0.25,
    "litterQuality": 1.0,
-   "colonistWeight": 0.4
+   "colonistWeight": 0.4,
+   "canopyTransmission": 0.15
   },
   {
    "id": "wild-rose",
@@ -357,10 +409,10 @@
    },
    "frostKill": -35,
    "moisture": {
-    "min": 0.12,
-    "optMin": 0.25,
-    "optMax": 0.65,
-    "max": 0.9
+    "min": 0.15,
+    "optMin": 0.28,
+    "optMax": 0.8,
+    "max": 1.0
    },
    "shadeTolerance": 0.2,
    "nutrientDemand": 0.3,
@@ -382,7 +434,8 @@
    },
    "establishment": 0.15,
    "litterQuality": 1.0,
-   "colonistWeight": 0.5
+   "colonistWeight": 0.5,
+   "canopyTransmission": 0.4
   },
   {
    "id": "willow-shrub",
@@ -404,7 +457,7 @@
    },
    "shadeTolerance": 0.25,
    "nutrientDemand": 0.4,
-   "growthRate": 4.5,
+   "growthRate": 5.6,
    "maxBiomass": 80,
    "halfBiomass": 15,
    "maxHeight": 4,
@@ -429,7 +482,8 @@
     "clay": 0.8,
     "sand": 0.6,
     "rock": 0.1
-   }
+   },
+   "canopyTransmission": 0.3
   },
   {
    "id": "juniper",
@@ -444,14 +498,14 @@
    },
    "frostKill": -50,
    "moisture": {
-    "min": 0.06,
-    "optMin": 0.2,
-    "optMax": 0.6,
-    "max": 0.9
+    "min": 0.12,
+    "optMin": 0.22,
+    "optMax": 0.8,
+    "max": 1.0
    },
    "shadeTolerance": 0.4,
    "nutrientDemand": 0.1,
-   "growthRate": 1.4,
+   "growthRate": 1.36,
    "maxBiomass": 60,
    "halfBiomass": 15,
    "maxHeight": 3,
@@ -475,7 +529,8 @@
     "sand": 1,
     "loam": 0.6,
     "peat": 0.3
-   }
+   },
+   "canopyTransmission": 0.25
   },
   {
    "id": "birch",
@@ -490,14 +545,14 @@
    },
    "frostKill": -50,
    "moisture": {
-    "min": 0.2,
-    "optMin": 0.4,
-    "optMax": 0.85,
-    "max": 1.05
+    "min": 0.3,
+    "optMin": 0.45,
+    "optMax": 0.92,
+    "max": 1.1
    },
    "shadeTolerance": 0.15,
    "nutrientDemand": 0.35,
-   "growthRate": 2.8,
+   "growthRate": 2.95,
    "maxBiomass": 600,
    "halfBiomass": 150,
    "maxHeight": 22,
@@ -515,7 +570,8 @@
    },
    "establishment": 0.03,
    "litterQuality": 1.0,
-   "colonistWeight": 1.0
+   "colonistWeight": 1.0,
+   "canopyTransmission": 0.35
   },
   {
    "id": "pine",
@@ -530,14 +586,14 @@
    },
    "frostKill": -55,
    "moisture": {
-    "min": 0.1,
-    "optMin": 0.25,
-    "optMax": 0.75,
-    "max": 1.0
+    "min": 0.27,
+    "optMin": 0.4,
+    "optMax": 0.88,
+    "max": 1.05
    },
    "shadeTolerance": 0.15,
    "nutrientDemand": 0.15,
-   "growthRate": 2.2,
+   "growthRate": 1.56,
    "maxBiomass": 1200,
    "halfBiomass": 300,
    "maxHeight": 28,
@@ -561,7 +617,8 @@
     "rock": 0.7,
     "loam": 0.8,
     "peat": 0.6
-   }
+   },
+   "canopyTransmission": 0.3
   },
   {
    "id": "spruce",
@@ -576,14 +633,14 @@
    },
    "frostKill": -55,
    "moisture": {
-    "min": 0.3,
-    "optMin": 0.5,
+    "min": 0.38,
+    "optMin": 0.55,
     "optMax": 0.95,
     "max": 1.1
    },
    "shadeTolerance": 0.85,
    "nutrientDemand": 0.4,
-   "growthRate": 1.8,
+   "growthRate": 1.5,
    "maxBiomass": 1400,
    "halfBiomass": 350,
    "maxHeight": 30,
@@ -601,7 +658,8 @@
    },
    "establishment": 0.05,
    "litterQuality": 0.5,
-   "colonistWeight": 0.5
+   "colonistWeight": 0.5,
+   "canopyTransmission": 0.07
   },
   {
    "id": "oak",
@@ -616,14 +674,14 @@
    },
    "frostKill": -40,
    "moisture": {
-    "min": 0.2,
-    "optMin": 0.4,
-    "optMax": 0.8,
-    "max": 1.0
+    "min": 0.3,
+    "optMin": 0.45,
+    "optMax": 0.88,
+    "max": 1.05
    },
    "shadeTolerance": 0.45,
    "nutrientDemand": 0.65,
-   "growthRate": 1.8,
+   "growthRate": 2.4,
    "maxBiomass": 2500,
    "halfBiomass": 700,
    "maxHeight": 26,
@@ -649,7 +707,8 @@
     "sand": 0.4,
     "rock": 0.2,
     "peat": 0.2
-   }
+   },
+   "canopyTransmission": 0.15
   },
   {
    "id": "linden",
@@ -664,14 +723,14 @@
    },
    "frostKill": -40,
    "moisture": {
-    "min": 0.3,
-    "optMin": 0.45,
-    "optMax": 0.85,
-    "max": 1.0
+    "min": 0.35,
+    "optMin": 0.5,
+    "optMax": 0.9,
+    "max": 1.05
    },
    "shadeTolerance": 0.8,
    "nutrientDemand": 0.7,
-   "growthRate": 2.0,
+   "growthRate": 3.5,
    "maxBiomass": 1800,
    "halfBiomass": 500,
    "maxHeight": 28,
@@ -689,7 +748,8 @@
    },
    "establishment": 0.08,
    "litterQuality": 1.5,
-   "colonistWeight": 0.3
+   "colonistWeight": 0.3,
+   "canopyTransmission": 0.1
   },
   {
    "id": "alder",
@@ -711,7 +771,7 @@
    },
    "shadeTolerance": 0.3,
    "nutrientDemand": 0.3,
-   "growthRate": 2.8,
+   "growthRate": 3.2,
    "maxBiomass": 700,
    "halfBiomass": 180,
    "maxHeight": 20,
@@ -738,7 +798,8 @@
     "loam": 0.7,
     "sand": 0.4,
     "rock": 0.1
-   }
+   },
+   "canopyTransmission": 0.2
   }
  ]
 }

@@ -133,6 +133,11 @@ export class SectionReader {
     return target;
   }
 
+  /** Проверка, что секция прочитана целиком: лишние байты означают другую раскладку. */
+  end(): void {
+    if (this.offset !== this.bytes.length) throw new Error(`Секция ${this.header.id}: лишние данные после конца раскладки`);
+  }
+
   /** Читает массив переменной длины. */
   int32(): Int32Array {
     const count = this.f64();
