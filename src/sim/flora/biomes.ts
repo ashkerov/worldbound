@@ -108,29 +108,38 @@ const WATER_INDEX: Record<(typeof BIOME_WATER)[number], number> = { river: 1, la
  */
 export function ruleMatches(r: BiomeRule, c: BiomeInput, mode: -1 | 0 | 1 = 0): boolean {
   if (r.water) {
-    if (!r.water.some((w) => WATER_INDEX[w] === c.water)) return false;
+    let found = false;
+    for (let k = 0; k < r.water.length; k++) if (WATER_INDEX[r.water[k]!] === c.water) found = true;
+    if (!found) return false;
   } else if (c.water !== 0) return false;
-  const min = (v: number, t: number | undefined, abs = 0.02) => t === undefined || v >= t + mode * Math.max(0.1 * Math.abs(t), abs);
-  const max = (v: number, t: number | undefined, abs = 0.02) => t === undefined || v <= t - mode * Math.max(0.1 * Math.abs(t), abs);
+  // Вызывается для каждой ячейки суши раз в сутки по всем правилам каталога — без замыканий и выделений памяти.
   return (
-    min(c.treeCover, r.treeCoverMin) &&
-    max(c.treeCover, r.treeCoverMax) &&
-    min(c.shrubCover, r.shrubCoverMin) &&
-    min(c.tallShare, r.tallShareMin) &&
-    max(c.tallShare, r.tallShareMax) &&
-    min(c.herbBiomass, r.herbBiomassMin, 2) &&
-    max(c.herbBiomass, r.herbBiomassMax, 2) &&
-    min(c.coniferShare, r.coniferShareMin) &&
-    max(c.coniferShare, r.coniferShareMax) &&
-    min(c.tMean, r.tMeanMin, 0.5) &&
-    max(c.tMean, r.tMeanMax, 0.5) &&
-    min(c.moisture, r.moistureMin) &&
-    max(c.moisture, r.moistureMax) &&
-    min(c.steppeShare, r.steppeShareMin) &&
-    max(c.steppeShare, r.steppeShareMax) &&
-    min(c.wetShare, r.wetShareMin) &&
-    min(c.pioneerShare, r.pioneerShareMin)
+    atLeast(c.treeCover, r.treeCoverMin, 0.02, mode) &&
+    atMost(c.treeCover, r.treeCoverMax, 0.02, mode) &&
+    atLeast(c.shrubCover, r.shrubCoverMin, 0.02, mode) &&
+    atLeast(c.tallShare, r.tallShareMin, 0.02, mode) &&
+    atMost(c.tallShare, r.tallShareMax, 0.02, mode) &&
+    atLeast(c.herbBiomass, r.herbBiomassMin, 2, mode) &&
+    atMost(c.herbBiomass, r.herbBiomassMax, 2, mode) &&
+    atLeast(c.coniferShare, r.coniferShareMin, 0.02, mode) &&
+    atMost(c.coniferShare, r.coniferShareMax, 0.02, mode) &&
+    atLeast(c.tMean, r.tMeanMin, 0.5, mode) &&
+    atMost(c.tMean, r.tMeanMax, 0.5, mode) &&
+    atLeast(c.moisture, r.moistureMin, 0.02, mode) &&
+    atMost(c.moisture, r.moistureMax, 0.02, mode) &&
+    atLeast(c.steppeShare, r.steppeShareMin, 0.02, mode) &&
+    atMost(c.steppeShare, r.steppeShareMax, 0.02, mode) &&
+    atLeast(c.wetShare, r.wetShareMin, 0.02, mode) &&
+    atLeast(c.pioneerShare, r.pioneerShareMin, 0.02, mode)
   );
+}
+
+function atLeast(v: number, t: number | undefined, abs: number, mode: number): boolean {
+  return t === undefined || v >= t + mode * Math.max(0.1 * Math.abs(t), abs);
+}
+
+function atMost(v: number, t: number | undefined, abs: number, mode: number): boolean {
+  return t === undefined || v <= t - mode * Math.max(0.1 * Math.abs(t), abs);
 }
 
 export function classifyBiome(c: BiomeInput, biomes: readonly Biome[] = BIOMES): number {

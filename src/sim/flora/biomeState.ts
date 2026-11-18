@@ -106,7 +106,11 @@ export function initBiomes(world: World): void {
 export function updateBiome(world: World, c: number, dt: number, yearFrac: number, holdDays: number): void {
   const f = world.flora;
   const b = f.biome;
-  if (f.dayT[c]! > GROWING_T && yearFrac < AUTUMN) {
+  if (f.dayT[c]! <= GROWING_T || yearFrac >= AUTUMN) {
+    // Вне вегетации входы не меняются; без ожидающего кандидата (days = 0 ⇔ candidate = current)
+    // классификация дала бы вчерашний результат — пропускаем её.
+    if (b.days[c] === 0) return;
+  } else {
     const a = Math.min(1, EMA_PER_YEAR * dt);
     const h = herbsOf(world, c);
     b.herb[c] = b.herb[c]! + a * (h[0]! - b.herb[c]!);
