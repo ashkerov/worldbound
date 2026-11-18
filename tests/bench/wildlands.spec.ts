@@ -38,7 +38,7 @@ for (const size of ['S', 'M'] as const) {
     await page.getByTestId('layer-biomes').click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${SHOTS}/wildlands-${size}-biomes.png` });
-    await page.getByTestId('layer-biomes').click();
+    await page.getByTestId('layer-none').click();
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${SHOTS}/wildlands-${size}-world.png` });
     const hash = await page.evaluate(() => window.__wb!.stateHash());
@@ -64,3 +64,20 @@ for (const size of ['S', 'M'] as const) {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 }
+
+// Genesis для сравнения: тот же seed и размер — пустая земля без подготовки; снимки слоя биомов и мира.
+test('Genesis S: пустой мир (снимки)', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/?renderer=webgpu&autostart=1&seed=42&size=S&scenario=genesis&debug=1');
+  await page.waitForFunction(() => window.__wb?.ready === true, undefined, { timeout: 120_000 });
+  await page.getByTestId('speed-0').click();
+  await page.getByTestId('layer-biomes').click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/genesis-S-biomes.png` });
+  await page.getByTestId('layer-none').click();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/genesis-S-world.png` });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
