@@ -28,18 +28,15 @@ async function shot(page: Page, name: string): Promise<void> {
 
 const clock = (page: Page) => page.evaluate(() => document.body.innerText.match(/Год[^\n]*/)?.[0] ?? '');
 
-/** Время мира вперёд на ×8 до нужной доли года (сезон: 0 весна, 0,25 лето, 0,5 осень, 0,75 зима) и полудня. */
+/** Время мира вперёд на ×8 до дня года floor(yearFrac × дней в году) и полудня (весна 0, лето 0,25, осень 0,5, зима 0,75). */
 async function advanceTo(page: Page, yearFrac: number, daysPerYear = 20): Promise<void> {
   await page.getByTestId('speed-8').click();
   await page.waitForFunction(
     ([yf, dpy, tpd]) => {
       const tick = window.__wb!.getTick();
-      const day = Math.floor(tick / tpd);
-      const f = ((day % dpy) + (tick % tpd) / tpd) / dpy;
-      // Мир начинается с середины весны: доля года считается от начала года мира.
-      const yfNow = ((f + 1 - 0) % 1);
+      const day = Math.floor(tick / tpd) % dpy;
       const hour = ((tick % tpd) / tpd) * 24;
-      return Math.abs(((yfNow - yf + 1.5) % 1) - 0.5) < 0.02 && hour > 11 && hour < 14;
+      return day === Math.floor(yf * dpy) && hour > 11 && hour < 14;
     },
     [yearFrac, daysPerYear, TICKS_PER_DAY] as const,
     { timeout: 3_000_000, polling: 500 },
