@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="Worldbound.Runtime.csproj" />
+  <Project Path="Worldbound.Editor.csproj" />
+</Solution>

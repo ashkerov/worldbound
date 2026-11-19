@@ -1,0 +1,7 @@
+{
+  "name": "Worldbound.Editor",
+  "rootNamespace": "Worldbound.EditorTools",
+  "references": ["Worldbound.Runtime", "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}

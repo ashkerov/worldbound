@@ -1,0 +1,14 @@
+# Unity: генерируемые папки и сборки не хранятся в git
+WorldboundProto/[Ll]ibrary/
+WorldboundProto/[Tt]emp/
+WorldboundProto/[Ll]ogs/
+WorldboundProto/[Uu]serSettings/
+WorldboundProto/[Oo]bj/
+WorldboundProto/[Bb]uild/
+WorldboundProto/[Bb]uilds/
+WorldboundProto/*.csproj
+WorldboundProto/*.sln
+WorldboundProto/.vs/
+Results/raw/
+WorldboundProto/Assets/StreamingAssets/golden/
+WorldboundProto/Assets/StreamingAssets/golden.meta
