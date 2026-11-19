@@ -45,6 +45,20 @@ namespace Worldbound.EditorTools
             rp.supportsHDR = true;
             rp.msaaSampleCount = 2;
 
+            // Материалы в Resources: так шейдеры гарантированно попадают в сборку.
+            const string res = "Assets/Worldbound/Resources";
+            Mat($"{res}/WB_Foliage.mat", "WB/Foliage", m => m.enableInstancing = true);
+            Mat($"{res}/WB_Ground.mat", "WB/Ground", null);
+            Mat($"{res}/WB_Water.mat", "WB/Water", null);
+            Mat($"{res}/WB_Sky.mat", "Skybox/Procedural", m =>
+            {
+                m.SetFloat("_SunSize", 0.035f);
+                m.SetFloat("_AtmosphereThickness", 0.85f);
+                m.SetColor("_SkyTint", new Color(0.52f, 0.62f, 0.78f));
+                m.SetColor("_GroundColor", new Color(0.42f, 0.45f, 0.4f));
+                m.SetFloat("_Exposure", 1.15f);
+            });
+
             // Сцена: только точка входа; мир строится кодом (как в TS-проекте — процедурно).
             Directory.CreateDirectory(Path.Combine(ProjectDir, "Assets/Scenes"));
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -54,6 +68,19 @@ namespace Worldbound.EditorTools
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("[WB] Setup done");
+        }
+
+        static void Mat(string path, string shader, System.Action<Material> tune)
+        {
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (!m)
+            {
+                m = new Material(Shader.Find(shader));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.shader = Shader.Find(shader);
+            tune?.Invoke(m);
+            EditorUtility.SetDirty(m);
         }
 
         public static void BuildWindows()
@@ -69,7 +96,7 @@ namespace Worldbound.EditorTools
             });
             var s = report.summary;
             Directory.CreateDirectory(ResultsDir);
-            File.WriteAllText(Path.Combine(ResultsDir, "build-summary.json"), $"{{ \"result\": \"{s.result}\", \"seconds\": {s.totalTime.TotalSeconds:0.0}, \"bytes\": {s.totalSize}, \"errors\": {s.totalErrors}, \"warnings\": {s.totalWarnings}, \"unity\": \"{Application.unityVersion}\" }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "build-summary.json"), $"{{ \"result\": \"{s.result}\", \"seconds\": {s.totalTime.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}, \"bytes\": {s.totalSize}, \"errors\": {s.totalErrors}, \"warnings\": {s.totalWarnings}, \"unity\": \"{Application.unityVersion}\" }}\n");
             Debug.Log($"[WB] Build {s.result} in {s.totalTime.TotalSeconds:0}s, {s.totalSize / 1048576} MB");
             if (s.result != BuildResult.Succeeded) EditorApplication.Exit(1);
         }

@@ -1,0 +1,8 @@
+{
+ "hashVectors": { "total": 2000, "equal": 2000 },
+ "managed": { "hoursBitwiseEqual": 24, "hours": 24, "maxTotalsAbsDiff": 3.6088749766349792E-09, "firstMismatch": "" },
+ "burst": { "hoursBitwiseEqual": 24, "hours": 24, "firstMismatch": "" },
+ "msPerHour": { "typescriptRealSystemNode": 3.843, "typescriptKernelNode": { "median": 3.049, "min": 2.482, "p95": 3.386, "hoursEqualToRealSystem": 24 }, "csharpManaged": { "median": 1.639, "min": 1.495, "p95": 1.768 }, "csharpBurstJobs": { "median": 0.537, "min": 0.493, "p95": 0.663 }, "workerThreads": 11 },
+ "memory": { "stateBytes": 2162688, "staticBytes": 1376256, "gcHeapGrowthManagedLoopBytes": 4096, "gcHeapGrowthBurstLoopBytes": 4096 },
+ "cells": 65536, "hours": 24, "runtime": "6000.3.29f1 player Mono 6.13.0 (Visual Studio built mono)"
+}

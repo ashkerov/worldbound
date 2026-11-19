@@ -1,0 +1,5 @@
+{ "pauseWhenMinimized": false, "simHoursStepped": 4, "savedTo": "C:/Users/Ashkerov/AppData/LocalLow/WORLDBOUND/WORLDBOUND Unity Prototype/world.json", "phases": [
+  { "phase": "active", "seconds": 20.0, "updatesPerSecond": 31.5, "rendering": true, "minimizedDetected": false, "gameHours": 1.001, "gameHoursExpected": 1.001, "cpuPercentOfOneCore": 103.5, "cpuPercentOfMachine": 8.6, "workingSetMB": 0 },
+  { "phase": "minimized", "seconds": 40.5, "updatesPerSecond": 2.0, "rendering": false, "minimizedDetected": true, "gameHours": 2.023, "gameHoursExpected": 2.023, "cpuPercentOfOneCore": 4.6, "cpuPercentOfMachine": 0.4, "workingSetMB": 0 },
+  { "phase": "restored", "seconds": 20.0, "updatesPerSecond": 30.9, "rendering": true, "minimizedDetected": false, "gameHours": 1.002, "gameHoursExpected": 1.001, "cpuPercentOfOneCore": 103.8, "cpuPercentOfMachine": 8.7, "workingSetMB": 0 }
+ ] }
