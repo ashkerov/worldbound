@@ -9,7 +9,17 @@ export interface CodeVersion {
   measuredAt: string;
 }
 
+/**
+ * Версия фиксируется один раз — при загрузке модуля, то есть в начале замера: правки кода во время
+ * длительного прогона не должны помечать уже загруженный и выполняющийся код как изменённый.
+ */
+const AT_START = readVersion();
+
 export function codeVersion(): CodeVersion {
+  return { ...AT_START, measuredAt: new Date().toISOString() };
+}
+
+function readVersion(): Omit<CodeVersion, 'measuredAt'> {
   let commit = 'unknown';
   let dirty = true;
   try {
@@ -19,5 +29,5 @@ export function codeVersion(): CodeVersion {
   } catch {
     // Нет git — версия неизвестна.
   }
-  return { commit, dirty, measuredAt: new Date().toISOString() };
+  return { commit, dirty };
 }
