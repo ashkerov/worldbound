@@ -122,6 +122,11 @@ export class WorldStore {
     const previous = await this.readManifest(meta.id, false);
     const generation = (previous?.generation ?? 0) + 1;
     const sections = serializeWorld(sim.world);
+    // Такт и хеш — того же мгновения, что и секции: пока файлы пишутся (await), цикл воркера продолжает
+    // такты, и хеш, взятый после записи, относился бы к другому состоянию (ошибка найдена на этапе 5 фазы 3).
+    const tick = sim.world.tick;
+    const stateHash = sim.stateHash();
+    const config = { ...sim.world.config };
     const entries = {} as Record<SectionId, SectionEntry>;
     let total = 0;
     for (const id of SECTION_IDS) {
@@ -138,14 +143,14 @@ export class WorldStore {
       formatVersion: FORMAT_VERSION,
       generation,
       id: meta.id,
-      name: w.config.name,
-      config: w.config,
+      name: config.name,
+      config,
       createdAt: meta.createdAt,
       savedAt,
-      tick: w.tick,
+      tick,
       worldgenVersion: WORLDGEN_VERSION,
       geoHash: w.geoHash,
-      stateHash: sim.stateHash(),
+      stateHash,
       sections: entries,
     };
     const manifest: Manifest = { ...body, check: crc32(encoder.encode(manifestText(body))) };

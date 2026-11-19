@@ -11,7 +11,7 @@ import { SNOW_THRESHOLD } from '../env/water';
 import { windAt } from '../env/weather';
 import { DEPOSIT_NAMES, WaterKind } from '../worldgen/geo';
 import { BIOMES } from '../flora/biomes';
-import { NO_SPECIES, PLANTS } from '../flora/species';
+import { NO_SPECIES, PLANTS, SPECIES } from '../flora/species';
 import { SLOTS, herbBiomass } from '../flora/state';
 
 const ctx: TimeContext = { seasonal: 0, diurnal: 0, anomaly: 0, sun: { x: 0, y: 1, z: 0 } };
@@ -50,6 +50,8 @@ export function buildStatic(world: World, worldId: string): { message: WorldStat
     soilIds: SOILS.map((s) => s.id),
     precipFactor: copy(world.derived.pFactor),
     provinces: geo.provinces.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z })),
+    plants: PLANTS.map((p) => ({ id: p.id, form: p.form, leafHabit: p.leafHabit })),
+    herbOrder: Array.from(SPECIES.herbs),
   };
   const transfer = [message.terrain.heights, message.horizon.heights, message.cellHeight, message.waterKind, message.waterLevel, message.flow, message.meanDischarge, message.soil, message.precipFactor];
   return { message, transfer };

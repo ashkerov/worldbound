@@ -7,7 +7,10 @@ import type { FromWorker, LayerId, SimRequest, SimResponse, ToWorker } from '../
 import { SEASONS_PER_YEAR, TICK_MS, TICKS_PER_DAY, TICKS_PER_HOUR } from '../shared/time';
 import { normalizeConfig } from '../shared/worldConfig';
 import { Simulation } from '../sim/core/simulation';
+import { YearlyCostEta } from '../shared/eta';
 import { WEATHER_PERIOD, windAt } from '../sim/env/weather';
+import { plantLoadStand } from '../sim/flora/loadStand';
+import { FloraFeed } from '../sim/view/flora';
 import { DYNAMIC_LAYERS, buildStatic, buildSurface, cellInfo, chunkTemperatures, hillshade, layerImage, minimapImage } from '../sim/view/views';
 import { MemoryStorage } from '../platform/storage/memory';
 import { OpfsStorage, isOpfsAvailable } from '../platform/storage/opfs';
@@ -30,6 +33,8 @@ let sim: Simulation | null = null;
 let meta: { id: string; createdAt: string } | null = null;
 let shade: Float32Array | null = null;
 let layer: LayerId | null = null;
+let floraFeed: FloraFeed | null = null;
+let floraDay = -1;
 let loopTimer: ReturnType<typeof setInterval> | null = null;
 let storage: StoragePort | null = null;
 let store: WorldStore | null = null;
@@ -89,6 +94,16 @@ function sendWeather(): void {
   const cloud = w.chunkCloud.slice().buffer as ArrayBuffer;
   const temperature = chunkTemperatures(sim.world).buffer as ArrayBuffer;
   post({ type: 'weather', tick: sim.world.tick, chunks: w.chunks, rate, cloud, temperature, windX: wind.x, windZ: wind.z, windSpeed: wind.speed }, [rate, cloud, temperature]);
+}
+
+/** Растительность для рендера: после открытия — всё, затем раз в игровые сутки — изменившиеся чанки и поле трав. */
+function sendFlora(full: boolean): void {
+  if (!sim || !floraFeed) return;
+  const woody = floraFeed.woody(full);
+  post(woody.message, woody.transfer);
+  const field = floraFeed.field();
+  post(field.message, field.transfer);
+  floraDay = Math.floor(sim.world.tick / TICKS_PER_DAY);
 }
 
 function sendLayer(): void {
@@ -156,6 +171,7 @@ function loop(): void {
       dirty = true;
       sendSnapshot();
       if (weatherStep) sendWeather();
+      if (Math.floor(world.tick / TICKS_PER_DAY) !== floraDay) sendFlora(false);
       if (hourStep) {
         sendSurface();
         if (layer && DYNAMIC_LAYERS.includes(layer)) sendLayer();
@@ -196,8 +212,10 @@ function open(next: Simulation, worldId: string, createdAt: string): void {
   shade = null;
   const { message, transfer } = buildStatic(next.world, worldId);
   post(message, transfer);
+  floraFeed = new FloraFeed(next.world);
   sendWeather();
   sendSurface();
+  sendFlora(true);
   sendLayer();
   sendSnapshot();
   lastTime = performance.now();
@@ -209,6 +227,7 @@ function open(next: Simulation, worldId: string, createdAt: string): void {
 }
 
 function close(): void {
+  floraFeed = null;
   sim = null;
   meta = null;
   shade = null;
@@ -226,7 +245,7 @@ const yieldToMessages = () => new Promise<void>((resolve) => setTimeout(resolve,
 
 /**
  * Подготовка Wildlands: обычные такты той же симуляции, порциями, с честным прогрессом
- * (доля выполненных тактов, текущий год, число растений, оценка оставшегося времени по фактической скорости).
+ * (доля выполненных тактов, текущий год, число растений, оценка оставшегося времени по цене прожитых лет — src/shared/eta.ts).
  */
 async function prepare(next: Simulation): Promise<void> {
   const p = next.preparation;
@@ -236,19 +255,21 @@ async function prepare(next: Simulation): Promise<void> {
   try {
     const ticksPerYear = next.world.config.daysPerSeason * SEASONS_PER_YEAR * TICKS_PER_DAY;
     const started = performance.now();
+    const eta = new YearlyCostEta(p.years);
     while (next.preparation) {
       if (cancelRequested) throw new Error('создание отменено');
       const sliceStart = performance.now();
       while (next.preparation && performance.now() - sliceStart < PREPARE_SLICE_MS) next.advancePreparation(TICKS_PER_HOUR / 6);
       const fraction = next.preparationFraction();
       const elapsed = (performance.now() - started) / 1000;
+      eta.add(fraction, elapsed);
       const year = Math.min(p.years, Math.floor((next.world.tick - p.startTick) / ticksPerYear) + 1);
       post({
         type: 'progress',
         stage: `Природа развивается: год ${year} из ${p.years}`,
         fraction,
         detail: `Деревьев и кустарников: ${next.world.flora.woody.count.toLocaleString('ru-RU')}`,
-        etaSeconds: fraction > 0.01 ? (elapsed * (1 - fraction)) / fraction : undefined,
+        etaSeconds: eta.remaining(),
         cancellable: true,
       });
       await yieldToMessages();
@@ -267,6 +288,7 @@ async function handleRequest(request: SimRequest): Promise<SimResponse> {
       close();
       const config = normalizeConfig(request.config);
       const next = new Simulation({ config, testAgents: request.testAgents, prepareYears: request.prepareYears }, () => performance.now(), undefined, progress);
+      if (request.loadTrees) plantLoadStand(next.world, request.loadTrees);
       // Wildlands: мир готовится прогоном симуляции; сохраняется и открывается только готовый мир.
       await prepare(next);
       const nowDate = new Date();

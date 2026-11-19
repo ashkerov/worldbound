@@ -5,9 +5,10 @@
 import * as THREE from 'three/webgpu';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dot, float, mix, pass, screenUV, smoothstep, uniform, vec2, vec3, vec4 } from 'three/tsl';
-import { SNAPSHOT_STRIDE, type FrameSnapshot, type LayerMessage, type SurfaceMessage, type WeatherMessage, type WorldStaticMessage } from '../shared/protocol';
+import { SNAPSHOT_STRIDE, type FloraFieldMessage, type FloraWoodyMessage, type FrameSnapshot, type LayerMessage, type SurfaceMessage, type WeatherMessage, type WorldStaticMessage } from '../shared/protocol';
 import { dayFraction, yearFraction } from '../shared/time';
 import { CameraRig, type CameraMode, type CameraView } from './camera';
+import { FLORA_QUALITY, FloraView, type FloraStats } from './flora/FloraView';
 import { Precipitation } from './precip';
 import { Sky } from './sky';
 import { TerrainLod, buildHorizonMesh, terrainMaterial, type TerrainUniforms } from './terrain';
@@ -30,6 +31,7 @@ export interface RenderStats {
   agentsDrawn: number;
   terrainNodes: number;
   resolution: string;
+  flora: FloraStats | null;
 }
 
 export interface WorldViewOptions {
@@ -94,7 +96,8 @@ export class WorldView {
   private worldGroup = new THREE.Group();
   private precip: Precipitation | null = null;
   private labels = new THREE.Group();
-  private readonly terrainUniforms: TerrainUniforms = { layerOpacity: uniform(0), worldSize: uniform(4096) };
+  private readonly terrainUniforms: TerrainUniforms = { layerOpacity: uniform(0), worldSize: uniform(4096), floraFar: uniform(FLORA_QUALITY.medium.rMax) };
+  private flora: FloraView | null = null;
   private weather: WeatherView | null = null;
   private daysPerSeason = 5;
   private quality: Quality;
@@ -135,7 +138,7 @@ export class WorldView {
   ) {
     this.qualityName = qualityName;
     this.quality = QUALITY[qualityName];
-    this.stats = { backend, quality: qualityName, fps: 0, frameMsAvg: 0, frameMsMax: 0, longFrames: 0, drawCalls: 0, triangles: 0, agentsDrawn: 0, terrainNodes: 0, resolution: '' };
+    this.stats = { backend, quality: qualityName, fps: 0, frameMsAvg: 0, frameMsMax: 0, longFrames: 0, drawCalls: 0, triangles: 0, agentsDrawn: 0, terrainNodes: 0, resolution: '', flora: null };
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -216,6 +219,8 @@ export class WorldView {
     this.buildPipelines();
     this.warmPlain = 2;
     this.rebuildPrecip();
+    this.flora?.setQuality(FLORA_QUALITY[name]);
+    this.terrainUniforms.floraFar.value = FLORA_QUALITY[name].rMax;
     this.resize();
     this.shadowDirty = true;
   }
@@ -263,6 +268,9 @@ export class WorldView {
     if (inland) this.worldGroup.add(inland);
     this.rebuildPrecip();
     this.buildLabels(message);
+    this.terrainUniforms.floraFar.value = FLORA_QUALITY[this.qualityName].rMax;
+    this.flora = new FloraView(data, message.plants, message.herbOrder, FLORA_QUALITY[this.qualityName]);
+    this.worldGroup.add(this.flora.group);
 
     this.warmPlain = 2;
     this.rig.bounds = data.worldSize;
@@ -273,6 +281,11 @@ export class WorldView {
   }
 
   clearWorld(): void {
+    if (this.flora) {
+      this.worldGroup.remove(this.flora.group);
+      this.flora.dispose();
+      this.flora = null;
+    }
     this.terrain?.dispose();
     this.terrain = null;
     this.shadowWarm = null;
@@ -338,6 +351,28 @@ export class WorldView {
     };
     this.weather = view;
     this.data?.setWeather(view.cloud, view.rate);
+    this.flora?.setWind(view.windX, view.windZ, view.windSpeed);
+  }
+
+  setFloraWoody(message: FloraWoodyMessage): void {
+    this.flora?.setWoody(message);
+  }
+
+  setFloraField(message: FloraFieldMessage): void {
+    this.flora?.setField(message);
+  }
+
+  /** Выключение рендера растительности (проверка: мир от этого не меняется). */
+  setFloraEnabled(on: boolean): void {
+    if (this.flora) this.flora.enabled = on;
+  }
+
+  weatherWind(): { x: number; z: number; speed: number } | null {
+    return this.weather ? { x: this.weather.windX, z: this.weather.windZ, speed: this.weather.windSpeed } : null;
+  }
+
+  get floraView(): FloraView | null {
+    return this.flora;
   }
 
   setLayer(message: LayerMessage | null): void {
@@ -500,6 +535,7 @@ export class WorldView {
       this.shadowWarm?.position.set(this.rig.target.x, this.rig.target.y - 150, this.rig.target.z);
       this.sky.updateFog(this.rig.distance, this.rig.altitude(), this.rig.camera.far);
       this.updateAgents(now);
+      this.flora?.update(this.rig.camera, yearFraction(this.renderTick(now), this.daysPerSeason));
       const every = this.quality.shadowEvery;
       if (this.quality.shadow > 0 && (this.shadowDirty || (every > 0 && this.frameIndex % every === 0))) {
         this.sky.light.shadow.needsUpdate = true;
@@ -527,6 +563,7 @@ export class WorldView {
         drawCalls: info.drawCalls,
         triangles: info.triangles,
         terrainNodes: this.terrain?.nodesDrawn ?? 0,
+        flora: this.flora?.getStats() ?? null,
       };
       this.statsStart = now;
       this.frames = 0;

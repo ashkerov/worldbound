@@ -2,7 +2,7 @@
 // материал из полей симуляции (почва, влага, зелень, снег, облачность, слой-карта).
 
 import * as THREE from 'three/webgpu';
-import { color, float, mix, mx_noise_float, normalWorld, positionWorld, sin, smoothstep, step, texture, vec2 } from 'three/tsl';
+import { cameraPosition, color, float, mix, mx_noise_float, normalWorld, positionWorld, sin, smoothstep, step, texture, vec2 } from 'three/tsl';
 import type { UniformNode } from 'three/webgpu';
 import type { WorldData } from './worldData';
 
@@ -17,6 +17,8 @@ type FloatUniform = UniformNode<'float', number>;
 export interface TerrainUniforms {
   layerOpacity: FloatUniform;
   worldSize: FloatUniform;
+  /** Дальность последнего уровня растений, м: дальше полог виден только цветом рельефа. */
+  floraFar: FloatUniform;
 }
 
 /** Материал поверхности. Цвет — функция реальных данных; шум даёт только мелкую фактуру. */
@@ -56,6 +58,18 @@ export function terrainMaterial(data: WorldData, u: TerrainUniforms): THREE.Mesh
   const outside = float(1).sub(step(0, p.x).mul(step(p.x, u.worldSize)).mul(step(0, p.z)).mul(step(p.z, u.worldSize)));
   const rockMask = smoothstep(0.8, 0.62, normalWorld.y.add(mid.mul(0.06))).max(outside.mul(smoothstep(90, 220, p.y.add(big.mul(40))))).max(smoothstep(340, 520, p.y.add(big.mul(60))));
   ground = mix(ground, rock, rockMask);
+
+  // Полог из симуляции (этап 5): под кронами — тенистая лесная подстилка; вдали, где отдельных растений
+  // уже нет, — цвет самих крон: хвойные тёмные, лиственные в листве светлее, без листвы — серо-бурые.
+  const canopy = texture(data.canopyTex, uvw);
+  const cover = canopy.r.add(canopy.b.mul(0.6)).min(1);
+  ground = mix(ground, ground.mul(color(0x8a8a70)).mul(1.25), cover.mul(0.55));
+  const leafyCrown = mix(color(0x4f7d36), color(0x3f6e2e), mid.mul(0.5).add(0.5));
+  const deciduous = mix(color(0x6e6150), leafyCrown, canopy.a);
+  const crowns = mix(deciduous, color(0x264a36), canopy.g).mul(big.mul(0.16).add(0.92));
+  const far = smoothstep(u.floraFar.mul(0.72), u.floraFar, positionWorld.sub(cameraPosition).length());
+  ground = mix(ground, crowns, smoothstep(0.02, 0.6, canopy.r).mul(far).mul(0.92));
+  ground = mix(ground, crowns.mul(1.1), smoothstep(0.05, 0.7, canopy.b).mul(far).mul(0.45));
 
   // Влажная поверхность темнее; снег ложится на пологие места.
   ground = ground.mul(float(1).sub(wet.mul(0.22)).sub(moisture.mul(0.08)));

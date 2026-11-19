@@ -53,7 +53,7 @@ export interface WorldInfoView {
 export interface Actions {
   dispatch: (command: Command) => void;
   refreshWorlds: () => void;
-  createWorld: (config: WorldConfig, prepareYears?: number) => void;
+  createWorld: (config: WorldConfig, prepareYears?: number, loadTrees?: number) => void;
   cancelCreate: () => void;
   openWorld: (id: string) => void;
   deleteWorld: (id: string) => void;

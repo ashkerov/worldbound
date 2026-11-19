@@ -73,6 +73,12 @@ async function start(): Promise<void> {
       case 'surface':
         view.setSurface(m);
         break;
+      case 'floraWoody':
+        view.setFloraWoody(m);
+        break;
+      case 'floraField':
+        view.setFloraField(m);
+        break;
       case 'weather':
         view.setWeather(m);
         break;
@@ -168,9 +174,9 @@ async function start(): Promise<void> {
         (e: unknown) => useUi.setState({ worlds: [], notice: `Не удалось прочитать список миров: ${message(e)}` }),
       );
     },
-    createWorld: (config: Parameters<typeof normalizeConfig>[0], prepareYears?: number) => {
+    createWorld: (config: Parameters<typeof normalizeConfig>[0], prepareYears?: number, loadTrees?: number) => {
       useUi.setState({ screen: 'progress', progress: { stage: 'Подготовка', fraction: 0 } });
-      client.request({ kind: 'createWorld', config: normalizeConfig(config), testAgents, prepareYears }).then(enterWorld, (e: unknown) => {
+      client.request({ kind: 'createWorld', config: normalizeConfig(config), testAgents, prepareYears, loadTrees }).then(enterWorld, (e: unknown) => {
         useUi.setState({ screen: 'menu', notice: `Не удалось создать мир: ${message(e)}` });
       });
     },
@@ -246,6 +252,15 @@ async function start(): Promise<void> {
     worldSize: () => useUi.getState().world?.worldSize ?? 0,
     pick: (x, z) => view.rig.onPick?.(x, z),
     ground: (x, z) => view.rig.ground(x, z),
+    flora: {
+      stats: () => view.floraView?.getStats() ?? null,
+      shownBySpecies: () => view.floraView?.shownBySpecies() ?? {},
+      plantsNear: (x, z, r) => view.floraView?.plantsNear(x, z, r) ?? [],
+      setEnabled: (on) => view.setFloraEnabled(on),
+      findSpots: () => view.floraView?.findSpots() ?? {},
+      wind: () => ({ flora: view.floraView?.windState() ?? null, weather: view.weatherWind() }),
+    },
+    setQuality: (name) => view.setQuality(name),
   };
 
   // Только в режиме разработки: прямой доступ к рендеру из консоли.
@@ -264,7 +279,18 @@ async function start(): Promise<void> {
     actions.createWorld(
       { name: `Проверка ${seedParam}`, seed, size, daysPerSeason: days, climate: (params.get('climate') as 'temperate') ?? 'temperate', scenario: (params.get('scenario') as 'wild') ?? 'wild', isolated: params.get('isolated') === '1' },
       prepare === null ? undefined : Number(prepare),
+      params.get('loadTrees') ? Number(params.get('loadTrees')) : undefined,
     );
+  }
+  // ?open=last — открыть последний сохранённый мир (стенды и снимки: мир не готовится заново).
+  if (params.get('open') === 'last') {
+    client
+      .request({ kind: 'listWorlds' })
+      .then((r) => {
+        const last = [...r.worlds].sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
+        if (last) actions.openWorld(last.id);
+      })
+      .catch(fatal);
   }
 }
 

@@ -58,6 +58,29 @@ describe('Хранилище миров', () => {
     expect(loaded.stateHash()).toBe(sim.stateHash());
   }, 60_000);
 
+  it('такты во время записи файлов не портят сохранение: такт и хеш — того же мгновения, что и секции', async () => {
+    // Как в воркере: пока файлы пишутся (await), цикл продолжает такты (ошибка найдена на этапе 5 фазы 3 на ×8).
+    class SteppingStorage extends MemoryStorage {
+      onWrite: (() => void) | null = null;
+      override async write(path: string, bytes: Uint8Array): Promise<void> {
+        this.onWrite?.();
+        return super.write(path, bytes);
+      }
+    }
+    const storage = new SteppingStorage();
+    const store = new WorldStore(storage);
+    const sim = simulation({ seed: 7 }, 20);
+    for (let t = 0; t < 500; t++) sim.step();
+    storage.onWrite = () => {
+      for (let t = 0; t < 40; t++) sim.step();
+    };
+    await store.save(sim, meta, new Date('2026-11-19T10:00:00Z'));
+    storage.onWrite = null;
+    const { sim: loaded, manifest } = await store.load(meta.id, 0);
+    expect(loaded.world.tick).toBe(manifest.tick);
+    expect(manifest.tick).toBeLessThan(sim.world.tick);
+  }, 60_000);
+
   it('список миров, повторные сохранения хранят только два поколения, удаление', async () => {
     const storage = new MemoryStorage();
     const store = new WorldStore(storage);

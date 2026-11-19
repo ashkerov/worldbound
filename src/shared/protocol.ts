@@ -61,7 +61,15 @@ export interface WorldSummary {
 
 export type SimRequest =
   | { kind: 'listWorlds' }
-  | { kind: 'createWorld'; config: WorldConfig; testAgents: number; /** Wildlands: лет подготовки (по умолчанию WILDLANDS_YEARS; для проверок). */ prepareYears?: number | undefined }
+  | {
+      kind: 'createWorld';
+      config: WorldConfig;
+      testAgents: number;
+      /** Wildlands: лет подготовки (по умолчанию WILDLANDS_YEARS; для проверок). */
+      prepareYears?: number | undefined;
+      /** Нагрузочный стенд: посадить столько древесных (flora/loadStand.ts); только для замеров. */
+      loadTrees?: number | undefined;
+    }
   | { kind: 'cancelCreate' }
   | { kind: 'loadWorld'; worldId: string; testAgents?: number }
   | { kind: 'saveWorld' }
@@ -184,6 +192,56 @@ export interface WorldStaticMessage {
   /** Float32 n²: множитель осадков ячейки к сетке чанков. */
   precipFactor: ArrayBuffer;
   provinces: { id: number; name: string; x: number; z: number }[];
+  /** Виды растений каталога в порядке номеров (для рендера растительности, этап 5 фазы 3). */
+  plants: PlantVisualInfo[];
+  /** Номера трав в порядке столбцов поля трав (FloraFieldMessage.herbs). */
+  herbOrder: number[];
+}
+
+export interface PlantVisualInfo {
+  id: string;
+  form: 'herb' | 'shrub' | 'tree';
+  /** Листопадный или вечнозелёный (из каталога). */
+  leafHabit: string;
+}
+
+/**
+ * Растительность для рендера (этап 5 фазы 3). Древесные растения — строками по FLORA_WOODY_STRIDE чисел Float32:
+ * [x, z, высота м, радиус кроны м, номер вида, облиственность 0..1, номер растения mod 2^24, здоровье 0..1].
+ * Мир поделён на чанки FLORA_CHUNK_CELLS × FLORA_CHUNK_CELLS эко-ячеек; сообщение несёт только изменившиеся чанки
+ * (full — все чанки мира, после открытия): chunkIds[k] — номер чанка, его строки — offsets[k]..offsets[k+1].
+ */
+export const FLORA_WOODY_STRIDE = 8;
+export const FLORA_CHUNK_CELLS = 16;
+
+export interface FloraWoodyMessage {
+  type: 'floraWoody';
+  tick: number;
+  full: boolean;
+  chunksPerSide: number;
+  /** Int32: номера изменившихся чанков. */
+  chunkIds: ArrayBuffer;
+  /** Int32 chunkIds.length + 1: начала строк чанков в data. */
+  offsets: ArrayBuffer;
+  /** Float32: строки растений. */
+  data: ArrayBuffer;
+  /** Всего древесных в мире (для отладки и проверок). */
+  total: number;
+}
+
+/**
+ * Травяной ярус и полог по ячейкам (раз в игровые сутки). herbs — Uint8 n²·H: биомасса трав по видам
+ * (H = herbOrder.length; значение v ⇒ (v/255)²·HERB_FIELD_MAX г/м²). canopy — RGBA8 n²: R — покрытие кронами
+ * деревьев, G — доля хвойных в нём, B — покрытие кустарниками, A — средняя облиственность древесных ячейки.
+ */
+export const HERB_FIELD_MAX = 1020;
+
+export interface FloraFieldMessage {
+  type: 'floraField';
+  tick: number;
+  n: number;
+  herbs: ArrayBuffer;
+  canopy: ArrayBuffer;
 }
 
 /** Состояние поверхности: раз в игровой час. RGBA8 n²: R — снег, G — влага почвы, B — индекс зелени, A — недавние осадки. */
@@ -250,6 +308,8 @@ export type FromWorker =
   | SurfaceMessage
   | WeatherMessage
   | LayerMessage
+  | FloraWoodyMessage
+  | FloraFieldMessage
   | { type: 'minimap'; tick: number; n: number; image: ArrayBuffer }
   | FrameSnapshot
   | SimStats

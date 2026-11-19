@@ -355,3 +355,75 @@ describe('Тест H — Wildlands: сложившийся мир из пред�
     expect(balanceError(sim)).toBeLessThan(1e-4);
   });
 });
+
+// Этап 5 фазы 3: семантика изолированного Wildlands (docs/PHASE3_PLAN.md, раздел 16.1).
+// Подготовка — история мира до передачи игроку: мир открыт региону (семена региона на всю сушу и через края)
+// независимо от настройки. Изоляция действует с момента, когда мир готов.
+describe('Изолированный Wildlands', () => {
+  const o = { ...MIXED, n: 32 };
+  function prepared(seed: number, isolated: boolean, years = 2): Simulation {
+    const sim = plotSimulation(o, { scenario: 'wild', seed, isolated }, years);
+    while (sim.preparation) sim.advancePreparation(7200);
+    return sim;
+  }
+  function floraArrays(sim: Simulation): unknown[] {
+    const f = sim.world.flora;
+    return [Array.from(f.slotBiomass), Array.from(f.seedBank), Array.from(f.woody.biomass.subarray(0, f.woody.highWater)), f.woody.count, f.ledger[Ledger.external], Array.from(f.colonistMass)];
+  }
+
+  it.each([1, 2])('seed %i: подготовка у изолированного и открытого мира одинакова — изоляция не меняет сложившуюся флору', (seed) => {
+    const iso = prepared(seed, true);
+    const open = prepared(seed, false);
+    expect(iso.world.config.isolated).toBe(true);
+    expect(iso.world.flora.ledger[Ledger.external]).toBeGreaterThan(0);
+    expect(iso.world.flora.woody.count).toBeGreaterThan(0);
+    expect(floraArrays(iso)).toEqual(floraArrays(open));
+  });
+
+  it.each([1, 2])('seed %i: после подготовки семена извне не приходят, растения мира размножаются', (seed) => {
+    // 6 лет подготовки: ивы и ольхи успевают созреть и дать потомство уже без притока.
+    const sim = prepared(seed, true, 6);
+    const f = sim.world.flora;
+    const external = f.ledger[Ledger.external]!;
+    const colonistMass = Array.from(f.colonistMass);
+    const colonistFirst = Array.from(f.colonistFirst);
+    const species = new Set<number>();
+    for (let i = 0; i < f.woody.highWater; i++) if (f.woody.alive[i]) species.add(f.woody.species[i]!);
+    // Флора мира — растущие травы и почвенный банк семян (он тоже часть мира, а не приток).
+    const cells = sim.world.geo.n * sim.world.geo.n;
+    for (let s = 0; s < PLANTS.length; s++) {
+      const h = SPECIES.herbSlot[s]!;
+      if (h < 0) continue;
+      if (f.slotSpecies.includes(s) || f.seedBank.subarray(h * cells, (h + 1) * cells).some((v) => v > 0)) species.add(s);
+    }
+    const startTick = sim.world.tick;
+    runDays(sim, 3 * YEAR);
+    expect(f.ledger[Ledger.external]).toBe(external);
+    expect(Array.from(f.colonistMass)).toEqual(colonistMass);
+    expect(Array.from(f.colonistFirst)).toEqual(colonistFirst);
+    // Новые виды не появились; растения мира размножаются: есть древесные, родившиеся после подготовки.
+    let born = 0;
+    for (let i = 0; i < f.woody.highWater; i++) {
+      if (!f.woody.alive[i]) continue;
+      expect(species.has(f.woody.species[i]!)).toBe(true);
+      if (f.woody.age[i]! < (sim.world.tick - startTick) / (YEAR * 7200)) born++;
+    }
+    for (const s of f.slotSpecies) if (s !== 255) expect(species.has(s)).toBe(true);
+    expect(born).toBeGreaterThan(0);
+    expect(balanceError(sim)).toBeLessThan(1e-4);
+  });
+
+  it('сохранение: изолированность и готовое состояние переживают загрузку, приток после загрузки — ноль', () => {
+    const sim = prepared(3, true);
+    runDays(sim, 5);
+    const loaded = reload(sim, o, { scenario: 'wild', isolated: true });
+    expect(loaded.preparation).toBeNull();
+    expect(loaded.world.flora.regionalSeedRain).toBe(false);
+    expect(loaded.stateHash()).toBe(sim.stateHash());
+    const external = loaded.world.flora.ledger[Ledger.external]!;
+    runDays(sim, YEAR);
+    runDays(loaded, YEAR);
+    expect(loaded.world.flora.ledger[Ledger.external]).toBe(external);
+    expect(loaded.stateHash()).toBe(sim.stateHash());
+  });
+});

@@ -816,8 +816,9 @@ export const floraSystem: System<World> = {
     const high = w.highWater;
     const stride = 24 * SUBSTEPS;
     for (let i = slice + 24 * sub; i < high; i += stride) if (w.alive[i] === 1) processWoody(world, i, ctx);
-    // Край мира: колонизация извне, если мир не изолирован.
-    if (!world.config.isolated) {
+    // Край мира: колонизация извне. Изоляция действует с момента, когда мир готов; во время подготовки
+    // Wildlands мир открыт окружающему региону и через края (docs/PHASE3_PLAN.md, раздел 16.1).
+    if (!world.config.isolated || f.regionalSeedRain) {
       const edge = 4 * n;
       for (let k = slice + 24 * sub; k < edge; k += stride) colonizeEdge(world, k, ctx);
     }

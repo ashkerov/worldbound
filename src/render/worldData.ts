@@ -80,6 +80,8 @@ export class WorldData {
   readonly depthTex: THREE.DataTexture;
   /** R16F: высоты горизонта за границей мира. */
   readonly horizonDepthTex: THREE.DataTexture;
+  /** Полог по ячейкам (этап 5): R — кроны деревьев, G — доля хвойных, B — кустарники, A — облиственность. */
+  readonly canopyTex: THREE.DataTexture;
   readonly chunks: number;
 
   constructor(readonly message: WorldStaticMessage) {
@@ -107,6 +109,7 @@ export class WorldData {
     }
     this.staticTex = dataTexture(st, n, THREE.RGBAFormat, THREE.UnsignedByteType, true);
     this.surfaceTex = dataTexture(new Uint8Array(n * n * 4), n, THREE.RGBAFormat, THREE.UnsignedByteType, false);
+    this.canopyTex = dataTexture(new Uint8Array(n * n * 4), n, THREE.RGBAFormat, THREE.UnsignedByteType, false);
     this.layerTex = dataTexture(new Uint8Array(n * n * 4), n, THREE.RGBAFormat, THREE.UnsignedByteType, true);
     this.chunks = Math.max(2, Math.round(this.worldSize / 128));
     this.weatherTex = dataTexture(new Uint8Array(this.chunks * this.chunks * 4), this.chunks, THREE.RGBAFormat, THREE.UnsignedByteType, false);
@@ -140,6 +143,11 @@ export class WorldData {
     this.weatherTex.needsUpdate = true;
   }
 
+  setCanopy(data: ArrayBuffer): void {
+    (this.canopyTex.image.data as Uint8Array).set(new Uint8Array(data));
+    this.canopyTex.needsUpdate = true;
+  }
+
   /** Высота поверхности: внутри мира — рельеф 2 м, снаружи — горизонт. */
   groundAt(x: number, z: number): number {
     const s = this.worldSize;
@@ -148,6 +156,6 @@ export class WorldData {
   }
 
   dispose(): void {
-    for (const t of [this.staticTex, this.surfaceTex, this.layerTex, this.weatherTex, this.depthTex, this.horizonDepthTex]) t.dispose();
+    for (const t of [this.staticTex, this.surfaceTex, this.layerTex, this.weatherTex, this.depthTex, this.horizonDepthTex, this.canopyTex]) t.dispose();
   }
 }
