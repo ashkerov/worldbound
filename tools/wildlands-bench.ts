@@ -77,6 +77,52 @@ function snapshot(sim: Simulation) {
     treeCover += f.biome.tree[c]!;
     shrubCover += f.biome.shrub[c]!;
   }
+  // Продвижение заселения вглубь (этап 5, длительные прогоны Genesis): заросшие ячейки (травы > 1 г/м²)
+  // по расстоянию до границы мира; середина — ячейки дальше трети стороны от любой границы.
+  const n = geo.n;
+  const bands = [200, 500, 1000, Infinity];
+  const bandLand = [0, 0, 0, 0];
+  const bandOcc = [0, 0, 0, 0];
+  let centreLand = 0;
+  let centreOcc = 0;
+  let centreBank = 0;
+  let occupied = 0;
+  const occDist: number[] = [];
+  for (let c = 0; c < count; c++) {
+    if (geo.waterKind[c] !== WaterKind.None) continue;
+    const x = c % n;
+    const z = (c - x) / n;
+    const edgeCells = Math.min(x, z, n - 1 - x, n - 1 - z);
+    const d = (edgeCells + 0.5) * geo.cellSize;
+    const k = bands.findIndex((b) => d < b);
+    bandLand[k]!++;
+    const occ = herbBiomass(f, c) > 1;
+    if (occ) {
+      bandOcc[k]!++;
+      occupied++;
+      occDist.push(d);
+    }
+    if (edgeCells >= n / 3) {
+      centreLand++;
+      if (occ) centreOcc++;
+      for (let h = 0; h < f.seedBank.length / count; h++) centreBank += f.seedBank[h * count + c]!;
+    }
+  }
+  occDist.sort((a, b) => a - b);
+  let centreWoody = 0;
+  for (let i = 0; i < wd.highWater; i++) {
+    if (wd.alive[i] !== 1) continue;
+    const c = wd.cell[i]!;
+    const x = c % n;
+    const z = (c - x) / n;
+    if (Math.min(x, z, n - 1 - x, n - 1 - z) >= n / 3) centreWoody++;
+  }
+  const spread = {
+    occupiedShare: +(occupied / land).toFixed(4),
+    byEdgeDistance: bands.map((b, k) => ({ upToM: Number.isFinite(b) ? b : null, occupiedShare: bandLand[k] ? +(bandOcc[k]! / bandLand[k]!).toFixed(4) : null })),
+    occupiedDistanceM: occDist.length ? { median: Math.round(occDist[Math.floor(occDist.length / 2)]!), p95: Math.round(occDist[Math.floor(occDist.length * 0.95)]!), max: Math.round(occDist.at(-1)!) } : null,
+    centre: { landCells: centreLand, occupiedShare: centreLand ? +(centreOcc / centreLand).toFixed(4) : 0, woody: centreWoody, seedBankGPerM2: centreLand ? +(centreBank / centreLand).toFixed(4) : 0 },
+  };
   const bc = biomeCounts(w);
   const biomes: Record<string, number> = {};
   bc.forEach((k, i) => {
@@ -102,6 +148,8 @@ function snapshot(sim: Simulation) {
     treeCoverLand: +(treeCover / land).toFixed(3),
     shrubCoverLand: +(shrubCover / land).toFixed(3),
     landBiomeKinds: landBiomes,
+    barrenShare: +((bc[BIOMES.findIndex((x) => x.id === 'barren')] ?? 0) / land).toFixed(4),
+    spread,
     biomes,
     colonizedSpecies: PLANTS.filter((_, s) => f.colonistFirst[s]! >= 0).length,
     externalN: +f.ledger[Ledger.external]!.toFixed(0),
