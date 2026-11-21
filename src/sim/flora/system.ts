@@ -133,7 +133,7 @@ function herbTotal(world: World, cell: number): number {
 }
 
 /** Травостой затеняет низкие всходы древесных: доля света, проходящая сквозь траву. */
-function herbShade(world: World, cell: number): number {
+export function herbShade(world: World, cell: number): number {
   return 1 - 0.4 * Math.min(1, herbTotal(world, cell) / 400);
 }
 
@@ -241,7 +241,7 @@ const capOf = new Float64Array(SLOTS);
  * (с учётом потребности вида). Требовательные первопроходцы выигрывают на свежей богатой земле и уступают,
  * когда питание вовлечено в оборот.
  */
-function herbCapacity(s: number, fit: number, nutrient: number): number {
+export function herbCapacity(s: number, fit: number, nutrient: number): number {
   return SPECIES.maxBiomass[s]! * Math.sqrt(fit * (0.3 + 0.7 * nutrientResponse(SPECIES, s, nutrient)));
 }
 
