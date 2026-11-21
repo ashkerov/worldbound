@@ -1,0 +1,5 @@
+{ "pauseWhenMinimized": true, "speed": 8, "burst": true, "saved": { "path": "C:/Users/Ashkerov/AppData/LocalLow/WORLDBOUND/WORLDBOUND Unity Prototype/saves/autosave.wbsave", "bytes": 27896241, "ms": 2168 }, "phases": [
+  { "phase": "active", "seconds": 20.0, "updatesPerSecond": 59.8, "rendering": true, "minimizedDetected": false, "ticks": 1601, "ticksExpected": 1601, "gameHours": 5.34, "cpuPercentOfOneCore": 119.8, "unityAllocatedMB": 101, "monoUsedMB": 70 },
+  { "phase": "minimized", "seconds": 40.0, "updatesPerSecond": 2.0, "rendering": false, "minimizedDetected": true, "ticks": 0, "ticksExpected": 3200, "gameHours": 0, "cpuPercentOfOneCore": 2.3, "unityAllocatedMB": 101, "monoUsedMB": 70 },
+  { "phase": "restored", "seconds": 20.0, "updatesPerSecond": 59.3, "rendering": true, "minimizedDetected": false, "ticks": 1600, "ticksExpected": 1601, "gameHours": 5.33, "cpuPercentOfOneCore": 124.4, "unityAllocatedMB": 101, "monoUsedMB": 70 }
+ ] }

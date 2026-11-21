@@ -155,6 +155,9 @@ for (const c of cases) {
     }
     hours.push(rec);
   }
+  const dayMs: number[] = [];
+  for (let d = 0; d + 24 <= hourMs.length; d += 24) dayMs.push(hourMs.slice(d, d + 24).reduce((a, v) => a + v, 0));
+  const ds = [...dayMs].sort((a, b) => a - b);
   const hs = [...hourMs].sort((a, b) => a - b);
   const ws = [...waterMs].sort((a, b) => a - b);
   const mean = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
@@ -176,6 +179,10 @@ for (const c of cases) {
       waterMean: mean(waterMs),
       waterP95: pct(ws, 0.95),
       waterP99: pct(ws, 0.99),
+      days: dayMs.length,
+      dayMean: mean(dayMs),
+      dayP95: pct(ds, 0.95),
+      dayP99: pct(ds, 0.99),
     },
   });
   console.log(`${c.seed}:${c.size}:${c.climate}:${c.hours}h dps ${c.dps} → ${(hours[hours.length - 1] as { hash: string }).hash}; час ${mean(hourMs).toFixed(2)} мс (p99 ${pct(hs, 0.99).toFixed(2)}), вода ${mean(waterMs).toFixed(2)} мс`);

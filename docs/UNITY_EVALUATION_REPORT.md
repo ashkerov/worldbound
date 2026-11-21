@@ -150,6 +150,8 @@ Unity 6.3 LTS **подходит** для WORLDBOUND как Windows-прилож
 
 ## 11. Как запустить
 
+> Обновление 2026-11-21 (Stage 1): без аргументов сборка открывает настоящий мир из ядра C#; сцены этой оценки — с `-wbproto` (или `-wbbench`, `-wbshots`). Prototype C (`-wbport`, `tools/unity-golden.ts`, данные в `StreamingAssets`) заменён полной golden-проверкой ядра — см. `docs/UNITY_MIGRATION_STAGE1_REPORT.md`, раздел 9.
+
 - Сборка: `unity/WorldboundProto/Build/Windows/WorldboundProto.exe` (на этой машине). Без аргументов — сцена A; 1 — сцена A, 2–5 — лес 10/50/100/300 тыс.; ПКМ — обзор, WASD/QE — полёт, колесо — скорость, P — режим при сворачивании, F1 — панель, F12 — снимок.
 - Пересобрать: `Unity.exe -batchmode -quit -projectPath unity\WorldboundProto -executeMethod Worldbound.EditorTools.BuildTools.BuildWindows`.
 - Замеры: `WorldboundProto.exe -wbquality medium -wbbench "forest:300000:low,…" -wbsec 20 -wbout файл -screen-width 1920 -screen-height 1080 -screen-fullscreen 1`; перенос — `-wbport файл`; свёрнутый режим — `unity\Tools\background-test.ps1`.
