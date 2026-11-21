@@ -111,6 +111,7 @@ namespace Worldbound.App
                 Seed = uint.Parse(Arg("-wbseed") ?? PlayerPrefs.GetString("wb.seed", "42"), Inv),
                 Size = (Arg("-wbsize") ?? "M") == "S" ? WorldSize.S : WorldSize.M,
             };
+            c.Scenario = (Arg("-wbscenario") ?? "wild") == "genesis" ? Scenario.Genesis : Scenario.Wild;
             string climate = Arg("-wbclimate") ?? "temperate";
             c.Climate = climate == "cold" ? Climate.Cold : climate == "warm" ? Climate.Warm : Climate.Temperate;
             return c;
@@ -358,6 +359,10 @@ namespace Worldbound.App
                 string[] seasons = { "весна", "лето", "осень", "зима" };
                 var w = host.Sim.World;
                 sb.Append($"Мир: seed {w.Seed}, {w.Config.Size} ({w.WorldSize} м), климат {w.Config.ClimateId}, провинций {w.Geo.Provinces.Length}, озёр {w.Geo.Lakes.Length} · geoHash {w.GeoHash}\n");
+                var sim = host.Sim;
+                sb.Append(w.Config.Scenario == Scenario.Genesis
+                    ? "Сценарий Genesis: голая земля, растений и семян нет (рост флоры — этап 2.2)\n"
+                    : $"Сценарий Wildlands: банк семян трав заложен, подготовка 20 лет ожидает (этап 2.5), готово {sim.PreparationFraction() * 100:0}%\n");
                 sb.Append($"Год {c.Year + 1}, {seasons[c.Season]}, день {c.DayOfSeason + 1}, {c.Hour:00}:{c.Minute:00} · скорость {(s.Speed == 0 ? "пауза" : "×" + s.Speed)} (Пробел, 1–4){(host.Behind ? " · НЕ УСПЕВАЕТ" : "")}\n");
                 sb.Append($"Ядро: шаг воды {(host.BurstActive ? "Burst" : "C# без Burst")}, последний час {host.LastHourMs:0.00} мс, такты за кадр {host.TicksLastAdvance}, время ядра за кадр {host.LastAdvanceMs:0.00} мс\n");
                 sb.Append($"Ветер {s.Wind.Speed:0.0} м/с · аномалия {s.Anomaly:+0.0;-0.0} °C · слой: {WorldRenderer.OverlayNames[(int)(view?.Overlay ?? 0)]} {view?.Legend} (O) · при сворачивании: {(PauseWhenMinimized ? "пауза" : "продолжать")} (P)\n");
@@ -406,9 +411,12 @@ namespace Worldbound.App
             ok &= HostCheck.Run(L, out var hostCheck);
             ok &= WoodyRestoreCheck.Run(L, out var woodyRestore);
             yield return null;
+            // Флора, Stage 2.1 (G2): начальное состояние Genesis/Wildlands и стенд — против конструктора TS Simulation.
+            ok &= FloraG2Golden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g2.json")), L, out var g2);
+            yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
         /// <summary>

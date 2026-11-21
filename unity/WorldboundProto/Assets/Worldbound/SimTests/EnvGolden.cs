@@ -41,7 +41,8 @@ namespace Worldbound.Sim.Golden
                 var config = WorldgenGolden.ConfigOf(c);
                 config.DaysPerSeason = (int)MiniJson.Num(c["daysPerSeason"]);
                 var genSw = Stopwatch.StartNew();
-                var sim = new Simulation(config);
+                // Эталон tools/unity-env-golden.ts строит мир без заселения флорой (покров createEnv = 0,25 на суше).
+                var sim = new Simulation(config, null, null, new SimulationOptions { Populate = false });
                 double createMs = genSw.Elapsed.TotalMilliseconds;
                 var w = sim.World;
                 opt.Configure?.Invoke(sim);

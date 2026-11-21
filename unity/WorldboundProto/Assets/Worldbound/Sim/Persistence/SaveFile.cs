@@ -426,7 +426,8 @@ namespace Worldbound.Sim.Persistence
             string geoHash = Generate.HashGeo(geo);
             if (geoHash != info.GeoHash) throw new SaveException($"статика мира не совпадает с сохранённым хешем ({geoHash} ≠ {info.GeoHash})");
             if (worldgenVersion != Generate.WorldgenVersion) info.Warnings.Add($"мир создан генератором версии {worldgenVersion} (текущая {Generate.WorldgenVersion}); статика взята из файла");
-            var sim = new Simulation(config, new Generate.Result { Geo = geo, Hash = geoHash });
+            // Как в TS: при загрузке начальное заселение пропускается (populate: false) — состояние придёт из секций.
+            var sim = new Simulation(config, new Generate.Result { Geo = geo, Hash = geoHash }, null, new SimulationOptions { Populate = false });
             var w = sim.World;
             var tr = new Reader(s["TIME"].data, "TIME");
             w.Tick = tr.L();

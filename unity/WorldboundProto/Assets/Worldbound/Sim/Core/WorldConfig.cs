@@ -10,6 +10,8 @@ namespace Worldbound.Sim
         public const int CellSize = 8;
         public const int HeightSpacing = 2;
         public const int ChunkSize = 128;
+        /// <summary>Wildlands готовится предварительным прогоном той же симуляции на столько игровых лет (WILDLANDS_YEARS).</summary>
+        public const double WildlandsYears = 20;
 
         public string Name = "Новый мир";
         public uint Seed = 1;
