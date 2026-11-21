@@ -1,0 +1,8 @@
+{
+  "name": "Worldbound.Sim",
+  "rootNamespace": "Worldbound.Sim",
+  "references": [],
+  "noEngineReferences": true,
+  "allowUnsafeCode": false,
+  "autoReferenced": true
+}

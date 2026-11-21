@@ -1,0 +1,1663 @@
+{
+ "tool": "unity-worldgen-golden",
+ "node": "v24.22.1",
+ "cases": [
+  {
+   "seed": 42,
+   "size": "S",
+   "climate": "temperate",
+   "geoHash": "267530a6fcb45b57",
+   "n": 256,
+   "edges": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "windX": "bfee82a909bd66ca",
+   "windZ": "3fd34ca098a88371",
+   "arrays": {
+    "height": "75edcf9e",
+    "slope": "0496dbf6",
+    "waterKind": "2e7020ba",
+    "waterLevel": "c67052cd",
+    "waterDist": "31bfc4a5",
+    "seaDist": "5952936d",
+    "receiver": "07d6ac68",
+    "upstreamOrder": "1848b5a5",
+    "meanDischarge": "c9f6fc14",
+    "lakeId": "ef156679",
+    "tMean": "c00b912a",
+    "tAmp": "e818e332",
+    "precip": "af8c86e7",
+    "soil": "adddcc59",
+    "fertility": "3a042018",
+    "deposit": "efc9fd7d",
+    "depositRichness": "0c23e801",
+    "province": "202896c2",
+    "terrain": "48f7cd13",
+    "horizon": "cda09d66"
+   },
+   "lakes": [
+    [
+     "40322550da0b1407",
+     112,
+     16289
+    ],
+    [
+     "40322f950a6b43fb",
+     198,
+     18843
+    ],
+    [
+     "403082e1fdadaf17",
+     94,
+     22846
+    ],
+    [
+     "40375cc8528a1224",
+     268,
+     36934
+    ],
+    [
+     "407de45d831512c5",
+     17,
+     49165
+    ],
+    [
+     "4081474543a17f38",
+     27,
+     52224
+    ],
+    [
+     "407e184c991c73f8",
+     20,
+     59687
+    ],
+    [
+     "40811912462fe9fa",
+     26,
+     62902
+    ],
+    [
+     "408eb2ef445db77b",
+     7,
+     63747
+    ],
+    [
+     "4081ce204d77db5a",
+     89,
+     63275
+    ],
+    [
+     "4081e9ab4271cc79",
+     27,
+     65199
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Велевское побережье",
+     "kind": "coast",
+     "cells": 5484,
+     "x": "40951fbb49026d6c",
+     "z": "4075fec94a213cb0",
+     "meanHeight": "402ad4564022e551",
+     "meanTemp": "402310c80a273656",
+     "meanPrecip": "4081c7ffc9210ce2"
+    },
+    {
+     "name": "Белерский хребет",
+     "kind": "mountains",
+     "cells": 6127,
+     "x": "40713aa187c0281c",
+     "z": "409b0541b938880b",
+     "meanHeight": "407fbcba3bebcb88",
+     "meanTemp": "4012b78c72ee28b2",
+     "meanPrecip": "408f43fd149d44bb"
+    },
+    {
+     "name": "Заренский хребет",
+     "kind": "mountains",
+     "cells": 3106,
+     "x": "409aaa03a064395d",
+     "z": "409dbcac18658af6",
+     "meanHeight": "4076a6494420ff47",
+     "meanTemp": "4016cd6a8a8a2347",
+     "meanPrecip": "4090850deb27114f"
+    },
+    {
+     "name": "Кеданское плато",
+     "kind": "highland",
+     "cells": 3370,
+     "x": "4064f7cbbc8b2ab1",
+     "z": "4072d0ac97523187",
+     "meanHeight": "406e3e5b26f435a6",
+     "meanTemp": "40201a0642da793d",
+     "meanPrecip": "4096cfb83331fc0d"
+    },
+    {
+     "name": "Кедатское побережье",
+     "kind": "coast",
+     "cells": 12255,
+     "x": "4093597329d76ec7",
+     "z": "40914c622e2a67d2",
+     "meanHeight": "4039922672f12025",
+     "meanTemp": "402144b40e3f764c",
+     "meanPrecip": "4082c836cd4675c6"
+    },
+    {
+     "name": "Белальское нагорье",
+     "kind": "highland",
+     "cells": 6096,
+     "x": "40906ded2fb4bed3",
+     "z": "409bcdf137c4df13",
+     "meanHeight": "4070b56a63740a2e",
+     "meanTemp": "401939b109081020",
+     "meanPrecip": "4086344c94b2bacb"
+    },
+    {
+     "name": "Владевское взгорье",
+     "kind": "hills",
+     "cells": 14096,
+     "x": "407fe6d8c597f907",
+     "z": "408c59c1d0ed1cc4",
+     "meanHeight": "40500fe0f803b613",
+     "meanTemp": "4020fde5fa597f90",
+     "meanPrecip": "4087f8d851eb5e70"
+    }
+   ],
+   "tsMs": 573
+  },
+  {
+   "seed": 7,
+   "size": "S",
+   "climate": "cold",
+   "geoHash": "529b801e560bc682",
+   "n": 256,
+   "edges": [
+    1,
+    1,
+    0,
+    0
+   ],
+   "windX": "3fefdf867e1095f9",
+   "windZ": "bfb6c5a24cfbb64f",
+   "arrays": {
+    "height": "9c57a32c",
+    "slope": "66344d1f",
+    "waterKind": "b6c32f30",
+    "waterLevel": "009553f2",
+    "waterDist": "d6c045cb",
+    "seaDist": "a34fb204",
+    "receiver": "9adbaed0",
+    "upstreamOrder": "9d4c79b9",
+    "meanDischarge": "2814bf48",
+    "lakeId": "ead1be5e",
+    "tMean": "746eb5eb",
+    "tAmp": "dbd38aaa",
+    "precip": "2466982f",
+    "soil": "3527487c",
+    "fertility": "54f21b49",
+    "deposit": "910e24a2",
+    "depositRichness": "eb9707c0",
+    "province": "8be362a3",
+    "terrain": "8a69a95a",
+    "horizon": "4a5a644e"
+   },
+   "lakes": [
+    [
+     "408287d0f4635450",
+     8,
+     937
+    ],
+    [
+     "4080582c321435ba",
+     21,
+     955
+    ],
+    [
+     "4048cbfc3e7fecde",
+     2755,
+     25952
+    ],
+    [
+     "4075e599cbe23c66",
+     22,
+     63733
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Луговский берег",
+     "kind": "coast",
+     "cells": 10098,
+     "x": "40958a9c106d84cb",
+     "z": "4094e13e0288fff3",
+     "meanHeight": "40433261f402d3d4",
+     "meanTemp": "3ff5c5718343fe2d",
+     "meanPrecip": "4080819c2cee4dfb"
+    },
+    {
+     "name": "Борское побережье",
+     "kind": "coast",
+     "cells": 7480,
+     "x": "407ef6f6f6f6f6f7",
+     "z": "406fb8be90046179",
+     "meanHeight": "405d1c8f0d967ed5",
+     "meanTemp": "3ffddd20b550bca5",
+     "meanPrecip": "4081a34da21b6133"
+    },
+    {
+     "name": "Свететский хребет",
+     "kind": "mountains",
+     "cells": 9255,
+     "x": "4099fcef5211c218",
+     "z": "40759ff0f3db6090",
+     "meanHeight": "407316d9b806b261",
+     "meanTemp": "3fd7495acdda8a95",
+     "meanPrecip": "40867ab7753a5623"
+    },
+    {
+     "name": "Тихельское нагорье",
+     "kind": "highland",
+     "cells": 1775,
+     "x": "409dfa59219ac0f9",
+     "z": "409ca71815ec18cf",
+     "meanHeight": "40680759ed215b3a",
+     "meanTemp": "bfb5a7ddd68da5b7",
+     "meanPrecip": "4090f3361257fa3b"
+    },
+    {
+     "name": "Боримские озёра",
+     "kind": "lakeland",
+     "cells": 14186,
+     "x": "408ea8f6de65feeb",
+     "z": "408882c083a9cfff",
+     "meanHeight": "404904f8b517e81a",
+     "meanTemp": "3ffb1deb1141a6b5",
+     "meanPrecip": "407d06245b0585a6"
+    },
+    {
+     "name": "Серинские горы",
+     "kind": "mountains",
+     "cells": 1763,
+     "x": "409eb6b29aca6b2a",
+     "z": "40941e80a7474bf1",
+     "meanHeight": "4074fcee1b937f7a",
+     "meanTemp": "bfe339ae89ed7326",
+     "meanPrecip": "409192506252c49c"
+    },
+    {
+     "name": "Ялское побережье",
+     "kind": "coast",
+     "cells": 6389,
+     "x": "407dd05e3df24be4",
+     "z": "409711c9bf2b2778",
+     "meanHeight": "40318e251bd8eace",
+     "meanTemp": "3ff65c8c584fd133",
+     "meanPrecip": "407d73641cef4a91"
+    }
+   ],
+   "tsMs": 475
+  },
+  {
+   "seed": 1234,
+   "size": "S",
+   "climate": "warm",
+   "geoHash": "266377acc76dbcb8",
+   "n": 256,
+   "edges": [
+    1,
+    1,
+    1,
+    0
+   ],
+   "windX": "3fef2904cc7a22f0",
+   "windZ": "bfcd21a6f0efe9ff",
+   "arrays": {
+    "height": "4632884b",
+    "slope": "08685f57",
+    "waterKind": "14ac0b53",
+    "waterLevel": "154ba37d",
+    "waterDist": "b3866e24",
+    "seaDist": "13d8b4c3",
+    "receiver": "8f94b741",
+    "upstreamOrder": "28e3f669",
+    "meanDischarge": "adc8697a",
+    "lakeId": "c67d0258",
+    "tMean": "b3bf77d1",
+    "tAmp": "2a727205",
+    "precip": "c1383b09",
+    "soil": "4b8ce116",
+    "fertility": "2d0d230d",
+    "deposit": "8fac2f39",
+    "depositRichness": "e4b5a362",
+    "province": "572a5576",
+    "terrain": "18967d66",
+    "horizon": "1dfd5e26"
+   },
+   "lakes": [
+    [
+     "407cd0be4a74f496",
+     107,
+     2780
+    ],
+    [
+     "40414ef661112ca9",
+     5487,
+     13890
+    ],
+    [
+     "407775bc08637ed5",
+     141,
+     35059
+    ],
+    [
+     "4042559ea1d3fb75",
+     1974,
+     38044
+    ],
+    [
+     "4078215285d33679",
+     40,
+     39137
+    ],
+    [
+     "40792d24ddc7a3ab",
+     38,
+     41209
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Кедарское взгорье",
+     "kind": "hills",
+     "cells": 13295,
+     "x": "4082a05291259b10",
+     "z": "40966ef5d05cbbdb",
+     "meanHeight": "404c7c7992a1d61d",
+     "meanTemp": "402e2019c9b3c98c",
+     "meanPrecip": "4087ab4529fc7edb"
+    },
+    {
+     "name": "Заримский хребет",
+     "kind": "mountains",
+     "cells": 5305,
+     "x": "409dcc8689eaabb2",
+     "z": "408d756d02d8dd35",
+     "meanHeight": "40784f2731189ecd",
+     "meanTemp": "402a5f664ef28956",
+     "meanPrecip": "4095dc822b21d3e5"
+    },
+    {
+     "name": "Яральский хребет",
+     "kind": "mountains",
+     "cells": 6171,
+     "x": "4096303fb850a546",
+     "z": "4063330be7f066e2",
+     "meanHeight": "40714de280b3439d",
+     "meanTemp": "402d74c1df17b005",
+     "meanPrecip": "408de571f039bf09"
+    },
+    {
+     "name": "Ивонские озёра",
+     "kind": "lakeland",
+     "cells": 18170,
+     "x": "409561362fd8c69a",
+     "z": "409001e182d4f8c2",
+     "meanHeight": "404d7b1e1359d8c5",
+     "meanTemp": "402e991316d54f52",
+     "meanPrecip": "4089df21b817ab77"
+    },
+    {
+     "name": "Туренское плато",
+     "kind": "highland",
+     "cells": 2455,
+     "x": "4072c8a7ad69a1f1",
+     "z": "405e4417c670691c",
+     "meanHeight": "406de35ad38052d1",
+     "meanTemp": "402e7501d90a1d68",
+     "meanPrecip": "40917d78f62a5622"
+    },
+    {
+     "name": "Солонское плато",
+     "kind": "highland",
+     "cells": 3571,
+     "x": "409c5988da81c1a2",
+     "z": "409c5fbc53720e7b",
+     "meanHeight": "406f8060bd8fabe8",
+     "meanTemp": "402a73c16c246af6",
+     "meanPrecip": "4094d6a2441aab0d"
+    },
+    {
+     "name": "Ялонские горы",
+     "kind": "mountains",
+     "cells": 2436,
+     "x": "4091534f72c234f7",
+     "z": "409e70a824fde5f0",
+     "meanHeight": "4076cef132cb8742",
+     "meanTemp": "4028d97e9337e876",
+     "meanPrecip": "408b764947af4a67"
+    },
+    {
+     "name": "Зарарские горы",
+     "kind": "mountains",
+     "cells": 1957,
+     "x": "407116779006476c",
+     "z": "409e5bdf0906abe3",
+     "meanHeight": "407a38d3bcefa005",
+     "meanTemp": "4028763aa84e7ccc",
+     "meanPrecip": "4093267b86e895a6"
+    },
+    {
+     "name": "Светское приозерье",
+     "kind": "lakeland",
+     "cells": 8648,
+     "x": "4080ab2cc230c8d2",
+     "z": "408275411ff86bfd",
+     "meanHeight": "40455d9dc2fc6ee0",
+     "meanTemp": "40300996d1f7f2bd",
+     "meanPrecip": "4087f50840c13e48"
+    }
+   ],
+   "tsMs": 533
+  },
+  {
+   "seed": 99,
+   "size": "S",
+   "climate": "temperate",
+   "geoHash": "2b0b63f02b6522b9",
+   "n": 256,
+   "edges": [
+    1,
+    0,
+    0,
+    0
+   ],
+   "windX": "bfef517f91061db4",
+   "windZ": "3fca475be42dcf8f",
+   "arrays": {
+    "height": "60fd0b72",
+    "slope": "765d367e",
+    "waterKind": "82249e15",
+    "waterLevel": "584ee420",
+    "waterDist": "3f018732",
+    "seaDist": "286a93f7",
+    "receiver": "0f1c550a",
+    "upstreamOrder": "b9d89de9",
+    "meanDischarge": "79884d10",
+    "lakeId": "2a83b147",
+    "tMean": "e777c40e",
+    "tAmp": "c0486b7a",
+    "precip": "121a2375",
+    "soil": "3aaf059b",
+    "fertility": "04ac0d9f",
+    "deposit": "335c537c",
+    "depositRichness": "e7239913",
+    "province": "f5ed9690",
+    "terrain": "20d2c695",
+    "horizon": "bb2cb099"
+   },
+   "lakes": [
+    [
+     "40527a3e4951e2c5",
+     12,
+     7754
+    ],
+    [
+     "4053303479e96462",
+     279,
+     7771
+    ],
+    [
+     "4050d0602defc9fd",
+     239,
+     11731
+    ],
+    [
+     "40527a7fd2892e8b",
+     21,
+     7754
+    ],
+    [
+     "405870aaf70f7152",
+     18,
+     10146
+    ],
+    [
+     "4030b21b7d95ee0f",
+     83,
+     15872
+    ],
+    [
+     "4051f2d077045f64",
+     30,
+     10817
+    ],
+    [
+     "4042022aa8df99b4",
+     21,
+     16895
+    ],
+    [
+     "402d1dd97c4f99be",
+     7,
+     20224
+    ],
+    [
+     "40526041a0d51cc6",
+     12,
+     21975
+    ],
+    [
+     "4046165feb5d94ff",
+     22,
+     30106
+    ],
+    [
+     "4046172487037854",
+     6,
+     31135
+    ],
+    [
+     "4034c3a368d71d20",
+     342,
+     45679
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Сительские холмы",
+     "kind": "hills",
+     "cells": 10615,
+     "x": "4074f132c411d8b1",
+     "z": "4086da3ae4acf73f",
+     "meanHeight": "4046139f38c91746",
+     "meanTemp": "4021aa9c6ccd925d",
+     "meanPrecip": "4085d4b2db6c8066"
+    },
+    {
+     "name": "Серовский берег",
+     "kind": "coast",
+     "cells": 7278,
+     "x": "409b412da810522b",
+     "z": "4091a9d82eb63433",
+     "meanHeight": "4040a99f519b836a",
+     "meanTemp": "402127a7647d38a2",
+     "meanPrecip": "408beef1ac9f8d31"
+    },
+    {
+     "name": "Зоренские холмы",
+     "kind": "hills",
+     "cells": 3842,
+     "x": "4093cf7bcd5c15db",
+     "z": "40668ccb181eead0",
+     "meanHeight": "4063205350bc5285",
+     "meanTemp": "4021036dd7dbc091",
+     "meanPrecip": "408e15bba63f2ac7"
+    },
+    {
+     "name": "Яловское побережье",
+     "kind": "coast",
+     "cells": 7882,
+     "x": "407df134ae58fe1e",
+     "z": "4099e48e20de6aa9",
+     "meanHeight": "40353d15c6942826",
+     "meanTemp": "40205d8c0ec3011b",
+     "meanPrecip": "40872a05356226d8"
+    },
+    {
+     "name": "Медарское поле",
+     "kind": "plain",
+     "cells": 11513,
+     "x": "4090d66c6080ca14",
+     "z": "408a56125de117a3",
+     "meanHeight": "404bfcc9faaf3329",
+     "meanTemp": "4021161c495b0e2a",
+     "meanPrecip": "4087a096c66baa59"
+    },
+    {
+     "name": "Лугимское взгорье",
+     "kind": "hills",
+     "cells": 5547,
+     "x": "409be37cbf10c0ba",
+     "z": "40769a27f7821991",
+     "meanHeight": "405599e7122e5b4f",
+     "meanTemp": "4021a4b6f371ab8b",
+     "meanPrecip": "408d5b500df18231"
+    },
+    {
+     "name": "Туримские озёра",
+     "kind": "lakeland",
+     "cells": 4019,
+     "x": "40811c83377afff0",
+     "z": "4063a9982c555ac5",
+     "meanHeight": "40615f1d2c80bd59",
+     "meanTemp": "4021496230847d9d",
+     "meanPrecip": "408a96293e4dd699"
+    },
+    {
+     "name": "Владское побережье",
+     "kind": "coast",
+     "cells": 6463,
+     "x": "4093af91b9bb50ec",
+     "z": "4098c4ccdd063802",
+     "meanHeight": "4035c14e9a9f4600",
+     "meanTemp": "402077e912597088",
+     "meanPrecip": "408755e2384bbc07"
+    }
+   ],
+   "tsMs": 430
+  },
+  {
+   "seed": 42,
+   "size": "M",
+   "climate": "temperate",
+   "geoHash": "40debae61cc997b3",
+   "n": 512,
+   "edges": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "windX": "3fb07c65f37943e4",
+   "windZ": "3fefeefee855aebf",
+   "arrays": {
+    "height": "a5b57085",
+    "slope": "9623c894",
+    "waterKind": "61bbbbc6",
+    "waterLevel": "6d783e77",
+    "waterDist": "ddae59ad",
+    "seaDist": "74906d4f",
+    "receiver": "a4c39e69",
+    "upstreamOrder": "ea1c08fd",
+    "meanDischarge": "1d60af28",
+    "lakeId": "1795c23b",
+    "tMean": "a04bf699",
+    "tAmp": "e793422d",
+    "precip": "c0963b09",
+    "soil": "3cc0eb56",
+    "fertility": "1d7a3819",
+    "deposit": "bec4cadd",
+    "depositRichness": "2466cd0f",
+    "province": "98370088",
+    "terrain": "0fa3e735",
+    "horizon": "fe65545b"
+   },
+   "lakes": [
+    [
+     "407d7b97c1bb3d53",
+     6,
+     16392
+    ],
+    [
+     "407c6ca64cee69c2",
+     13,
+     40451
+    ],
+    [
+     "407cc433e2f4e63b",
+     53,
+     44549
+    ],
+    [
+     "407db35f625a41c5",
+     21,
+     56840
+    ],
+    [
+     "403d7d9c68a0ca4a",
+     171,
+     85219
+    ],
+    [
+     "407e009c3e9f3c89",
+     14,
+     98315
+    ],
+    [
+     "407db7116242354b",
+     20,
+     101392
+    ],
+    [
+     "407ead832a2e329f",
+     21,
+     104975
+    ],
+    [
+     "4080aca3ffabfb7b",
+     38,
+     109061
+    ],
+    [
+     "4080eef2d5fc1c34",
+     102,
+     115219
+    ],
+    [
+     "4082eaf6219dd09a",
+     6,
+     121856
+    ],
+    [
+     "404e20803f850fa5",
+     2411,
+     118858
+    ],
+    [
+     "4053b6a4c9cd8d3c",
+     28,
+     131287
+    ],
+    [
+     "404e353107c77a37",
+     17,
+     146030
+    ],
+    [
+     "404e3d20a579a750",
+     725,
+     150643
+    ],
+    [
+     "40596d734e8a2b90",
+     232,
+     178863
+    ],
+    [
+     "405a19eaa6b1ba80",
+     184,
+     179402
+    ],
+    [
+     "40562e534fb61de8",
+     48,
+     181851
+    ],
+    [
+     "4036825d974ce906",
+     348,
+     191375
+    ],
+    [
+     "405649f661f20d11",
+     62,
+     188512
+    ],
+    [
+     "4056f89903024eae",
+     434,
+     196190
+    ],
+    [
+     "405a7754bd58df4b",
+     1219,
+     194765
+    ],
+    [
+     "405cb3e73fefbe66",
+     21,
+     200417
+    ],
+    [
+     "407cb1bf3539c6c9",
+     22,
+     200197
+    ],
+    [
+     "405cd08a02b2f1c0",
+     15,
+     209122
+    ],
+    [
+     "40780477c02e0ad5",
+     11,
+     210441
+    ],
+    [
+     "405dfda0f89e15c2",
+     32,
+     218269
+    ],
+    [
+     "4074f810e9e374b2",
+     29,
+     235128
+    ],
+    [
+     "4074f09c7fa2f476",
+     209,
+     236120
+    ],
+    [
+     "40888713f7866a20",
+     7,
+     245253
+    ],
+    [
+     "4076e3aee15e5590",
+     52,
+     247398
+    ],
+    [
+     "4079c4280a92d4b0",
+     93,
+     253043
+    ],
+    [
+     "4084a5369b3e5d9e",
+     28,
+     249881
+    ],
+    [
+     "4073951e859e97e8",
+     10,
+     253696
+    ],
+    [
+     "4075409d6f2ac9b8",
+     137,
+     253714
+    ],
+    [
+     "408090d018f03c69",
+     190,
+     253600
+    ],
+    [
+     "408bbb5161394b8a",
+     19,
+     254976
+    ],
+    [
+     "40813f4e0afe8175",
+     17,
+     257167
+    ],
+    [
+     "40807ee01e12b7f2",
+     82,
+     255377
+    ],
+    [
+     "40863e4ab831a932",
+     38,
+     258251
+    ],
+    [
+     "40761f4ce1c03431",
+     14,
+     259858
+    ],
+    [
+     "4082c75c74da6430",
+     7,
+     260478
+    ],
+    [
+     "408124bed9bc7478",
+     16,
+     260526
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Белское приозерье",
+     "kind": "lakeland",
+     "cells": 13119,
+     "x": "4083fbf04f9da6ab",
+     "z": "40a0e4bb40d80e35",
+     "meanHeight": "4057076fe6b243ea",
+     "meanTemp": "401fcf993886b8f3",
+     "meanPrecip": "4084f830744a12ee"
+    },
+    {
+     "name": "Лисовские горы",
+     "kind": "mountains",
+     "cells": 4108,
+     "x": "40a859ef8c56bef1",
+     "z": "40aed4b17ae3d520",
+     "meanHeight": "407a41932169b515",
+     "meanTemp": "40122268ba3a5441",
+     "meanPrecip": "40959e243a5e3955"
+    },
+    {
+     "name": "Лисельские горы",
+     "kind": "mountains",
+     "cells": 1855,
+     "x": "4069896265d9151d",
+     "z": "40aee2d9c5c3006a",
+     "meanHeight": "40864d63f997f80a",
+     "meanTemp": "400393676b3c0848",
+     "meanPrecip": "408404d326d0635d"
+    },
+    {
+     "name": "Лисарское побережье",
+     "kind": "coast",
+     "cells": 5738,
+     "x": "40aa8bf713b84263",
+     "z": "4087fb34330a153d",
+     "meanHeight": "40303f49d5de31cd",
+     "meanTemp": "4023c59807e4290c",
+     "meanPrecip": "40866ab5c116658b"
+    },
+    {
+     "name": "Туровские горы",
+     "kind": "mountains",
+     "cells": 6150,
+     "x": "40975e21cce21cce",
+     "z": "40ae569bae69bae7",
+     "meanHeight": "407b50e237ffe457",
+     "meanTemp": "401156ba78294b03",
+     "meanPrecip": "4092c60752122621"
+    },
+    {
+     "name": "Боринское нагорье",
+     "kind": "highland",
+     "cells": 6423,
+     "x": "406a5894e7a5c3a8",
+     "z": "407db92506e52d28",
+     "meanHeight": "406d21c75e42f8ad",
+     "meanTemp": "402130ca22133602",
+     "meanPrecip": "409153792da9d466"
+    },
+    {
+     "name": "Оларские луга",
+     "kind": "plain",
+     "cells": 9479,
+     "x": "40a169c46c22e4a4",
+     "z": "4097d722f9621ddf",
+     "meanHeight": "404566d18a613031",
+     "meanTemp": "4021ae8faa2be9db",
+     "meanPrecip": "408684dec1f010da"
+    },
+    {
+     "name": "Владинские озёра",
+     "kind": "lakeland",
+     "cells": 14953,
+     "x": "408efa60cc591817",
+     "z": "40a6b555ed4537a8",
+     "meanHeight": "40595cec8f3e5f40",
+     "meanTemp": "401d1afc1694e997",
+     "meanPrecip": "408576e100e618d3"
+    },
+    {
+     "name": "Миранское поле",
+     "kind": "plain",
+     "cells": 11156,
+     "x": "40a7ae3d21afc6b9",
+     "z": "40a3df2a509744c0",
+     "meanHeight": "403f7e7409dcdfe4",
+     "meanTemp": "402075095c672bc9",
+     "meanPrecip": "4083c9dccda5dcf0"
+    },
+    {
+     "name": "Ярушский берег",
+     "kind": "coast",
+     "cells": 6605,
+     "x": "40903933470b5b33",
+     "z": "408389f4c291582d",
+     "meanHeight": "402cfd56c031d1ce",
+     "meanTemp": "4023ef27b535e9c1",
+     "meanPrecip": "40878a8cdcf796e3"
+    },
+    {
+     "name": "Сосенский хребет",
+     "kind": "mountains",
+     "cells": 3655,
+     "x": "4061a75cf1c81b75",
+     "z": "40a5209a171d1129",
+     "meanHeight": "4076cde64f589fa2",
+     "meanTemp": "4016e36dbb5e5864",
+     "meanPrecip": "408633157d32c79e"
+    },
+    {
+     "name": "Боринская равнина",
+     "kind": "plain",
+     "cells": 12124,
+     "x": "40a0b5f1a4469bea",
+     "z": "40a3802322b69a90",
+     "meanHeight": "4053421f00f6e097",
+     "meanTemp": "401f3cfa7a829378",
+     "meanPrecip": "4084ce344e265859"
+    },
+    {
+     "name": "Дубельский берег",
+     "kind": "coast",
+     "cells": 4250,
+     "x": "40a1af281de06fcc",
+     "z": "4086be9d55a79318",
+     "meanHeight": "402f8653386598fa",
+     "meanTemp": "4023bee7e6609e0f",
+     "meanPrecip": "4087956995f4acff"
+    },
+    {
+     "name": "Радинское взгорье",
+     "kind": "hills",
+     "cells": 10314,
+     "x": "40a16c86080ab8f7",
+     "z": "40aa96b13824eee0",
+     "meanHeight": "405b763804b90bcd",
+     "meanTemp": "401b8f4dde007f15",
+     "meanPrecip": "408853423392fcdf"
+    },
+    {
+     "name": "Истонское взгорье",
+     "kind": "hills",
+     "cells": 10148,
+     "x": "409762f05c06dc95",
+     "z": "409e54f1c5ad0e07",
+     "meanHeight": "4053472ae062aa0f",
+     "meanTemp": "4020765bea30a311",
+     "meanPrecip": "40871c6585b52098"
+    },
+    {
+     "name": "Светские луга",
+     "kind": "plain",
+     "cells": 9542,
+     "x": "409a63511395c214",
+     "z": "408e70790d256638",
+     "meanHeight": "4038185e6dbeb624",
+     "meanTemp": "4022fa5bb88ef191",
+     "meanPrecip": "40865354f08bf055"
+    },
+    {
+     "name": "Тихарская равнина",
+     "kind": "plain",
+     "cells": 8190,
+     "x": "40a66caecaecaecb",
+     "z": "409b829429429429",
+     "meanHeight": "40407c5e270d9a41",
+     "meanTemp": "40219f6e3dd7dd7e",
+     "meanPrecip": "40852496b5565565"
+    },
+    {
+     "name": "Лугальский хребет",
+     "kind": "mountains",
+     "cells": 4100,
+     "x": "405f04dec84dec85",
+     "z": "409943b3133b3134",
+     "meanHeight": "407d20e4dc2ec019",
+     "meanTemp": "4017ee636acf4c2d",
+     "meanPrecip": "408c4526bf1839f2"
+    },
+    {
+     "name": "Ивовские горы",
+     "kind": "mountains",
+     "cells": 8494,
+     "x": "40853aa2a12ed5fd",
+     "z": "40acb02cd8c255f5",
+     "meanHeight": "4074b0f087e8c190",
+     "meanTemp": "4014aae6ef1243a2",
+     "meanPrecip": "408eb036fcd6d48a"
+    },
+    {
+     "name": "Велимский берег",
+     "kind": "coast",
+     "cells": 4909,
+     "x": "40ab753c70d9c653",
+     "z": "40ac814bab19eb09",
+     "meanHeight": "405bcb4cff73f120",
+     "meanTemp": "401bc7fae5c83351",
+     "meanPrecip": "4092bb167b8a8f69"
+    },
+    {
+     "name": "Холонское поле",
+     "kind": "plain",
+     "cells": 6763,
+     "x": "40a61f46f97390b6",
+     "z": "408fbb594b97ad54",
+     "meanHeight": "4036ddb1cb867242",
+     "meanTemp": "4023178a4d652e5f",
+     "meanPrecip": "4086e482fdbbc9f2"
+    },
+    {
+     "name": "Ивимское взгорье",
+     "kind": "hills",
+     "cells": 6943,
+     "x": "407d6fa360dca3dc",
+     "z": "4092cd560587df42",
+     "meanHeight": "40598f7b06dc099e",
+     "meanTemp": "4021833dcd824482",
+     "meanPrecip": "408a2ec0580924e9"
+    },
+    {
+     "name": "Веренское взгорье",
+     "kind": "hills",
+     "cells": 10136,
+     "x": "40a752b0ff64d2f1",
+     "z": "40a9c901d1872c40",
+     "meanHeight": "404e0fdef1134928",
+     "meanTemp": "401db61ebbd050d2",
+     "meanPrecip": "4087b636379bc83c"
+    },
+    {
+     "name": "Олерские горы",
+     "kind": "mountains",
+     "cells": 3602,
+     "x": "4065938b7149c5b9",
+     "z": "40ab4dc8906ae448",
+     "meanHeight": "407c8527b436f63b",
+     "meanTemp": "4011f2847f40f5a0",
+     "meanPrecip": "40861e360973d8c5"
+    },
+    {
+     "name": "Боримский берег",
+     "kind": "coast",
+     "cells": 1736,
+     "x": "40ae61ad6b5ad6b6",
+     "z": "40aee76446c88d91",
+     "meanHeight": "4057f7f6a349daef",
+     "meanTemp": "401b6656a1e60bcc",
+     "meanPrecip": "4095c8436a6a2cd4"
+    },
+    {
+     "name": "Ивальские луга",
+     "kind": "plain",
+     "cells": 7384,
+     "x": "40905e55fb01f106",
+     "z": "40945d462bd28378",
+     "meanHeight": "404300114fe15865",
+     "meanTemp": "40221fa92673ef5c",
+     "meanPrecip": "4087669b9076b564"
+    },
+    {
+     "name": "Борарские горы",
+     "kind": "mountains",
+     "cells": 2632,
+     "x": "40a26581f1fe719b",
+     "z": "40af0ad6c2876460",
+     "meanHeight": "407646e876175796",
+     "meanTemp": "401356da90d21758",
+     "meanPrecip": "4092e66ae00ae4c4"
+    },
+    {
+     "name": "Раденское приозерье",
+     "kind": "lakeland",
+     "cells": 7384,
+     "x": "40987235cea16be4",
+     "z": "40a9d6d61e825b87",
+     "meanHeight": "4060088bd31d02ca",
+     "meanTemp": "401b363db0b3ba1b",
+     "meanPrecip": "40879602e28d73a8"
+    },
+    {
+     "name": "Яронский берег",
+     "kind": "coast",
+     "cells": 3608,
+     "x": "40aa622e8ba2e8ba",
+     "z": "409eec9150091501",
+     "meanHeight": "402c119c2b458ba9",
+     "meanTemp": "4021e210a9272a92",
+     "meanPrecip": "408551240e59af66"
+    }
+   ],
+   "tsMs": 1847
+  },
+  {
+   "seed": 2024,
+   "size": "M",
+   "climate": "warm",
+   "geoHash": "1876566bd2ec5486",
+   "n": 512,
+   "edges": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "windX": "bfef940be0aee282",
+   "windZ": "3fc4b6298fbe4b0d",
+   "arrays": {
+    "height": "a5cd0fc3",
+    "slope": "6685eff1",
+    "waterKind": "4da66bb2",
+    "waterLevel": "41b9c56a",
+    "waterDist": "3ea4472e",
+    "seaDist": "89e70558",
+    "receiver": "0188a75a",
+    "upstreamOrder": "bd87b20d",
+    "meanDischarge": "e17502bb",
+    "lakeId": "93234dfe",
+    "tMean": "910d8278",
+    "tAmp": "ddb01564",
+    "precip": "e343baf0",
+    "soil": "33466d42",
+    "fertility": "70680200",
+    "deposit": "c6f2d3ca",
+    "depositRichness": "e0a8710f",
+    "province": "c00a64c5",
+    "terrain": "f8b8d274",
+    "horizon": "799719ea"
+   },
+   "lakes": [
+    [
+     "4061b4acd5d895e7",
+     10,
+     9742
+    ],
+    [
+     "404e3b88955a747c",
+     30,
+     74379
+    ],
+    [
+     "404d5edc0f482ddd",
+     629,
+     81562
+    ],
+    [
+     "404d53156758901b",
+     38,
+     77472
+    ],
+    [
+     "4085120177e4da54",
+     46,
+     83971
+    ],
+    [
+     "40405ce501333a01",
+     634,
+     88294
+    ],
+    [
+     "404deb584e264c24",
+     9,
+     88204
+    ],
+    [
+     "404e3e566d75bed8",
+     89,
+     94311
+    ],
+    [
+     "40414655f7247f74",
+     618,
+     104693
+    ],
+    [
+     "403c32855f290bde",
+     33,
+     106350
+    ],
+    [
+     "4080d6a4efb10c05",
+     48,
+     114203
+    ],
+    [
+     "4086b56d144ac5cd",
+     173,
+     132114
+    ],
+    [
+     "40818d33ffca88f8",
+     13,
+     122911
+    ],
+    [
+     "404148e5534d753a",
+     18,
+     125202
+    ],
+    [
+     "40875c7876c703af",
+     33,
+     132608
+    ],
+    [
+     "404161a6e71d2278",
+     139,
+     143141
+    ],
+    [
+     "40525cc830be9371",
+     268,
+     141685
+    ],
+    [
+     "403ed4e443c20cde",
+     22,
+     144578
+    ],
+    [
+     "403ede9ea1f74c55",
+     65,
+     145589
+    ],
+    [
+     "40525c039518b01f",
+     15,
+     146310
+    ],
+    [
+     "404161a6e71d2278",
+     34,
+     147742
+    ],
+    [
+     "403ec3c258c0d837",
+     540,
+     163557
+    ],
+    [
+     "403f0bb06b03be72",
+     55,
+     150690
+    ],
+    [
+     "407e34c408f0eed3",
+     31,
+     157198
+    ],
+    [
+     "403cd277eedec84f",
+     365,
+     172130
+    ],
+    [
+     "4053e90b09b56aa8",
+     244,
+     171405
+    ],
+    [
+     "4054e7bee182efe9",
+     13,
+     167293
+    ],
+    [
+     "407fb78193fb46f5",
+     17,
+     165891
+    ],
+    [
+     "403dc75ca56d8fbd",
+     803,
+     181519
+    ],
+    [
+     "403a43a04b18b5c7",
+     327,
+     190566
+    ],
+    [
+     "403a2d2add4d968a",
+     223,
+     200308
+    ],
+    [
+     "40054cfafeb01e73",
+     25,
+     234962
+    ]
+   ],
+   "provinces": [
+    {
+     "name": "Велонский хребет",
+     "kind": "mountains",
+     "cells": 4933,
+     "x": "406ffccef5771996",
+     "z": "40a277ea69590028",
+     "meanHeight": "4078b50fde135a5c",
+     "meanTemp": "4029ae8d79959d4c",
+     "meanPrecip": "4096bfbb621d5f70"
+    },
+    {
+     "name": "Белинский берег",
+     "kind": "coast",
+     "cells": 7466,
+     "x": "40a7c619ec1ccd75",
+     "z": "409037bc850a5aef",
+     "meanHeight": "4030f537606c3378",
+     "meanTemp": "40309ebfa00c11d5",
+     "meanPrecip": "408a1db82096526e"
+    },
+    {
+     "name": "Зорерское побережье",
+     "kind": "coast",
+     "cells": 14465,
+     "x": "40ac56e7195c6fa3",
+     "z": "40a7cce22dd668f3",
+     "meanHeight": "404799e3327f5878",
+     "meanTemp": "402daa0ad4bccd15",
+     "meanPrecip": "408c26441f256549"
+    },
+    {
+     "name": "Родевский берег",
+     "kind": "coast",
+     "cells": 10101,
+     "x": "40849ed24e0247ed",
+     "z": "40835e1e42c193e2",
+     "meanHeight": "40508cf18befe501",
+     "meanTemp": "4030964b93b27281",
+     "meanPrecip": "408df85bb81af74f"
+    },
+    {
+     "name": "Медонский берег",
+     "kind": "coast",
+     "cells": 4178,
+     "x": "4094db53f1c8daa0",
+     "z": "40aa55e7bc5aaf3e",
+     "meanHeight": "402ebb04dd15ce02",
+     "meanTemp": "402da874b9872b42",
+     "meanPrecip": "4086695d0eeb88e2"
+    },
+    {
+     "name": "Роденское приозерье",
+     "kind": "lakeland",
+     "cells": 9600,
+     "x": "409ee123d70a3d71",
+     "z": "40a14e5c28f5c28f",
+     "meanHeight": "4040e9e4f0b86256",
+     "meanTemp": "402ea3d5368b17e5",
+     "meanPrecip": "408643573e9c28f6"
+    },
+    {
+     "name": "Вератский берег",
+     "kind": "coast",
+     "cells": 5739,
+     "x": "40abd9dd796037ab",
+     "z": "409e3132e58c4a0c",
+     "meanHeight": "403a406228d25db4",
+     "meanTemp": "402fc3cf0c1dcc2b",
+     "meanPrecip": "408ddde580c38eb3"
+    },
+    {
+     "name": "Сосинское поле",
+     "kind": "plain",
+     "cells": 7042,
+     "x": "4097612f9f7213a1",
+     "z": "40904fc004a739a8",
+     "meanHeight": "4046c5066121310f",
+     "meanTemp": "4030429c4ea555b9",
+     "meanPrecip": "4088aed61fa1c5b0"
+    },
+    {
+     "name": "Серский берег",
+     "kind": "coast",
+     "cells": 12962,
+     "x": "40a292fa826de3a4",
+     "z": "40a8658ad7bfda14",
+     "meanHeight": "40365776e8f160a9",
+     "meanTemp": "402dc805e944885b",
+     "meanPrecip": "40872f2bd0ae6eae"
+    },
+    {
+     "name": "Рябушские горы",
+     "kind": "mountains",
+     "cells": 4649,
+     "x": "40650d76aa97def6",
+     "z": "409ad03be9501ed6",
+     "meanHeight": "408264275b8fcc48",
+     "meanTemp": "40282b720c45d2bc",
+     "meanPrecip": "40988d1d87c8ef34"
+    },
+    {
+     "name": "Родатское нагорье",
+     "kind": "highland",
+     "cells": 2973,
+     "x": "405fe9b2acbbb753",
+     "z": "40ace9e234ded92a",
+     "meanHeight": "406b32161612c6fc",
+     "meanTemp": "402a549ff318324a",
+     "meanPrecip": "409d0c4c8661fdc3"
+    },
+    {
+     "name": "Заральское взгорье",
+     "kind": "hills",
+     "cells": 8860,
+     "x": "408f3c1207a0c404",
+     "z": "40a1eb4a50abf9fd",
+     "meanHeight": "4048ae56fcf7fbb0",
+     "meanTemp": "402e50b7b20d2cf5",
+     "meanPrecip": "40889a29ce4609f1"
+    },
+    {
+     "name": "Кедушские холмы",
+     "kind": "hills",
+     "cells": 8311,
+     "x": "40a5714019a0b269",
+     "z": "40a306159f968835",
+     "meanHeight": "404d43938e197717",
+     "meanTemp": "402e157ee2250651",
+     "meanPrecip": "4087eafb55e68e9e"
+    },
+    {
+     "name": "Кедимский берег",
+     "kind": "coast",
+     "cells": 5557,
+     "x": "40a1cf2a9ce85dfb",
+     "z": "408714fa6cff3783",
+     "meanHeight": "40319264e0657d92",
+     "meanTemp": "4030d5b08c997fa8",
+     "meanPrecip": "4088f3ea6ac4b5e0"
+    },
+    {
+     "name": "Каменская равнина",
+     "kind": "plain",
+     "cells": 10300,
+     "x": "40a4e0406c2a8cf9",
+     "z": "4098c5c8209be2f8",
+     "meanHeight": "4040d6063f038ce0",
+     "meanTemp": "402fc50ef1a324e2",
+     "meanPrecip": "40885dd2774d0c6d"
+    },
+    {
+     "name": "Лисатское приозерье",
+     "kind": "lakeland",
+     "cells": 10204,
+     "x": "408a3cd1f024ee09",
+     "z": "40979887ad4f2da9",
+     "meanHeight": "4055f1abe7206ab2",
+     "meanTemp": "402f1528bffa6158",
+     "meanPrecip": "408b660315bac1ae"
+    },
+    {
+     "name": "Радарские озёра",
+     "kind": "lakeland",
+     "cells": 6985,
+     "x": "40855d65d9aa04e9",
+     "z": "40a66612d68c8416",
+     "meanHeight": "404b83c58c866a9a",
+     "meanTemp": "402d7cb98f1e3c79",
+     "meanPrecip": "408a48bbe61edbf9"
+    },
+    {
+     "name": "Заратские луга",
+     "kind": "plain",
+     "cells": 5414,
+     "x": "4096c00790c93e83",
+     "z": "409b40a6714b5f3b",
+     "meanHeight": "4048b0b7a83a13e1",
+     "meanTemp": "402f2a70c09ee082",
+     "meanPrecip": "408852d5b092c5a7"
+    },
+    {
+     "name": "Медовское приозерье",
+     "kind": "lakeland",
+     "cells": 6847,
+     "x": "40a00b0618272eec",
+     "z": "409599f931fd156c",
+     "meanHeight": "404045f1ab5bfc34",
+     "meanTemp": "403006843ad1c011",
+     "meanPrecip": "40876da0fb9a2742"
+    },
+    {
+     "name": "Олинские луга",
+     "kind": "plain",
+     "cells": 9245,
+     "x": "4098189ad898a17e",
+     "z": "40a649195641a078",
+     "meanHeight": "403def6535a0bcf8",
+     "meanTemp": "402de201142a6c0d",
+     "meanPrecip": "408572cd8cfae092"
+    },
+    {
+     "name": "Туринский берег",
+     "kind": "coast",
+     "cells": 4730,
+     "x": "409a07363b1a164c",
+     "z": "4081a292218e57ae",
+     "meanHeight": "40343cc8c1f8fa44",
+     "meanTemp": "4030f7cadc075c55",
+     "meanPrecip": "40888b1096ce50c0"
+    },
+    {
+     "name": "Иварский хребет",
+     "kind": "mountains",
+     "cells": 2439,
+     "x": "405455f68db289eb",
+     "z": "407efa769b21e705",
+     "meanHeight": "40736e9d9276a1da",
+     "meanTemp": "402e132dc307df41",
+     "meanPrecip": "409dd12cc744bfde"
+    },
+    {
+     "name": "Белимское плато",
+     "kind": "highland",
+     "cells": 4792,
+     "x": "40732b7c5e05fbba",
+     "z": "4091de9c6bb31261",
+     "meanHeight": "4071173494c3ad96",
+     "meanTemp": "402d4bb3a08036b4",
+     "meanPrecip": "40977c22ce41d0fd"
+    },
+    {
+     "name": "Лугальские горы",
+     "kind": "mountains",
+     "cells": 2713,
+     "x": "406406ef7ca673b0",
+     "z": "40a768a30e0f4951",
+     "meanHeight": "4074ead872ca7594",
+     "meanTemp": "40299eeaf8f55657",
+     "meanPrecip": "40985a727ebfede2"
+    },
+    {
+     "name": "Яровское побережье",
+     "kind": "coast",
+     "cells": 6437,
+     "x": "408123ead7a22482",
+     "z": "40ab14c425624599",
+     "meanHeight": "403f3e162f312851",
+     "meanTemp": "402d364db5fa5a47",
+     "meanPrecip": "408d839af9e16086"
+    },
+    {
+     "name": "Роданское приозерье",
+     "kind": "lakeland",
+     "cells": 6711,
+     "x": "40a984072be80b4b",
+     "z": "40a18dd09f4c8f47",
+     "meanHeight": "40516cdfa6c51543",
+     "meanTemp": "402e5e544b608c61",
+     "meanPrecip": "408b9129cde8bb12"
+    }
+   ],
+   "tsMs": 1691
+  }
+ ]
+}
