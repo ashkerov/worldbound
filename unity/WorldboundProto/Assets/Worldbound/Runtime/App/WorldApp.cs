@@ -404,10 +404,11 @@ namespace Worldbound.App
             ok &= SaveRobustness.Run(Path.Combine(Application.temporaryCachePath, "saverobust"), L, out var robust);
             ok &= PacerCheck.Run(L, out var pacer);
             ok &= HostCheck.Run(L, out var hostCheck);
+            ok &= WoodyRestoreCheck.Run(L, out var woodyRestore);
             yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
         /// <summary>

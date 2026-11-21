@@ -281,10 +281,16 @@ namespace Worldbound.Sim.Golden
                     dig.Add(Bits(g));
                     s.Eq(Bits(g) == (string)c["ground"], () => $"groundLight: {Bits(g)} ≠ {c["ground"]}");
                 }
-                var hsh = O(vec["herbShade"]);
-                var hin = A(hsh["in"]);
-                var hout = A(hsh["out"]);
-                for (int k = 0; k < hin.Count; k++) { int kk = k; double r = FloraMath.HerbShade(D(hin[k])); dig.Add(Bits(r)); s.Eq(Bits(r) == (string)hout[k], () => $"herbShade #{kk}"); }
+                int hk = 0;
+                foreach (var ho in A(vec["herbShade"]))
+                {
+                    var h = O(ho);
+                    var slots = A(h["slots"]).ConvertAll(x => MiniJson.FloatFromBits(x)).ToArray();
+                    double r = FloraMath.HerbShade(slots, 0);
+                    dig.Add(Bits(r));
+                    int kk = hk++;
+                    s.Eq(Bits(r) == (string)h["out"], () => $"herbShade #{kk}: {Bits(r)} ≠ {h["out"]}");
+                }
             }
             {
                 var s = New("G1.biomes");
@@ -416,6 +422,7 @@ namespace Worldbound.Sim.Golden
                 foreach (int i in new[] { 2, 7, 4 }) r.Remove(i);
                 var free2 = r.FreeSlots();
                 var r2 = new WoodyStore(10);
+                Array.Copy(r.Alive, r2.Alive, 10); // как при загрузке: столбцы читаются до Restore (Stage 2.1: Restore сверяет их со стеком)
                 r2.Restore(r.HighWater, r.Count, free2);
                 var restored = new List<int> { r2.HighWater, r2.Count };
                 for (int k = 0; k < 4; k++) restored.Add(r2.Spawn(5, 0, 0, 0, 1, 0));
@@ -423,7 +430,7 @@ namespace Worldbound.Sim.Golden
                 s.Eq(string.Join(",", free2) == string.Join(",", A(dd["free"]).ConvertAll(x => ((int)MiniJson.Num(x)).ToString())) && rGot == rExp, () => $"restore {rGot} ≠ {rExp}");
                 string err = "";
                 try { r2.Restore(11, 0, new int[0]); } catch (InvalidOperationException e) { err = e.Message; }
-                s.Eq(err == (string)dd["restoreError"], () => $"ошибка restore «{err}» ≠ «{dd["restoreError"]}»");
+                s.Eq(err.StartsWith((string)dd["restoreError"]), () => $"ошибка restore «{err}» не начинается с «{dd["restoreError"]}»");
             }
 
             // ───────── FloraState на мире S/42 ─────────

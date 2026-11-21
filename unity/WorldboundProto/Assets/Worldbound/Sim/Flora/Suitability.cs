@@ -73,6 +73,14 @@ namespace Worldbound.Sim.Flora
         /// <summary>Травостой затеняет низкие всходы: доля света сквозь траву при суммарной биомассе трав, г/м².</summary>
         public static double HerbShade(double herbTotal) => 1 - 0.4 * Math.Min(1, herbTotal / 400);
 
+        /// <summary>То же для ячейки (herbShade(world, cell) в TS): сумма 4 слотов травяного яруса — в double, как herbTotal.</summary>
+        public static double HerbShade(float[] slotBiomass, int cell)
+        {
+            double b = 0;
+            for (int k = 0; k < 4; k++) b += slotBiomass[cell * 4 + k];
+            return HerbShade(b);
+        }
+
         /// <summary>Вместимость ячейки для вида травяного яруса, г/м²: предельная биомасса при условиях и питании.</summary>
         public static double HerbCapacity(SpeciesTable t, int s, double fit, double nutrient) => t.MaxBiomass[s] * Math.Sqrt(fit * (0.3 + 0.7 * Suitability.NutrientResponse(t, s, nutrient)));
     }

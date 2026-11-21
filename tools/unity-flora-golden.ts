@@ -5,9 +5,8 @@
 //       трассы WoodyStore (выделение, освобождение, стек LIFO, поколения 255 → 0, заполнение, restore),
 //       createFlora на мире S/42 и nutrientStock/nutrientBudget на детерминированно заполненном состоянии.
 // Вещественные числа — точными битами IEEE-754 (hex). Входы векторов тоже выгружаются битами: C# считает на тех же входах.
-// Исключение: herbCapacity и herbShade в TS не экспортированы (модульные функции system.ts) — для них формула
-// продублирована здесь построчно из system.ts поверх экспортированных nutrientResponse и SPECIES; полную проверку
-// они получат в этапе 2.3 сценарием трав (G3 B).
+// Все функции вызываются напрямую: herbCapacity и herbShade экспортированы в эталонном снимке 7b2fbabbc1 (только
+// `export`, поведение не менялось — tools/ts-reference-fingerprint.ts); дублирования формул в инструменте нет.
 // Использование: npx tsx tools/unity-flora-golden.ts [--out unity/WorldboundProto/Golden/flora-g0g1.json]
 
 import { createHash } from 'node:crypto';
@@ -17,7 +16,7 @@ import { performance } from 'node:perf_hooks';
 import { PLANTS, SPECIES, type SpeciesTable } from '../src/sim/flora/species';
 import { BIOMES, classifyBiome, confirmsChange, ruleMatches, type BiomeInput, type BiomeRule } from '../src/sim/flora/biomes';
 import { lightResponse, moistureResponse, nutrientResponse, soilResponse, suitability, tempResponse, trapezoid } from '../src/sim/flora/suitability';
-import { crownRadius, groundLight, lightAt, woodyHeight } from '../src/sim/flora/system';
+import { crownRadius, groundLight, herbCapacity, herbShade, lightAt, woodyHeight } from '../src/sim/flora/system';
 import { WoodyStore } from '../src/sim/flora/woodyStore';
 import { createFlora, nutrientBudget, nutrientStock, herbBiomass, woodyCapacity, SLOTS } from '../src/sim/flora/state';
 import { EntityKind, idGeneration, idIndex, idKind, makeId, MAX_INDEX } from '../src/shared/ids';
@@ -155,13 +154,13 @@ for (let s = 0; s < S.count; s++) {
   }
   const woody = S.woody[s] === 1;
   const bIn = woody ? [0, 1e-9, 0.0005, 0.002, 0.01, 0.1, 1, 2, 10, 50, S.halfBiomass[s]!, S.maxBiomass[s]!, ...Array.from({ length: 120 }, (_, k) => S.maxBiomass[s]! * 1.2 * R(40 + s, k))] : [];
-  // herbCapacity — формула system.ts (функция не экспортирована): maxBiomass · √(fit · (0,3 + 0,7 · nutrientResponse)).
+  // herbCapacity — настоящая функция system.ts.
   const cap: string[][] = [];
   if (!woody)
     for (let k = 0; k < 200; k++) {
       const fit = R(60 + s, k * 2);
       const nu = 30 * R(60 + s, k * 2 + 1);
-      cap.push([bits(fit), bits(nu), bits(S.maxBiomass[s]! * Math.sqrt(fit * (0.3 + 0.7 * nutrientResponse(S, s, nu))))]);
+      cap.push([bits(fit), bits(nu), bits(herbCapacity(s, fit, nu))]);
     }
   perSpecies.push({
     s,
@@ -190,9 +189,15 @@ vec.species = perSpecies;
     cases.push({ canopy: Array.from(canopy, fbits), heights: hs.map(bits), lightAt: hs.map((h) => bits(lightAt(world, 0, h))), ground: bits(groundLight(world, 0)) });
   }
   vec.light = cases;
-  // herbShade — формула system.ts (не экспортирована): 1 − 0,4 · min(1, травы / 400).
-  const totals = [0, 1, 399.999, 400, 400.001, 1000, ...Array.from({ length: 100 }, (_, k) => 900 * R(82, k))];
-  vec.herbShade = { in: totals.map(bits), out: totals.map((h) => bits(1 - 0.4 * Math.min(1, h / 400))) };
+  // herbShade — настоящая функция system.ts: травостой ячейки — 4 слота float32 (сумма около порога 400 г/м² и случайная).
+  const shade: unknown[] = [];
+  const presets = [[0, 0, 0, 0], [1, 0, 0, 0], [100, 100, 100, 99.999], [100, 100, 100, 100], [100, 100, 100, 100.001], [250, 250, 250, 250]];
+  for (let k = 0; k < 106; k++) {
+    const slotBiomass = new Float32Array(presets[k] ?? [0, 1, 2, 3].map((j) => 300 * R(82, k * 4 + j)));
+    const world = { flora: { slotBiomass } } as unknown as World;
+    shade.push({ slots: Array.from(slotBiomass, fbits), out: bits(herbShade(world, 0)) });
+  }
+  vec.herbShade = shade;
 }
 
 // Биомы: случайные показатели и показатели на порогах каждого правила (± запас), все режимы.

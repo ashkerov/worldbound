@@ -100,10 +100,29 @@ namespace Worldbound.Sim.Flora
             return a;
         }
 
-        /// <summary>Восстановление после загрузки: столбцы уже записаны, задаются граница, число и стек свободных.</summary>
+        /// <summary>
+        /// Восстановление после загрузки: столбцы (в том числе Alive) уже записаны, задаются граница, число и стек свободных.
+        /// Всё проверяется до изменения хранилища: при ошибке состояние не меняется. Порядок стека сохраняется (LIFO).
+        /// Инвариант хранилища: ниже highWater каждый мёртвый слот лежит в стеке ровно один раз, живых — ровно count.
+        /// </summary>
         public void Restore(int highWater, int count, int[] freeSlots)
         {
-            if (highWater > Capacity || count > highWater || highWater < 0 || count < 0 || freeSlots.Length > Capacity) throw new InvalidOperationException("Сохранение растений повреждено");
+            const string Bad = "Сохранение растений повреждено";
+            if (freeSlots == null) throw new InvalidOperationException($"{Bad}: нет стека свободных");
+            if (highWater < 0 || highWater > Capacity) throw new InvalidOperationException($"{Bad}: highWater {highWater} вне [0, {Capacity}]");
+            if (count < 0 || count > highWater) throw new InvalidOperationException($"{Bad}: count {count} вне [0, {highWater}]");
+            if (freeSlots.Length != highWater - count) throw new InvalidOperationException($"{Bad}: свободных {freeSlots.Length}, ожидалось highWater − count = {highWater - count}");
+            int alive = 0;
+            for (int i = 0; i < highWater; i++) if (Alive[i] == 1) alive++;
+            if (alive != count) throw new InvalidOperationException($"{Bad}: живых растений {alive}, а count = {count}");
+            var seen = new bool[highWater];
+            foreach (int i in freeSlots)
+            {
+                if (i < 0 || i >= highWater) throw new InvalidOperationException($"{Bad}: свободный индекс {i} вне [0, {highWater})");
+                if (seen[i]) throw new InvalidOperationException($"{Bad}: свободный индекс {i} повторяется");
+                if (Alive[i] == 1) throw new InvalidOperationException($"{Bad}: свободный индекс {i} занят живым растением");
+                seen[i] = true;
+            }
             HighWater = highWater;
             Count = count;
             Array.Copy(freeSlots, free, freeSlots.Length);

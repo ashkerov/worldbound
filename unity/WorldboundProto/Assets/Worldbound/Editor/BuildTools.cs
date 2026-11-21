@@ -129,9 +129,10 @@ namespace Worldbound.EditorTools
             ok &= Worldbound.Sim.Golden.SaveRobustness.Run(Path.Combine(ProjectDir, "Temp", "saverobust"), L, out var robust);
             ok &= Worldbound.Sim.Golden.PacerCheck.Run(L, out var pacer);
             ok &= Worldbound.SimHost.HostCheck.Run(L, out var hostCheck);
+            ok &= Worldbound.Sim.Golden.WoodyRestoreCheck.Run(L, out var woodyRestore);
             ok &= Worldbound.Sim.Golden.FloraGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "content")), L, out var flora);
             bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
-            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora} }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore} }}\n");
             Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
             if (!ok) EditorApplication.Exit(1);
         }
