@@ -1,11 +1,8 @@
-// Точка входа Windows-прототипа WORLDBOUND на Unity.
-// Режимы (аргументы командной строки):
-//   без аргументов     — сцена A (диорама), свободная камера: WASD/QE, правая кнопка — обзор, колесо — скорость;
-//                        1 — диорама, 2–5 — лес 10/50/100/300 тыс. деревьев, F1 — панель, F12 — снимок,
-//                        P — режим при сворачивании (продолжать / приостанавливать).
+// Сцены оценки Unity (docs/UNITY_EVALUATION_REPORT.md): диорама и лес-стенд — испытание рендера, НЕ мир игры.
+// Растения и животные здесь декоративные (проверка производительности отрисовки), с симуляцией не связаны.
+// Запускаются только явно: -wbproto (свободный просмотр), -wbbench …, -wbshots … — для воспроизведения замеров оценки.
 //   -wbbench "сцена:деревья:камера,…" -wbsec N -wbout файл — серия замеров и выход;
-//   -wbshots папка     — снимки сцен и выход; -wbport файл — сверка переноса симуляции в сборке;
-//   -wbbg файл         — проверка свёрнутого режима (окно само сворачивается и восстанавливается).
+//   -wbshots папка     — снимки сцен и выход.
 
 using System;
 using System.Collections;
@@ -28,7 +25,7 @@ using Debug = UnityEngine.Debug;
 
 namespace Worldbound.App
 {
-    public sealed class AppMain : MonoBehaviour
+    public sealed class PrototypeApp : MonoBehaviour
     {
         Camera cam;
         Light sun;
@@ -42,24 +39,11 @@ namespace Worldbound.App
         float flySpeed = 12;
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-        // Мир-заглушка: игровое время и пакетные шаги (часовой шаг воды Burst, как в Prototype C).
-        public bool PauseWhenMinimized;
-        double gameHours, simDebt;
-        const double GameHoursPerSecond = 0.05; // ×1: игровой час за 20 с
-        SimLoad sim;
-        float autosaveTimer;
-        bool minimized;
-
-        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
-        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
-        [DllImport("user32.dll")] static extern IntPtr GetActiveWindow();
-        static IntPtr window;
 
         void Awake()
         {
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;
-            PauseWhenMinimized = PlayerPrefs.GetInt("wb.pauseMinimized", 0) == 1;
             Environment();
             foliage = Resources.Load<Material>("WB_Foliage");
             ground = Resources.Load<Material>("WB_Ground");
@@ -70,23 +54,17 @@ namespace Worldbound.App
             Shader.SetGlobalVector("_SeasonTint", Vector4.one);
             Shader.SetGlobalFloat("_LeafAmount", 1);
             Shader.SetGlobalFloat("_BloomAmount", 1);
-            sim = new SimLoad();
-            Load();
         }
 
         IEnumerator Start()
         {
             yield return null;
-            window = GetActiveWindow();
             var args = System.Environment.GetCommandLineArgs();
             string Arg(string name) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
             ApplyQuality(Arg("-wbquality") ?? "high");
-            if (Array.IndexOf(args, "-wbpause") >= 0) PauseWhenMinimized = true; // проверка режима «приостанавливать»
-            if (Arg("-wbport") != null || Arg("-wbbench") != null || Arg("-wbshots") != null || Arg("-wbbg") != null) showUi = false;
-            if (Arg("-wbport") is { } port) { yield return RunPort(port); Application.Quit(); yield break; }
+            if (Arg("-wbbench") != null || Arg("-wbshots") != null) showUi = false;
             if (Arg("-wbbench") is { } spec) { yield return RunBench(spec, float.Parse(Arg("-wbsec") ?? "20", Inv), Arg("-wbout") ?? "bench.json"); Application.Quit(); yield break; }
             if (Arg("-wbshots") is { } dir) { yield return RunShots(dir); Application.Quit(); yield break; }
-            if (Arg("-wbbg") is { } bg) { yield return RunBackground(bg); Application.Quit(); yield break; }
             ShowDiorama();
         }
 
@@ -198,16 +176,9 @@ namespace Worldbound.App
 
         void Update()
         {
-            UpdateMinimized();
-            if (!minimized) Controls();
-            Simulate(Time.unscaledDeltaTime);
-            if (cam.enabled)
-            {
-                diorama?.Draw();
-                forest?.Update(cam);
-            }
-            autosaveTimer += Time.unscaledDeltaTime;
-            if (autosaveTimer > 30) { autosaveTimer = 0; Save(); }
+            Controls();
+            diorama?.Draw();
+            forest?.Update(cam);
         }
 
         void Controls()
@@ -221,7 +192,6 @@ namespace Worldbound.App
             if (kb.digit3Key.wasPressedThisFrame) ShowForest(50000);
             if (kb.digit4Key.wasPressedThisFrame) ShowForest(100000);
             if (kb.digit5Key.wasPressedThisFrame) ShowForest(300000);
-            if (kb.pKey.wasPressedThisFrame) { PauseWhenMinimized = !PauseWhenMinimized; PlayerPrefs.SetInt("wb.pauseMinimized", PauseWhenMinimized ? 1 : 0); }
             if (kb.f12Key.wasPressedThisFrame) ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(Application.persistentDataPath, $"shot-{DateTime.Now:HHmmss}.png"));
             if (mouse != null && mouse.rightButton.isPressed)
             {
@@ -242,55 +212,9 @@ namespace Worldbound.App
             cam.transform.SetPositionAndRotation(camPos, rot);
         }
 
-        // ───────── свёрнутое окно ─────────
-
-        void UpdateMinimized()
-        {
-            bool now = window != IntPtr.Zero && IsIconic(window);
-            if (now == minimized) return;
-            minimized = now;
-            // Свёрнуто: рендер выключен, 2 обновления в секунду (пакетные шаги мира и автосохранение).
-            cam.enabled = !minimized;
-            Application.targetFrameRate = minimized ? 2 : -1;
-            Debug.Log($"[WB] minimized={minimized} pauseOption={PauseWhenMinimized}");
-        }
-
-        void Simulate(float dt)
-        {
-            if (minimized && PauseWhenMinimized) return;
-            // Игровое время — по реальному; шаги мира — целыми игровыми часами (в свёрнутом окне — реже и пакетами).
-            simDebt += dt * GameHoursPerSecond;
-            while (simDebt >= 1)
-            {
-                simDebt -= 1;
-                gameHours += 1;
-                sim.StepHour();
-            }
-        }
-
-        // ───────── сохранение ─────────
-
-        string SavePath => System.IO.Path.Combine(Application.persistentDataPath, "world.json");
-
-        void Save() => File.WriteAllText(SavePath, $"{{ \"gameHours\": {(gameHours + simDebt).ToString("R", Inv)}, \"savedAt\": \"{DateTime.UtcNow:o}\", \"simHoursStepped\": {sim.Hours} }}\n");
-
-        void Load()
-        {
-            if (!File.Exists(SavePath)) return;
-            var s = File.ReadAllText(SavePath);
-            int i = s.IndexOf("\"gameHours\":", StringComparison.Ordinal);
-            if (i >= 0 && double.TryParse(s.Substring(i + 12).Split(',')[0].Trim(), NumberStyles.Float, Inv, out var h)) gameHours = Math.Floor(h);
-        }
-
-        void OnApplicationQuit()
-        {
-            Save();
-            sim.Dispose();
-        }
-
         // ───────── замеры ─────────
 
-        sealed class Recorder : IDisposable
+        internal sealed class Recorder : IDisposable
         {
             readonly List<double> frame = new(), cpu = new(), gpu = new();
             readonly FrameTiming[] timings = new FrameTiming[1];
@@ -446,96 +370,15 @@ namespace Worldbound.App
             }
         }
 
-        IEnumerator RunPort(string outFile)
-        {
-            var json = Worldbound.Sim.PortBenchmark.Run(System.IO.Path.Combine(Application.streamingAssetsPath, "golden"), outFile);
-            Debug.Log(json);
-            yield return null;
-        }
-
-        /// <summary>
-        /// Свёрнутый режим: 20 с активно, 40 с свёрнуто (окно сворачивается само), 20 с после восстановления.
-        /// По фазам: обновления в секунду, рисуется ли кадр, игровые часы (ожидаемые и фактические), время CPU процесса.
-        /// Загрузку видеокарты снимает внешний скрипт по счётчикам Windows.
-        /// </summary>
-        IEnumerator RunBackground(string outFile)
-        {
-            ShowDiorama();
-            for (int k = 0; k < 60; k++) yield return null;
-            var phases = new List<string>();
-            var proc = Process.GetCurrentProcess();
-            foreach (var (name, secs, action) in new[] { ("active", 20f, 0), ("minimized", 40f, 6), ("restored", 20f, 9) })
-            {
-                if (action != 0) { ShowWindow(window, action); yield return null; yield return null; }
-                File.AppendAllText(outFile + ".phases.log", $"{name} {DateTime.Now:HH:mm:ss.fff}\n");
-                proc.Refresh();
-                var cpu0 = proc.TotalProcessorTime;
-                double h0 = gameHours + simDebt;
-                int frames = 0;
-                float t0 = Time.realtimeSinceStartup;
-                while (Time.realtimeSinceStartup - t0 < secs) { frames++; yield return null; }
-                float dt = Time.realtimeSinceStartup - t0;
-                proc.Refresh();
-                double cpuMs = (proc.TotalProcessorTime - cpu0).TotalMilliseconds;
-                double hours = gameHours + simDebt - h0;
-                phases.Add($"{{ \"phase\": \"{name}\", \"seconds\": {dt.ToString("0.0", Inv)}, \"updatesPerSecond\": {(frames / dt).ToString("0.0", Inv)}, \"rendering\": {(cam.enabled ? "true" : "false")}, \"minimizedDetected\": {(minimized ? "true" : "false")}, \"gameHours\": {hours.ToString("0.###", Inv)}, \"gameHoursExpected\": {(dt * GameHoursPerSecond).ToString("0.###", Inv)}, \"cpuPercentOfOneCore\": {(cpuMs / (dt * 1000) * 100).ToString("0.0", Inv)}, \"cpuPercentOfMachine\": {(cpuMs / (dt * 1000) / SystemInfo.processorCount * 100).ToString("0.0", Inv)}, \"workingSetMB\": {proc.WorkingSet64 / 1048576} }}");
-            }
-            Save();
-            File.WriteAllText(outFile, $"{{ \"pauseWhenMinimized\": {(PauseWhenMinimized ? "true" : "false")}, \"simHoursStepped\": {sim.Hours}, \"savedTo\": \"{SavePath.Replace("\\", "/")}\", \"phases\": [\n  {string.Join(",\n  ", phases)}\n ] }}\n");
-        }
-
         void OnGUI()
         {
             if (!showUi) return;
             var sb = new StringBuilder();
-            sb.Append($"WORLDBOUND — Unity-прототип (оценка, не игра)   {1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):0} к/с\n");
+            sb.Append($"WORLDBOUND — сцены оценки рендера (декоративные, не мир игры)   {1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):0} к/с\n");
             if (forest != null) { var s = forest.Stats(); sb.Append($"Лес: {forest.TreeCount:N0} деревьев · LOD0 {s.lod0} · LOD1 {s.lod1} · LOD2 {s.lod2} · треугольников {s.triangles / 1000:N0} тыс. · отсечение {forest.CullMs:0.00} мс\n"); }
             if (diorama != null) sb.Append($"Сцена A: растений {diorama.Plants:N0}\n");
-            sb.Append($"Игровое время: {gameHours:0} ч · при сворачивании: {(PauseWhenMinimized ? "пауза" : "продолжать")} (P)\n");
             sb.Append("1 — сцена A, 2–5 — лес 10/50/100/300 тыс., ПКМ — обзор, WASD/QE — полёт, F1 — скрыть, F12 — снимок");
             GUI.Label(new Rect(12, 10, 1200, 100), sb.ToString());
-        }
-    }
-
-    /// <summary>Нагрузка «мира»: часовой шаг воды (Burst) на поле 256 × 256 — как в Prototype C.</summary>
-    public sealed class SimLoad : IDisposable
-    {
-        const int N = 256 * 256;
-        NativeArray<byte> kind, accHours;
-        NativeArray<float> cap, drain, dist, green, moist, snow, runoff, discharge, accT, accW, accR, accM;
-        NativeArray<int> recv, order;
-        NativeArray<double> precip, cloud, temp, sums, totals;
-        public int Hours;
-
-        public SimLoad()
-        {
-            var a = Allocator.Persistent;
-            kind = new NativeArray<byte>(N, a); accHours = new NativeArray<byte>(N, a);
-            cap = new NativeArray<float>(N, a); drain = new NativeArray<float>(N, a); dist = new NativeArray<float>(N, a); green = new NativeArray<float>(N, a);
-            moist = new NativeArray<float>(N, a); snow = new NativeArray<float>(N, a); runoff = new NativeArray<float>(N, a); discharge = new NativeArray<float>(N, a);
-            accT = new NativeArray<float>(N, a); accW = new NativeArray<float>(N, a); accR = new NativeArray<float>(N, a); accM = new NativeArray<float>(N, a);
-            recv = new NativeArray<int>(N, a); order = new NativeArray<int>(N, a);
-            precip = new NativeArray<double>(N, a); cloud = new NativeArray<double>(N, a); temp = new NativeArray<double>(N, a); sums = new NativeArray<double>(N * 4, a); totals = new NativeArray<double>(5, a);
-            for (int i = 0; i < N; i++)
-            {
-                cap[i] = 120; drain[i] = 0.4f; dist[i] = 100; green[i] = 0.6f; moist[i] = 60;
-                recv[i] = i + 1 < N ? i + 1 : -1; order[i] = i; temp[i] = 12; precip[i] = 0.2; cloud[i] = 0.4;
-            }
-        }
-
-        public void StepHour()
-        {
-            var cells = new Worldbound.Sim.WaterCellJob { Kind = kind, Capacity = cap, DrainHour = drain, WaterDist = dist, Greenness = green, Precip = precip, Cloud = cloud, T = temp, Moisture = moist, Snow = snow, Runoff = runoff, AccT = accT, AccW = accW, AccRunoff = accR, AccMinT = accM, AccHours = accHours, Sums = sums, Compression = 18.25, MeltPerDegree = 2.43, SunFactor = 0.9 };
-            var route = new Worldbound.Sim.WaterRouteJob { Kind = kind, Receiver = recv, Order = order, Runoff = runoff, Discharge = discharge, Sums = sums, Totals = totals, ToM3s = 64.0 / 1000 / 3600 };
-            route.Schedule(cells.Schedule(N, 1024)).Complete();
-            Hours++;
-        }
-
-        public void Dispose()
-        {
-            if (!kind.IsCreated) return;
-            kind.Dispose(); accHours.Dispose(); cap.Dispose(); drain.Dispose(); dist.Dispose(); green.Dispose(); moist.Dispose(); snow.Dispose(); runoff.Dispose(); discharge.Dispose();
-            accT.Dispose(); accW.Dispose(); accR.Dispose(); accM.Dispose(); recv.Dispose(); order.Dispose(); precip.Dispose(); cloud.Dispose(); temp.Dispose(); sums.Dispose(); totals.Dispose();
         }
     }
 }

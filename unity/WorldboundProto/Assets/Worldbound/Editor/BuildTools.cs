@@ -1,4 +1,4 @@
-// Инструменты редактора для batchmode: настройка проекта, сцена, сборка Windows x64, сверка переноса симуляции.
+// Инструменты редактора для batchmode: настройка проекта, сцена, сборка Windows x64, golden-проверки ядра C#.
 // Unity.exe -batchmode -quit -projectPath <проект> -executeMethod Worldbound.EditorTools.BuildTools.<Метод>
 
 using System.IO;
@@ -50,6 +50,7 @@ namespace Worldbound.EditorTools
             Mat($"{res}/WB_Foliage.mat", "WB/Foliage", m => m.enableInstancing = true);
             Mat($"{res}/WB_Ground.mat", "WB/Ground", null);
             Mat($"{res}/WB_Water.mat", "WB/Water", null);
+            Mat($"{res}/WB_WorldTerrain.mat", "WB/WorldTerrain", null);
             Mat($"{res}/WB_Sky.mat", "Skybox/Procedural", m =>
             {
                 m.SetFloat("_SunSize", 0.035f);
@@ -101,13 +102,31 @@ namespace Worldbound.EditorTools
             if (s.result != BuildResult.Succeeded) EditorApplication.Exit(1);
         }
 
-        /// <summary>Prototype C в редакторе (Mono JIT + Burst редактора).</summary>
-        public static void RunPortTest()
+        /// <summary>
+        /// Golden-проверки ядра Worldbound.Sim в редакторе (Mono JIT + Burst редактора): генератор, среда (обычный C# и Burst),
+        /// сохранение. Эталоны — unity/WorldboundProto/Golden (вне Assets: в сборку не попадают).
+        /// </summary>
+        public static void RunSimTests()
         {
             Directory.CreateDirectory(ResultsDir);
-            var golden = Path.Combine(Application.streamingAssetsPath, "golden");
-            var json = Worldbound.Sim.PortBenchmark.Run(golden, Path.Combine(ResultsDir, "port-editor.json"));
-            Debug.Log("[WB] Port test:\n" + json);
+            string golden = Path.Combine(ProjectDir, "Golden");
+            var log = new System.Text.StringBuilder();
+            void L(string s) { log.AppendLine(s); Debug.Log("[WB] " + s); }
+            bool ok = Worldbound.Sim.Golden.WorldgenGolden.Run(File.ReadAllText(Path.Combine(golden, "worldgen.json")), L, out var wg);
+            string env = File.ReadAllText(Path.Combine(golden, "env.json"));
+            ok &= Worldbound.Sim.Golden.EnvGolden.Run(env, L, out var envMono, new Worldbound.Sim.Golden.EnvGolden.Options { Label = "mono-editor" });
+            var bursts = new System.Collections.Generic.Dictionary<Worldbound.Sim.Simulation, Worldbound.SimHost.BurstWater>();
+            ok &= Worldbound.Sim.Golden.EnvGolden.Run(env, L, out var envBurst, new Worldbound.Sim.Golden.EnvGolden.Options
+            {
+                Label = "burst-editor",
+                Configure = s => { var b = new Worldbound.SimHost.BurstWater(s.World); bursts[s] = b; s.WaterAccelerator = b; },
+                Release = s => { if (bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); bursts.Remove(s); } },
+            });
+            ok &= Worldbound.Sim.Golden.SaveCheck.Run(Path.Combine(ProjectDir, "Temp", "savecheck"), L, out var save);
+            bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save} }}\n");
+            Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
+            if (!ok) EditorApplication.Exit(1);
         }
     }
 }

@@ -36,10 +36,12 @@ Shader "WB/Water"
             {
                 float t = _Time.y;
                 float2 p = i.ws.xz;
+                // Рябь гаснет с расстоянием: мелкие волны дальше нескольких сотен метров дают муар (алиасинг нормалей).
+                float ripple = saturate(1 - distance(_WorldSpaceCameraPos, i.ws) / 350);
                 float3 n = normalize(float3(
-                    sin(p.x * 1.7 + t * 1.3) * 0.05 + sin(p.y * 2.9 - t * 1.1 + p.x * 0.7) * 0.04 + sin((p.x + p.y) * 6.1 + t * 2.3) * 0.015,
+                    (sin(p.x * 1.7 + t * 1.3) * 0.05 + sin(p.y * 2.9 - t * 1.1 + p.x * 0.7) * 0.04 + sin((p.x + p.y) * 6.1 + t * 2.3) * 0.015) * ripple,
                     1,
-                    cos(p.y * 1.5 + t * 1.2) * 0.05 + cos(p.x * 2.6 + t * 0.9 - p.y * 0.5) * 0.04 + cos((p.x - p.y) * 5.7 - t * 2.1) * 0.015));
+                    (cos(p.y * 1.5 + t * 1.2) * 0.05 + cos(p.x * 2.6 + t * 0.9 - p.y * 0.5) * 0.04 + cos((p.x - p.y) * 5.7 - t * 2.1) * 0.015) * ripple));
                 float3 v = normalize(GetWorldSpaceViewDir(i.ws));
                 float fres = pow(1 - saturate(dot(n, v)), 4);
                 Light main = GetMainLight();

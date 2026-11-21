@@ -12,3 +12,6 @@ WorldboundProto/.vs/
 Results/raw/
 WorldboundProto/Assets/StreamingAssets/golden/
 WorldboundProto/Assets/StreamingAssets/golden.meta
+
+# Генерируется Unity/IDE
+WorldboundProto/*.slnx

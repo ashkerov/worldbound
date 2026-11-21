@@ -4,24 +4,30 @@
     {
       "id": "quaternius-stag",
       "title": "Stag (Ultimate Animated Animals)",
-      "files": ["public/models/stag/Stag.glb"],
+      "files": [
+        "public/models/stag/Stag.glb",
+        "unity/WorldboundProto/Assets/Worldbound/Resources/Models/Stag.glb"
+      ],
       "license": "CC0-1.0",
       "author": "Quaternius",
       "source": "https://poly.pizza/m/tQdzbZ1Cmw",
       "authorSite": "https://quaternius.com",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "changes": "Файл не изменён (скачан 2026-11-16, 1 044 172 байта). При загрузке в прототипе 1A: нормали пересчитаны для сглаженного затенения, материалы заменены на собственные с подобранными цветами, для самки и оленёнка скрыты рога и изменён масштаб."
+      "changes": "Файл не изменён (скачан 2026-11-16, 1 044 172 байта). При загрузке в прототипе 1A: нормали пересчитаны для сглаженного затенения, материалы заменены на собственные с подобранными цветами, для самки и оленёнка скрыты рога и изменён масштаб. Копия для Unity (ветка experiment/unity-windows-prototype): unity/WorldboundProto/Assets/Worldbound/Resources/Models/Stag.glb — побайтно тот же файл; импорт glTFast, используется только в сценах оценки рендера (PrototypeApp, запуск с -wbproto), в мире ядра C# животных нет."
     },
     {
       "id": "quaternius-farmer",
       "title": "Farmer (Ultimate Animated Character Pack)",
-      "files": ["public/models/farmer/Farmer.glb"],
+      "files": [
+        "public/models/farmer/Farmer.glb",
+        "unity/WorldboundProto/Assets/Worldbound/Resources/Models/Farmer.glb"
+      ],
       "license": "CC0-1.0",
       "author": "Quaternius",
       "source": "https://poly.pizza/m/7pn3R6hPvE",
       "authorSite": "https://quaternius.com",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "changes": "Файл не изменён (скачан 2026-11-16, 1 370 524 байта). При загрузке в прототипе 1A: нормали пересчитаны для сглаженного затенения, материалы заменены на собственные с подобранными цветами одежды и кожи."
+      "changes": "Файл не изменён (скачан 2026-11-16, 1 370 524 байта). При загрузке в прототипе 1A: нормали пересчитаны для сглаженного затенения, материалы заменены на собственные с подобранными цветами одежды и кожи. Копия для Unity (ветка experiment/unity-windows-prototype): unity/WorldboundProto/Assets/Worldbound/Resources/Models/Farmer.glb — побайтно тот же файл; импорт glTFast, используется только в сценах оценки рендера (PrototypeApp, запуск с -wbproto)."
     }
   ]
 }
