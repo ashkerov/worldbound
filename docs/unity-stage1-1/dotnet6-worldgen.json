@@ -1,0 +1,8 @@
+[
+  {"case":"42:S:temperate","ok":true,"geoHash":"267530a6fcb45b57","expected":"267530a6fcb45b57","csMs":533,"tsMs":573,"mismatches":[]},
+  {"case":"7:S:cold","ok":true,"geoHash":"529b801e560bc682","expected":"529b801e560bc682","csMs":398,"tsMs":475,"mismatches":[]},
+  {"case":"1234:S:warm","ok":true,"geoHash":"266377acc76dbcb8","expected":"266377acc76dbcb8","csMs":347,"tsMs":533,"mismatches":[]},
+  {"case":"99:S:temperate","ok":true,"geoHash":"2b0b63f02b6522b9","expected":"2b0b63f02b6522b9","csMs":321,"tsMs":430,"mismatches":[]},
+  {"case":"42:M:temperate","ok":true,"geoHash":"40debae61cc997b3","expected":"40debae61cc997b3","csMs":1287,"tsMs":1847,"mismatches":[]},
+  {"case":"2024:M:warm","ok":true,"geoHash":"1876566bd2ec5486","expected":"1876566bd2ec5486","csMs":1272,"tsMs":1691,"mismatches":[]}
+]

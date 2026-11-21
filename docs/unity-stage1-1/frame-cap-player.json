@@ -1,0 +1,7 @@
+{ "refreshRate": 60, "resolution": "1920x1080", "runs": [
+  { "cap": "vsync", "vSyncCount": 1, "targetFrameRate": -1, "fps": 59.7, "frameMs": { "n": 358, "mean": 16.761, "p50": 16.668, "p95": 16.684, "p99": 16.685, "max": 33.35 } },
+  { "cap": "30", "vSyncCount": 0, "targetFrameRate": 30, "fps": 30, "frameMs": { "n": 180, "mean": 33.339, "p50": 33.334, "p95": 33.396, "p99": 33.558, "max": 33.585 } },
+  { "cap": "60", "vSyncCount": 0, "targetFrameRate": 60, "fps": 59.8, "frameMs": { "n": 359, "mean": 16.719, "p50": 16.668, "p95": 16.764, "p99": 16.982, "max": 25.589 } },
+  { "cap": "90", "vSyncCount": 0, "targetFrameRate": 90, "fps": 89.7, "frameMs": { "n": 539, "mean": 11.147, "p50": 11.112, "p95": 11.134, "p99": 11.374, "max": 19.701 } },
+  { "cap": "120", "vSyncCount": 0, "targetFrameRate": 120, "fps": 99.3, "frameMs": { "n": 596, "mean": 10.072, "p50": 9.997, "p95": 10.528, "p99": 11.028, "max": 18.103 } }
+ ] }

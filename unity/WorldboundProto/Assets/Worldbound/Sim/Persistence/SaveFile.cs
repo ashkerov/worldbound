@@ -178,11 +178,24 @@ namespace Worldbound.Sim.Persistence
             return o.ToArray();
         }
 
-        static byte[] Inflate(byte[] data)
+        static byte[] Inflate(byte[] data, string id)
         {
-            var o = new MemoryStream();
-            using (var z = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress)) z.CopyTo(o);
-            return o.ToArray();
+            try
+            {
+                var o = new MemoryStream();
+                using (var z = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
+                {
+                    var buf = new byte[1 << 16];
+                    int n;
+                    while ((n = z.Read(buf, 0, buf.Length)) > 0)
+                    {
+                        if (o.Length + n > MaxInflated) throw new SaveException($"секция {id}: распакованный размер больше {MaxInflated >> 20} МБ");
+                        o.Write(buf, 0, n);
+                    }
+                }
+                return o.ToArray();
+            }
+            catch (InvalidDataException) { throw new SaveException($"секция {id}: сжатые данные повреждены"); }
         }
 
         /// <summary>Временный файл → сброс на диск → замена с резервной копией; старые копии сдвигаются (.bak1 → .bak2 → .bak3).</summary>
@@ -215,30 +228,65 @@ namespace Worldbound.Sim.Persistence
         sealed class Reader
         {
             readonly BinaryReader r;
-            public Reader(byte[] data) { r = new BinaryReader(new MemoryStream(data), Encoding.UTF8); }
-            public string Str() => r.ReadString();
-            public int I() => r.ReadInt32();
-            public long L() => r.ReadInt64();
-            public double D() => r.ReadDouble();
-            public byte B() => r.ReadByte();
+            readonly MemoryStream ms;
+            readonly string section;
+
+            public Reader(byte[] data, string section)
+            {
+                ms = new MemoryStream(data);
+                r = new BinaryReader(ms, Encoding.UTF8);
+                this.section = section;
+            }
+
+            long Left => ms.Length - ms.Position;
+
+            void Need(long bytes)
+            {
+                if (bytes < 0 || bytes > Left) throw new SaveException($"секция {section}: данные обрезаны или длина некорректна");
+            }
+
+            public string Str()
+            {
+                Need(1);
+                try { return r.ReadString(); }
+                catch (Exception e) when (e is EndOfStreamException || e is FormatException) { throw new SaveException($"секция {section}: строка повреждена"); }
+            }
+
+            public int I() { Need(4); return r.ReadInt32(); }
+            public long L() { Need(8); return r.ReadInt64(); }
+            public double D() { Need(8); return r.ReadDouble(); }
+            public byte B() { Need(1); return r.ReadByte(); }
 
             public T[] Arr<T>() where T : struct
             {
-                int n = r.ReadInt32();
+                int n = I();
+                if (n < 0) throw new SaveException($"секция {section}: отрицательная длина массива");
+                Need((long)n * Marshal.SizeOf<T>());
                 var a = new T[n];
                 var bytes = MemoryMarshal.AsBytes(new Span<T>(a));
                 int read = r.Read(bytes);
-                if (read != bytes.Length) throw new SaveException("секция обрезана");
+                if (read != bytes.Length) throw new SaveException($"секция {section}: массив обрезан");
                 return a;
             }
 
             public void Into<T>(T[] dst) where T : struct
             {
                 var a = Arr<T>();
-                if (a.Length != dst.Length) throw new SaveException($"размер массива {a.Length} ≠ {dst.Length}");
+                if (a.Length != dst.Length) throw new SaveException($"секция {section}: размер массива {a.Length} ≠ {dst.Length}");
                 Array.Copy(a, dst, a.Length);
             }
+
+            /// <summary>Секция прочитана целиком: лишние байты — признак несовместимой или испорченной схемы.</summary>
+            public void End()
+            {
+                if (Left != 0) throw new SaveException($"секция {section}: {Left} лишних байт");
+            }
         }
+
+        /// <summary>Предел размера распакованной секции (защита от «бомбы» сжатия): 1 ГБ.</summary>
+        const long MaxInflated = 1L << 30;
+        /// <summary>Разумный предел числа секций в файле.</summary>
+        const int MaxSections = 256;
 
         /// <summary>Миграции схемы: из версии k в k+1 (по секциям). В формате v1 их нет; новая версия добавляет шаг сюда.</summary>
         static readonly Dictionary<int, Func<Dictionary<string, (ushort ver, byte[] data)>, Dictionary<string, (ushort ver, byte[] data)>>> Migrations = new();
@@ -251,27 +299,38 @@ namespace Worldbound.Sim.Persistence
             for (int k = 0; k < 4; k++) if (all[k] != Magic[k]) throw new SaveException("не файл сохранения WORLDBOUND");
             uint stored = BitConverter.ToUInt32(all, all.Length - 4);
             if (Crc32.Compute(new ReadOnlySpan<byte>(all, 0, all.Length - 4)) != stored) throw new SaveException("контрольная сумма файла не сходится (файл повреждён или записан не полностью)");
-            var r = new BinaryReader(new MemoryStream(all, 0, all.Length - 4));
+            var body = new MemoryStream(all, 0, all.Length - 4);
+            var r = new BinaryReader(body);
             r.ReadBytes(4);
             int version = (int)r.ReadUInt32();
             info.FormatVersion = version;
+            if (version < 1) throw new SaveException($"некорректная версия формата {version}");
             if (version > FormatVersion) throw new SaveException($"сохранение из более новой версии (формат {version}, поддерживается до {FormatVersion})");
-            int count = (int)r.ReadUInt32();
+            uint count = r.ReadUInt32();
+            if (count > MaxSections) throw new SaveException($"некорректное число секций {count}");
             var sections = new Dictionary<string, (ushort, byte[])>();
+            const int header = 4 + 2 + 2 + 8 + 4;
             for (int s = 0; s < count; s++)
             {
-                string id = Encoding.ASCII.GetString(r.ReadBytes(4));
+                if (body.Length - body.Position < header) throw new SaveException($"заголовок секции {s + 1} обрезан");
+                byte[] idBytes = r.ReadBytes(4);
+                foreach (byte c in idBytes)
+                    if (!((c >= (byte)'A' && c <= (byte)'Z') || (c >= (byte)'0' && c <= (byte)'9'))) throw new SaveException($"некорректный идентификатор секции {s + 1}");
+                string id = Encoding.ASCII.GetString(idBytes);
                 ushort ver = r.ReadUInt16();
                 ushort flags = r.ReadUInt16();
-                long len = (long)r.ReadUInt64();
+                ulong len = r.ReadUInt64();
                 uint crc = r.ReadUInt32();
+                if ((flags & ~1) != 0) throw new SaveException($"секция {id}: неизвестные флаги 0x{flags:x4}");
+                if (len > (ulong)(body.Length - body.Position)) throw new SaveException($"секция {id}: длина {len} больше остатка файла");
+                if (sections.ContainsKey(id)) throw new SaveException($"секция {id} встречается дважды");
                 byte[] data = r.ReadBytes((int)len);
-                if (data.Length != len) throw new SaveException($"секция {id} обрезана");
                 if (Crc32.Compute(data) != crc) throw new SaveException($"контрольная сумма секции {id} не сходится");
-                if ((flags & 1) != 0) data = Inflate(data);
+                if ((flags & 1) != 0) data = Inflate(data, id);
                 sections[id] = (ver, data);
                 info.Sections.Add(id);
             }
+            if (body.Position != body.Length) throw new SaveException($"после секций {body.Length - body.Position} лишних байт");
             for (int v = version; v < FormatVersion; v++)
             {
                 if (!Migrations.TryGetValue(v, out var step)) throw new SaveException($"нет миграции формата {v} → {v + 1}");
@@ -300,9 +359,11 @@ namespace Worldbound.Sim.Persistence
                     info = inf;
                     return sim;
                 }
-                catch (Exception ex) when (ex is SaveException || ex is IOException || ex is EndOfStreamException || ex is InvalidDataException)
+                catch (Exception ex) when (!(ex is OutOfMemoryException))
                 {
-                    errors.Add($"{System.IO.Path.GetFileName(file)}: {ex.Message}");
+                    // Любая ошибка разбора — контролируемый отказ этого файла; дальше пробуется резервная копия.
+                    string why = ex is SaveException ? ex.Message : $"{ex.GetType().Name}: {ex.Message}";
+                    errors.Add($"{System.IO.Path.GetFileName(file)}: {why}");
                 }
             }
             throw new SaveException(errors.Count == 0 ? "файл сохранения не найден" : "ни один файл не открылся: " + string.Join("; ", errors));
@@ -312,40 +373,46 @@ namespace Worldbound.Sim.Persistence
         {
             foreach (var need in new[] { "CONF", "GEOG", "TIME", "WTHR", "WATR", "FLIN", "HASH" })
                 if (!s.ContainsKey(need)) throw new SaveException($"нет секции {need}");
-            var cr = new Reader(s["CONF"].data);
+            var cr = new Reader(s["CONF"].data, "CONF");
             var config = new WorldConfig
             {
                 Name = cr.Str(),
                 Seed = (uint)cr.L(),
-                Size = (WorldSize)Enum.Parse(typeof(WorldSize), cr.Str()),
+                Size = cr.Str() switch { "S" => WorldSize.S, "M" => WorldSize.M, var x => throw new SaveException($"секция CONF: неизвестный размер мира «{x}»") },
             };
             string climate = cr.Str();
             config.Climate = climate == "cold" ? Climate.Cold : climate == "warm" ? Climate.Warm : Climate.Temperate;
             config.DaysPerSeason = cr.I();
-            config.Scenario = (Scenario)Enum.Parse(typeof(Scenario), cr.Str());
+            if (config.DaysPerSeason < 1 || config.DaysPerSeason > 1000) throw new SaveException($"секция CONF: некорректная длина сезона {config.DaysPerSeason}");
+            config.Scenario = cr.Str() switch { "Wild" => Scenario.Wild, "Genesis" => Scenario.Genesis, var x => throw new SaveException($"секция CONF: неизвестный сценарий «{x}»") };
             config.Isolated = cr.B() == 1;
-            var hr = new Reader(s["HASH"].data);
+            cr.End();
+            var hr = new Reader(s["HASH"].data, "HASH");
             int worldgenVersion = hr.I();
             info.GeoHash = hr.Str();
             info.EnvHash = hr.Str();
-            var geo = ReadGeo(new Reader(s["GEOG"].data));
+            hr.End();
+            var geo = ReadGeo(new Reader(s["GEOG"].data, "GEOG"));
             string geoHash = Generate.HashGeo(geo);
             if (geoHash != info.GeoHash) throw new SaveException($"статика мира не совпадает с сохранённым хешем ({geoHash} ≠ {info.GeoHash})");
             if (worldgenVersion != Generate.WorldgenVersion) info.Warnings.Add($"мир создан генератором версии {worldgenVersion} (текущая {Generate.WorldgenVersion}); статика взята из файла");
             var sim = new Simulation(config, new Generate.Result { Geo = geo, Hash = geoHash });
             var w = sim.World;
-            var tr = new Reader(s["TIME"].data);
+            var tr = new Reader(s["TIME"].data, "TIME");
             w.Tick = tr.L();
             w.Speed = tr.I();
+            tr.End();
+            if (w.Tick < 0 || w.Speed < 0) throw new SaveException("секция TIME: некорректные такт или скорость");
             info.Tick = w.Tick;
-            var wr = new Reader(s["WTHR"].data);
+            var wr = new Reader(s["WTHR"].data, "WTHR");
             if (wr.I() != w.Env.Weather.Chunks) throw new SaveException("сетка погоды не совпадает");
             wr.Into(w.Env.Weather.Cells);
             wr.Into(w.Env.Weather.ChunkRate);
             wr.Into(w.Env.Weather.ChunkCloud);
             wr.Into(w.Env.Weather.ChunkAccum);
             wr.Into(w.Env.Weather.Balance);
-            var ar = new Reader(s["WATR"].data);
+            wr.End();
+            var ar = new Reader(s["WATR"].data, "WATR");
             ar.Into(w.Env.Moisture);
             ar.Into(w.Env.Snow);
             ar.Into(w.Env.Greenness);
@@ -353,13 +420,15 @@ namespace Worldbound.Sim.Persistence
             ar.Into(w.Env.Runoff);
             ar.Into(w.Env.WaterTotals);
             w.Env.LastHourStep = ar.I();
-            var fr = new Reader(s["FLIN"].data);
+            ar.End();
+            var fr = new Reader(s["FLIN"].data, "FLIN");
             fr.Into(w.Flora.AccT);
             fr.Into(w.Flora.AccW);
             fr.Into(w.Flora.AccRunoff);
             fr.Into(w.Flora.AccMinT);
             fr.Into(w.Flora.AccHours);
             fr.Into(w.Flora.Capillary);
+            fr.End();
             string envHash = sim.EnvHash();
             if (envHash != info.EnvHash) throw new SaveException($"состояние после загрузки не совпадает с сохранённым ({envHash} ≠ {info.EnvHash})");
             return sim;
@@ -368,20 +437,37 @@ namespace Worldbound.Sim.Persistence
         static Geo ReadGeo(Reader r)
         {
             var g = new Geo { N = r.I(), CellSize = r.I(), Edges = r.Arr<byte>() };
+            if (g.N < 4 || g.N > 4096 || g.CellSize < 1 || g.CellSize > 1024) throw new SaveException($"секция GEOG: некорректная сетка {g.N} × {g.CellSize} м");
             g.Height = r.Arr<float>(); g.Slope = r.Arr<float>(); g.WaterLevel = r.Arr<float>(); g.WaterDist = r.Arr<float>(); g.SeaDist = r.Arr<float>();
             g.MeanDischarge = r.Arr<float>(); g.TMean = r.Arr<float>(); g.TAmp = r.Arr<float>(); g.Precip = r.Arr<float>(); g.Fertility = r.Arr<float>();
             g.WaterKind = r.Arr<byte>(); g.Soil = r.Arr<byte>(); g.Deposit = r.Arr<byte>(); g.DepositRichness = r.Arr<byte>();
             g.Receiver = r.Arr<int>(); g.UpstreamOrder = r.Arr<int>(); g.LakeId = r.Arr<short>(); g.ProvinceOf = r.Arr<ushort>();
             g.WindX = r.D();
             g.WindZ = r.D();
-            g.Lakes = new Lake[r.I()];
+            int lakes = r.I();
+            if (lakes < 0 || lakes > g.N * g.N) throw new SaveException("секция GEOG: некорректное число озёр");
+            g.Lakes = new Lake[lakes];
             for (int k = 0; k < g.Lakes.Length; k++) g.Lakes[k] = new Lake { Id = r.I(), Level = r.D(), Cells = r.I(), Outlet = r.I() };
-            g.Provinces = new Province[r.I()];
+            int provinces = r.I();
+            if (provinces < 0 || provinces > 65535) throw new SaveException("секция GEOG: некорректное число провинций");
+            g.Provinces = new Province[provinces];
             for (int k = 0; k < g.Provinces.Length; k++)
                 g.Provinces[k] = new Province { Id = r.I(), Name = r.Str(), Kind = r.Str(), X = r.D(), Z = r.D(), Cells = r.I(), MeanHeight = r.D(), MeanTemp = r.D(), MeanPrecip = r.D() };
-            Heights H() => new Heights { Samples = r.I(), Spacing = r.D(), OriginX = r.D(), OriginZ = r.D(), Data = r.Arr<float>() };
+            Heights H()
+            {
+                var h = new Heights { Samples = r.I(), Spacing = r.D(), OriginX = r.D(), OriginZ = r.D(), Data = r.Arr<float>() };
+                if (h.Samples < 2 || (long)h.Samples * h.Samples != h.Data.Length || !(h.Spacing > 0)) throw new SaveException("секция GEOG: некорректная сетка высот");
+                return h;
+            }
             g.Terrain = H();
             g.Horizon = H();
+            r.End();
+            // Согласованность размеров: дальше ядро индексирует массивы по n·n без проверок.
+            int count = g.N * g.N;
+            if (g.Edges.Length != 4) throw new SaveException("секция GEOG: краёв должно быть 4");
+            foreach (var len in new[] { g.Height.Length, g.Slope.Length, g.WaterLevel.Length, g.WaterDist.Length, g.SeaDist.Length, g.MeanDischarge.Length, g.TMean.Length, g.TAmp.Length,
+                         g.Precip.Length, g.Fertility.Length, g.WaterKind.Length, g.Soil.Length, g.Deposit.Length, g.DepositRichness.Length, g.Receiver.Length, g.UpstreamOrder.Length, g.LakeId.Length, g.ProvinceOf.Length })
+                if (len != count) throw new SaveException("секция GEOG: размеры массивов не совпадают с сеткой");
             return g;
         }
     }

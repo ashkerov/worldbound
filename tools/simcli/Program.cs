@@ -26,8 +26,14 @@ static class Program
             case "save":
                 ok = SaveCheck.Run(Environment.GetEnvironmentVariable("WB_TMP") ?? "unity/WorldboundProto/Temp/savecheck", Console.WriteLine, out report, only == "M" ? Worldbound.Sim.WorldSize.M : Worldbound.Sim.WorldSize.S);
                 break;
+            case "pacer":
+                ok = PacerCheck.Run(Console.WriteLine, out report);
+                break;
+            case "robust":
+                ok = SaveRobustness.Run(Environment.GetEnvironmentVariable("WB_TMP") ?? "unity/WorldboundProto/Temp/saverobust", Console.WriteLine, out report);
+                break;
             default:
-                Console.WriteLine("режимы: worldgen | env | save");
+                Console.WriteLine("режимы: worldgen | env | save [S|M] | pacer | robust");
                 return 2;
         }
         string outPath = Environment.GetEnvironmentVariable("WB_REPORT");

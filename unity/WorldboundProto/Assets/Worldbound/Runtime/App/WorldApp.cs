@@ -395,7 +395,16 @@ namespace Worldbound.App
             });
             yield return null;
             ok &= SaveCheck.Run(Path.Combine(Application.temporaryCachePath, "savecheck"), L, out var save);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"log\": {Q(log.ToString())} }}\n");
+            yield return null;
+            // Мир M: сохранение → загрузка в новую симуляцию → 100 ч; шаг воды на Burst (как в игре).
+            ok &= SaveCheck.Run(Path.Combine(Application.temporaryCachePath, "savecheck"), L, out var saveM, WorldSize.M, 100,
+                s => { var b = new BurstWater(s.World); bursts[s] = b; s.WaterAccelerator = b; },
+                s => { if (bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); bursts.Remove(s); } });
+            yield return null;
+            ok &= SaveRobustness.Run(Path.Combine(Application.temporaryCachePath, "saverobust"), L, out var robust);
+            ok &= PacerCheck.Run(L, out var pacer);
+            ok &= HostCheck.Run(L, out var hostCheck);
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
         /// <summary>

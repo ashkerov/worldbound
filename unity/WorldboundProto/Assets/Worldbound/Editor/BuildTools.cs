@@ -123,8 +123,14 @@ namespace Worldbound.EditorTools
                 Release = s => { if (bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); bursts.Remove(s); } },
             });
             ok &= Worldbound.Sim.Golden.SaveCheck.Run(Path.Combine(ProjectDir, "Temp", "savecheck"), L, out var save);
+            ok &= Worldbound.Sim.Golden.SaveCheck.Run(Path.Combine(ProjectDir, "Temp", "savecheck"), L, out var saveM, Worldbound.Sim.WorldSize.M, 100,
+                s => { var b = new Worldbound.SimHost.BurstWater(s.World); bursts[s] = b; s.WaterAccelerator = b; },
+                s => { if (bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); bursts.Remove(s); } });
+            ok &= Worldbound.Sim.Golden.SaveRobustness.Run(Path.Combine(ProjectDir, "Temp", "saverobust"), L, out var robust);
+            ok &= Worldbound.Sim.Golden.PacerCheck.Run(L, out var pacer);
+            ok &= Worldbound.SimHost.HostCheck.Run(L, out var hostCheck);
             bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
-            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save} }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck} }}\n");
             Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
             if (!ok) EditorApplication.Exit(1);
         }

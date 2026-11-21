@@ -60,17 +60,21 @@ namespace Worldbound.SimHost
         BurstWater burst;
         Task<Generate.Result> genTask;
         readonly Stopwatch clock = Stopwatch.StartNew();
-        double tickDebt;
+        readonly TickPacer pacer = new();
+        Func<double> now;
         int lastSnapshotHour = int.MinValue;
 
         // Статистика для интерфейса и замеров.
-        public double LastAdvanceMs, LastHourMs;
+        public double LastAdvanceMs;
+        public double LastHourMs => pacer.LastHourMs;
         public int TicksLastAdvance;
         public long TicksTotal;
-        public bool Behind;
+        public bool Behind => pacer.Behind;
+        /// <summary>Долг тактов темпа (для проверок).</summary>
+        public double TickDebt => pacer.Debt;
 
         /// <summary>Игровые такты в реальную секунду при скорости 1 (такт — 100 мс игрового времени).</summary>
-        public const double TicksPerSecondAtSpeed1 = 1000.0 / SimTime.TickMs;
+        public const double TicksPerSecondAtSpeed1 = TickPacer.TicksPerSecondAtSpeed1;
 
         public void Begin(WorldConfig config)
         {
@@ -109,6 +113,7 @@ namespace Worldbound.SimHost
                 Sim.WaterAccelerator = burst;
                 BurstActive = BurstWater.IsBurstActive();
             }
+            pacer.Reset(Sim);
             int count = Sim.World.Geo.N * Sim.World.Geo.N;
             Snapshot.Fields = new FieldSnapshot(count);
             backFields = new FieldSnapshot(count);
@@ -126,35 +131,38 @@ namespace Worldbound.SimHost
 
         public int Speed => Sim?.World.Speed ?? 0;
 
-        public void SetSpeed(int speed) => Sim?.Enqueue(Command.SetSpeed(speed));
+        /// <summary>
+        /// Смена скорости — командой ядра. Хост вызывается между тактами (граница такта), поэтому команда применяется
+        /// сразу: пауза останавливает мир немедленно, а снимок сразу показывает новую скорость.
+        /// </summary>
+        public void SetSpeed(int speed)
+        {
+            if (Sim == null) return;
+            Sim.Enqueue(Command.SetSpeed(speed));
+            if (Status != State.Running) return;
+            pacer.Sync(Sim);
+            Snapshot.Speed = Sim.World.Speed;
+        }
 
         /// <summary>
-        /// Продвигает мир на реальное время dt с учётом скорости; не дольше budgetMs за вызов.
-        /// Если такты не успевают, долг ограничивается (не больше 2 с игры) — мир замедляется, а не «догоняет» рывком.
+        /// Продвигает мир на реальное время dt с учётом скорости; не дольше budgetMs за вызов (TickPacer).
+        /// На паузе долг обнуляется; при отставании долг ограничен 2 с — мир замедляется, а не догоняет рывком.
         /// </summary>
         public void Advance(double dt, double budgetMs)
         {
             if (Status != State.Running) return;
-            Sim.ApplyCommands();
             double start = clock.Elapsed.TotalMilliseconds;
-            tickDebt += dt * TicksPerSecondAtSpeed1 * Sim.World.Speed;
-            double cap = TicksPerSecondAtSpeed1 * Math.Max(1, Sim.World.Speed) * 2;
-            Behind = tickDebt > cap;
-            if (Behind) tickDebt = cap;
-            int ticks = 0;
-            while (tickDebt >= 1)
-            {
-                bool hour = Sim.World.Tick % SimTime.TicksPerHour == 0;
-                double t0 = hour ? clock.Elapsed.TotalMilliseconds : 0;
-                Sim.Step();
-                if (hour) LastHourMs = clock.Elapsed.TotalMilliseconds - t0;
-                tickDebt -= 1;
-                ticks++;
-                if (clock.Elapsed.TotalMilliseconds - start > budgetMs) break;
-            }
+            now ??= () => clock.Elapsed.TotalMilliseconds; // один делегат на хост — без выделений памяти в кадре
+            int ticks = pacer.Advance(Sim, dt, budgetMs, now);
             TicksLastAdvance = ticks;
             TicksTotal += ticks;
             if (ticks > 0) WriteSnapshot(force: false);
+            else
+            {
+                // Тактов не было (пауза или мало времени), но команда скорости могла примениться.
+                Snapshot.Speed = Sim.World.Speed;
+                Snapshot.Tick = Sim.World.Tick;
+            }
             LastAdvanceMs = clock.Elapsed.TotalMilliseconds - start;
         }
 
