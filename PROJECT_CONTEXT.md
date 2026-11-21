@@ -296,7 +296,7 @@ assets/        манифест лицензий и CREDITS.md
 
 ### Экспериментальная ветка: Windows-версия на Unity [Эксперимент]
 
-Только в `experiment/unity-windows-prototype` (Unity 6.3 LTS, URP, Burst, Mono):
+Только в `experiment/unity-windows-prototype` (Unity 6.3 LTS, URP, Burst, Mono). **Эталон TypeScript — снимок `c8c6f838e2`** (2026-11-19, «Showcase bench: wait for the target day and its noon»). Он входит в ветку `experiment/unity-windows-prototype` и включает все изменения фазы 3 до него, в том числе slice 5 (`b2f0807`: рендер флоры, семантика изолированного Wildlands, оценка оставшегося времени, исправление гонки сохранения). **`main` на GitHub этих изменений пока не содержит**: `origin/main` стоит на `6335d38` (slice 4); пять коммитов `a6a308a`…`c8c6f83` есть только в экспериментальной ветке и в неопубликованном локальном `main`. Исходники TS в ветке (`src/`, `content/`, `tests/`) после `c8c6f838e2` не менялись — все эталоны Stage 1 и Stage 2 сняты с этого кода.
 
 | Что | Где | Проверка |
 |---|---|---|

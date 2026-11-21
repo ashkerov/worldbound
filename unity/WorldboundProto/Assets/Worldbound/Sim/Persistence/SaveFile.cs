@@ -288,6 +288,35 @@ namespace Worldbound.Sim.Persistence
         /// <summary>Разумный предел числа секций в файле.</summary>
         const int MaxSections = 256;
 
+        /// <summary>
+        /// Поддерживаемые версии схем известных секций (поле «версия секции» в заголовке). Секция известна —
+        /// её версия обязана быть в этом диапазоне, иначе файл отклоняется (версия 0 некорректна, более новая —
+        /// записана более новой программой). Неизвестные секции пропускаются при любой версии.
+        /// Новая схема секции добавляется сюда вместе с чтением старой (или миграцией секции).
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, (ushort min, ushort max)> SectionVersions = new Dictionary<string, (ushort, ushort)>
+        {
+            ["CONF"] = (1, 1),
+            ["GEOG"] = (1, 1),
+            ["TIME"] = (1, 1),
+            ["WTHR"] = (1, 1),
+            ["WATR"] = (1, 1),
+            ["FLIN"] = (1, 1),
+            ["HASH"] = (1, 1),
+        };
+
+        static void CheckSectionVersions(Dictionary<string, (ushort ver, byte[] data)> sections)
+        {
+            foreach (var kv in sections)
+            {
+                if (!SectionVersions.TryGetValue(kv.Key, out var range)) continue;
+                ushort v = kv.Value.ver;
+                if (v == 0) throw new SaveException($"секция {kv.Key}: некорректная версия схемы 0");
+                if (v > range.max) throw new SaveException($"секция {kv.Key}: версия схемы {v} новее поддерживаемой ({range.max}) — файл записан более новой версией программы");
+                if (v < range.min) throw new SaveException($"секция {kv.Key}: версия схемы {v} больше не поддерживается (минимум {range.min})");
+            }
+        }
+
         /// <summary>Миграции схемы: из версии k в k+1 (по секциям). В формате v1 их нет; новая версия добавляет шаг сюда.</summary>
         static readonly Dictionary<int, Func<Dictionary<string, (ushort ver, byte[] data)>, Dictionary<string, (ushort ver, byte[] data)>>> Migrations = new();
 
@@ -371,6 +400,7 @@ namespace Worldbound.Sim.Persistence
 
         static Simulation Restore(Dictionary<string, (ushort ver, byte[] data)> s, SaveInfo info)
         {
+            CheckSectionVersions(s);
             foreach (var need in new[] { "CONF", "GEOG", "TIME", "WTHR", "WATR", "FLIN", "HASH" })
                 if (!s.ContainsKey(need)) throw new SaveException($"нет секции {need}");
             var cr = new Reader(s["CONF"].data, "CONF");

@@ -118,6 +118,11 @@ namespace Worldbound.Sim.Golden
                 ("random-garbage", () => { var b = new byte[4096]; new Random(7).NextBytes(b); return b; }, false),
                 ("flipped-byte", () => { var b = (byte[])baseBytes.Clone(); b[b.Length / 3] ^= 0x10; return b; }, false),
                 ("unknown-extra-section", () => { var l = Clone(secs); l.Add(new Sec { Id = "ZZZZ", Ver = 1, Flags = 0, Data = Encoding.ASCII.GetBytes("future data") }); return Build(ver, l); }, true),
+                // Версии схем известных секций: 0 — некорректна, будущая — отказ; неизвестная секция — любая версия.
+                ("section-version-zero", () => { var l = Clone(secs); l.Find(x => x.Id == "TIME").Ver = 0; return Build(ver, l); }, false),
+                ("section-version-future", () => { var l = Clone(secs); l.Find(x => x.Id == "WATR").Ver = 2; return Build(ver, l); }, false),
+                ("section-version-max", () => { var l = Clone(secs); l.Find(x => x.Id == "GEOG").Ver = ushort.MaxValue; return Build(ver, l); }, false),
+                ("unknown-section-any-version", () => { var l = Clone(secs); l.Add(new Sec { Id = "FLOR", Ver = 0, Flags = 1, Data = Deflate(Encoding.ASCII.GetBytes("reserved")) }); l.Add(new Sec { Id = "Z9Z9", Ver = 65535, Flags = 0, Data = new byte[0] }); return Build(ver, l); }, true),
             };
 
             var sb = new StringBuilder("[");
@@ -149,6 +154,26 @@ namespace Worldbound.Sim.Golden
                 log($"save-robust {name}: {(ok ? "OK" : "FAIL")} — {outcome}");
                 if (idx++ > 0) sb.Append(',');
                 sb.Append("{\"case\":").Append(MiniJson.Q(name)).Append(",\"ok\":").Append(ok ? "true" : "false").Append(",\"outcome\":").Append(MiniJson.Q(outcome)).Append('}');
+            }
+            // Несовместимая версия секции в основном файле → загрузка берёт резервную копию.
+            {
+                string path = Path.Combine(dir, "robust-version-fallback.wbsave");
+                File.Copy(good, path + ".bak1", true);
+                var l = Clone(secs);
+                l.Find(x => x.Id == "WTHR").Ver = 7;
+                File.WriteAllBytes(path, Build(ver, l));
+                bool ok;
+                string outcome;
+                try
+                {
+                    var loaded = SaveFile.Load(path, out var info);
+                    ok = info.UsedFile.EndsWith(".bak1") && loaded.EnvHash() == sim.EnvHash() && info.Warnings.Count == 1 && info.Warnings[0].Contains("версия схемы 7");
+                    outcome = $"взят {Path.GetFileName(info.UsedFile)}; предупреждение: {string.Join("; ", info.Warnings)}";
+                }
+                catch (Exception ex) { ok = false; outcome = ex.GetType().Name + ": " + ex.Message; }
+                all &= ok;
+                log($"save-robust version-fallback-to-backup: {(ok ? "OK" : "FAIL")} — {outcome}");
+                sb.Append(",{\"case\":\"version-fallback-to-backup\",\"ok\":").Append(ok ? "true" : "false").Append(",\"outcome\":").Append(MiniJson.Q(outcome)).Append('}');
             }
             // Резерв поверх испорченного основного: основной — мусор, .bak1 — нормальный файл.
             {

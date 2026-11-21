@@ -180,6 +180,8 @@ WORLDBOUND — не игра про графику и не градострои�
 
 Статус: [Предварительно] — решение о переходе не принято; ветка `experiment/unity-windows-prototype`, с `main` не объединяется. Подробности и замеры — `docs/UNITY_MIGRATION_STAGE1_REPORT.md`.
 
+**Эталон TypeScript — снимок `c8c6f838e2`** (2026-11-19, «Showcase bench: wait for the target day and its noon»). Он входит в ветку `experiment/unity-windows-prototype` и включает все изменения фазы 3 до него, в том числе slice 5 (`b2f0807`: рендер флоры, семантика изолированного Wildlands, оценка оставшегося времени, исправление гонки сохранения). **`main` на GitHub этих изменений пока не содержит**: `origin/main` стоит на `6335d38` (slice 4); пять коммитов `a6a308a`…`c8c6f83` есть только в экспериментальной ветке и в неопубликованном локальном `main`. Исходники TS в ветке (`src/`, `content/`, `tests/`) после `c8c6f838e2` не менялись — все эталоны Stage 1 и Stage 2 сняты с этого кода.
+
 | Слой | Сборка / папка | Правило зависимостей |
 |---|---|---|
 | Ядро симуляции | `Worldbound.Sim` (`Assets/Worldbound/Sim`) | Без UnityEngine (`noEngineReferences`); компилируется и вне Unity (.NET 6, `tools/simcli`) |
