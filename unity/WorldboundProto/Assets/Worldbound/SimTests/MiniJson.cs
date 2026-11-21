@@ -98,6 +98,12 @@ namespace Worldbound.Sim.Golden
         /// <summary>Биты double в виде hex (как bits() в инструментах TS).</summary>
         public static string Bits(double v) => BitConverter.DoubleToInt64Bits(v).ToString("x16");
 
+        /// <summary>double из hex-битов (обратное Bits).</summary>
+        public static double FromBits(object hex) => BitConverter.Int64BitsToDouble(Convert.ToInt64((string)hex, 16));
+
+        /// <summary>float из hex-битов float32 (8 цифр, как fbits в инструментах TS).</summary>
+        public static float FloatFromBits(object hex) => BitConverter.Int32BitsToSingle(Convert.ToInt32((string)hex, 16));
+
         /// <summary>Число в формате, который JSON.parse прочтёт в то же значение (R — round-trip).</summary>
         public static string N(double v) => double.IsNaN(v) || double.IsInfinity(v) ? "null" : v.ToString("R", CultureInfo.InvariantCulture);
 
