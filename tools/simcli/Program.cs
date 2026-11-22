@@ -32,6 +32,10 @@ static class Program
             case "g2":
                 ok = FloraG2Golden.Run(File.ReadAllText(Path.Combine(golden, "flora-g2.json")), Console.WriteLine, out report);
                 break;
+            case "g3":
+                ok = FloraG3Golden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3.json")), Console.WriteLine, out report,
+                    new FloraG3Golden.Options { Label = "dotnet6", Days = only != null ? int.Parse(only) : (int?)null });
+                break;
             case "woodyrestore":
                 ok = WoodyRestoreCheck.Run(Console.WriteLine, out report);
                 break;
@@ -42,7 +46,7 @@ static class Program
                 ok = SaveRobustness.Run(Environment.GetEnvironmentVariable("WB_TMP") ?? "unity/WorldboundProto/Temp/saverobust", Console.WriteLine, out report);
                 break;
             default:
-                Console.WriteLine("режимы: worldgen | env | save [S|M] | pacer | robust | flora | woodyrestore | g2");
+                Console.WriteLine("режимы: worldgen | env | save [S|M] | pacer | robust | flora | woodyrestore | g2 | g3 [сутки]");
                 return 2;
         }
         string outPath = Environment.GetEnvironmentVariable("WB_REPORT");

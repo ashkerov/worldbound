@@ -54,6 +54,11 @@ namespace Worldbound.SimHost
         public double GenerateMs { get; private set; }
         public string Error { get; private set; }
         public bool UseBurst = true;
+        /// <summary>
+        /// Почему такты этого мира не идут (null — идут): флора мира требует ещё не перенесённой ветви модели
+        /// (FloraSystem.Unsupported) или шаг на неё наткнулся. Мир не продвигается, а не расходится с эталоном молча.
+        /// </summary>
+        public string Blocked { get; private set; }
         public bool BurstActive { get; private set; }
         public readonly WorldSnapshot Snapshot = new();
         FieldSnapshot backFields;
@@ -114,6 +119,7 @@ namespace Worldbound.SimHost
                 BurstActive = BurstWater.IsBurstActive();
             }
             pacer.Reset(Sim);
+            Blocked = Sim.FloraUnsupported;
             int count = Sim.World.Geo.N * Sim.World.Geo.N;
             Snapshot.Fields = new FieldSnapshot(count);
             backFields = new FieldSnapshot(count);
@@ -153,7 +159,12 @@ namespace Worldbound.SimHost
             if (Status != State.Running) return;
             double start = clock.Elapsed.TotalMilliseconds;
             now ??= () => clock.Elapsed.TotalMilliseconds; // один делегат на хост — без выделений памяти в кадре
-            int ticks = pacer.Advance(Sim, dt, budgetMs, now);
+            int ticks = 0;
+            if (Blocked == null)
+            {
+                try { ticks = pacer.Advance(Sim, dt, budgetMs, now); }
+                catch (Worldbound.Sim.Flora.FloraNotPortedException e) { Blocked = e.Message; }
+            }
             TicksLastAdvance = ticks;
             TicksTotal += ticks;
             if (ticks > 0) WriteSnapshot(force: false);

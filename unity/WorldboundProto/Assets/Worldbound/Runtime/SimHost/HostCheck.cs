@@ -11,7 +11,7 @@ namespace Worldbound.SimHost
     {
         public static bool Run(Action<string> log, out string reportJson)
         {
-            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S });
+            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Genesis, Isolated = true });
             var host = new SimHost { UseBurst = false };
             host.Adopt(sim);
             var sb = new StringBuilder("[");

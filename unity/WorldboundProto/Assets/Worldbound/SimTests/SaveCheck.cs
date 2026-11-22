@@ -15,7 +15,7 @@ namespace Worldbound.Sim.Golden
             Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, $"check-{size}.wbsave");
             foreach (var f in Directory.GetFiles(dir, $"check-{size}.wbsave*")) File.Delete(f);
-            var config = new WorldConfig { Seed = 42, Size = size };
+            var config = new WorldConfig { Seed = 42, Size = size, Scenario = Scenario.Genesis, Isolated = true };
             var sim = new Simulation(config);
             configure?.Invoke(sim);
             for (int h = 0; h < hours; h++) sim.StepHour();

@@ -53,6 +53,11 @@ namespace Worldbound.Sim
         public bool Populate = true;
         /// <summary>Wildlands: сколько лет готовить мир; null — WorldConfig.WildlandsYears.</summary>
         public double? PrepareYears;
+        /// <summary>
+        /// false — расписание только погода + вода (как эталон «только среда» tools/unity-env-golden.ts). По умолчанию
+        /// флора в расписании, как в TS.
+        /// </summary>
+        public bool ScheduleFlora = true;
     }
 
     public sealed class SystemTiming
@@ -75,6 +80,8 @@ namespace Worldbound.Sim
         public Func<double> Clock;
         public readonly SystemTiming WeatherTiming = new() { Name = "env.weather" };
         public readonly SystemTiming WaterTiming = new() { Name = "env.water" };
+        public readonly SystemTiming FloraTiming = new() { Name = "flora.day" };
+        readonly bool scheduleFlora;
         double[] sums;
 
         public static long StartTick(int daysPerSeason) => SimTime.StartTick(daysPerSeason);
@@ -85,6 +92,7 @@ namespace Worldbound.Sim
         public Simulation(WorldConfig config, Generate.Result generated = null, Action<string, double> progress = null, SimulationOptions options = null)
         {
             options ??= new SimulationOptions();
+            scheduleFlora = options.ScheduleFlora;
             var gen = generated ?? Generate.World(config, progress);
             int worldSize = gen.Geo.N * gen.Geo.CellSize;
             World = new World
@@ -117,6 +125,9 @@ namespace Worldbound.Sim
                 }
             }
         }
+
+        /// <summary>Почему флору этого мира нельзя вести перенесённой частью (null — можно); см. FloraSystem.Unsupported.</summary>
+        public string FloraUnsupported => scheduleFlora ? FloraSystem.Unsupported(World) : null;
 
         /// <summary>Доля выполненной подготовки (1 — мир готов).</summary>
         public double PreparationFraction()
@@ -171,6 +182,13 @@ namespace Worldbound.Sim
                 double s = Clock != null ? Clock() : 0;
                 Water.Run(World, tick, WaterAccelerator, sums);
                 Record(WaterTiming, s);
+            }
+            // Флора: период 50, фаза 25 — после воды в порядке систем, но никогда в одном такте с ней (как в TS).
+            if (scheduleFlora && (tick - FloraSystem.Phase) % FloraSystem.Period == 0)
+            {
+                double s = Clock != null ? Clock() : 0;
+                FloraSystem.Run(World, tick);
+                Record(FloraTiming, s);
             }
             World.Tick++;
             if (Preparation != null && World.Tick >= Preparation.TargetTick) FinishPreparation();

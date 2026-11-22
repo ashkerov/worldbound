@@ -88,7 +88,7 @@ namespace Worldbound.Sim.Golden
             Directory.CreateDirectory(dir);
             string good = Path.Combine(dir, "robust-base.wbsave");
             foreach (var f in Directory.GetFiles(dir, "robust-*")) File.Delete(f);
-            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S });
+            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Genesis, Isolated = true });
             for (int h = 0; h < 5; h++) sim.StepHour();
             SaveFile.Save(sim, good);
             byte[] baseBytes = File.ReadAllBytes(good);

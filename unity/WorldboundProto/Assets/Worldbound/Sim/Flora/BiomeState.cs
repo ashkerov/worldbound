@@ -14,8 +14,19 @@ namespace Worldbound.Sim.Flora
         static BiomeInput input;
         static readonly double[] herbParts = new double[4];
 
+        /// <summary>
+        /// Ограничение: input и herbParts — общие для процесса (как модульные объекты TS). Поэтому всё, что их использует
+        /// (InitBiomes, порции FloraSystem), выполняется под этой блокировкой: экземпляры Simulation могут жить в разных
+        /// потоках, но их флора идёт строго последовательно. Параллельный расчёт клеток (этап 2.7) потребует перенести
+        /// эти буферы в состояние с доказательством того же порядка чтения.
+        /// </summary>
+        public static readonly object Gate = new object();
+
+        /// <summary>Входы классификатора после последнего ClassifyTracked (их читает ConfirmsChange в UpdateBiome).</summary>
+        public static BiomeInput Input => input;
+
         /// <summary>Биомасса трав ячейки: [всего, степные, болотные, пионерные], г/м² (накопление в double).</summary>
-        static double[] HerbsOf(World world, int c)
+        public static double[] HerbsOf(World world, int c)
         {
             var f = world.Flora;
             var t = f.Species;
@@ -64,6 +75,11 @@ namespace Worldbound.Sim.Flora
 
         /// <summary>Сглаженные показатели = текущие, биом = классификация (создание мира).</summary>
         public static void InitBiomes(World world)
+        {
+            lock (Gate) InitBiomesLocked(world);
+        }
+
+        static void InitBiomesLocked(World world)
         {
             var f = world.Flora;
             var b = f.Biome;

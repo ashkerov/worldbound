@@ -15,7 +15,7 @@ namespace Worldbound.Sim.Golden
         static Simulation NewSim(int speed)
         {
             world ??= Generate.World(new WorldConfig { Seed = 42, Size = WorldSize.S });
-            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S }, world);
+            var sim = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Genesis, Isolated = true }, world);
             sim.Enqueue(Command.SetSpeed(speed));
             sim.ApplyCommands();
             return sim;

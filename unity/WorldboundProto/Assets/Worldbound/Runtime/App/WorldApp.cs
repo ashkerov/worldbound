@@ -93,7 +93,7 @@ namespace Worldbound.App
         {
             yield return null;
             window = GetActiveWindow();
-            bool automated = Arg("-wbsimtest") != null || Arg("-wbsimbench") != null || Arg("-wbbg") != null || Arg("-wbworldshots") != null || Arg("-wbfpstest") != null;
+            bool automated = Arg("-wbsimtest") != null || Arg("-wbsimbench") != null || Arg("-wbbg") != null || Arg("-wbworldshots") != null || Arg("-wbfpstest") != null || Arg("-wbrendercheck") != null;
             if (automated) showUi = false;
             if (Flag("-wbpause")) PauseWhenMinimized = true;
             if (Arg("-wbsimtest") is { } golden) { yield return RunSimTest(golden, args[Array.IndexOf(args, "-wbsimtest") + 2]); Application.Quit(); yield break; }
@@ -102,6 +102,7 @@ namespace Worldbound.App
             if (Arg("-wbbg") is { } bg) { yield return RunBackground(bg); Application.Quit(); yield break; }
             if (Arg("-wbworldshots") is { } shots) { yield return RunWorldShots(shots); Application.Quit(); yield break; }
             if (Arg("-wbfpstest") is { } fpsOut) { yield return RunFpsTest(fpsOut); Application.Quit(); yield break; }
+            if (Arg("-wbrendercheck") is { } rcOut) { yield return RunRenderCheck(rcOut, Arg("-wbgolden")); Application.Quit(); yield break; }
         }
 
         WorldConfig ConfigFromArgs()
@@ -111,7 +112,10 @@ namespace Worldbound.App
                 Seed = uint.Parse(Arg("-wbseed") ?? PlayerPrefs.GetString("wb.seed", "42"), Inv),
                 Size = (Arg("-wbsize") ?? "M") == "S" ? WorldSize.S : WorldSize.M,
             };
-            c.Scenario = (Arg("-wbscenario") ?? "wild") == "genesis" ? Scenario.Genesis : Scenario.Wild;
+            // Stage 2.2: по умолчанию — Genesis с изоляцией (голая земля): единственный мир, который перенесённая часть
+            // флоры ведёт эквивалентно TS. Wildlands и открытый мир создаются, но такты не идут до этапов 2.3–2.5.
+            c.Scenario = (Arg("-wbscenario") ?? "genesis") == "genesis" ? Scenario.Genesis : Scenario.Wild;
+            c.Isolated = (Arg("-wbisolated") ?? "1") != "0";
             string climate = Arg("-wbclimate") ?? "temperate";
             c.Climate = climate == "cold" ? Climate.Cold : climate == "warm" ? Climate.Warm : Climate.Temperate;
             return c;
@@ -239,7 +243,7 @@ namespace Worldbound.App
                 if (kb.gKey.wasPressedThisFrame)
                 {
                     var c = host.Config;
-                    var next = new WorldConfig { Seed = c.Seed + 1, Size = c.Size, Climate = c.Climate };
+                    var next = new WorldConfig { Seed = c.Seed + 1, Size = c.Size, Climate = c.Climate, Scenario = c.Scenario, Isolated = c.Isolated };
                     PlayerPrefs.SetString("wb.seed", next.Seed.ToString(Inv));
                     NewWorld(next);
                     return;
@@ -361,8 +365,9 @@ namespace Worldbound.App
                 sb.Append($"Мир: seed {w.Seed}, {w.Config.Size} ({w.WorldSize} м), климат {w.Config.ClimateId}, провинций {w.Geo.Provinces.Length}, озёр {w.Geo.Lakes.Length} · geoHash {w.GeoHash}\n");
                 var sim = host.Sim;
                 sb.Append(w.Config.Scenario == Scenario.Genesis
-                    ? "Сценарий Genesis: голая земля, растений и семян нет (рост флоры — этап 2.2)\n"
+                    ? $"Сценарий Genesis{(w.Config.Isolated ? " (изоляция)" : "")}: голая земля; флора идёт по суткам — средние, почва, покров, биомы (рост растений — этап 2.3)\n"
                     : $"Сценарий Wildlands: банк семян трав заложен, подготовка 20 лет ожидает (этап 2.5), готово {sim.PreparationFraction() * 100:0}%\n");
+                if (host.Blocked != null) sb.Append($"Такты не идут: флора этого мира требует ещё не перенесённой части модели — {host.Blocked}\n");
                 sb.Append($"Год {c.Year + 1}, {seasons[c.Season]}, день {c.DayOfSeason + 1}, {c.Hour:00}:{c.Minute:00} · скорость {(s.Speed == 0 ? "пауза" : "×" + s.Speed)} (Пробел, 1–4){(host.Behind ? " · НЕ УСПЕВАЕТ" : "")}\n");
                 sb.Append($"Ядро: шаг воды {(host.BurstActive ? "Burst" : "C# без Burst")}, последний час {host.LastHourMs:0.00} мс, такты за кадр {host.TicksLastAdvance}, время ядра за кадр {host.LastAdvanceMs:0.00} мс\n");
                 sb.Append($"Ветер {s.Wind.Speed:0.0} м/с · аномалия {s.Anomaly:+0.0;-0.0} °C · слой: {WorldRenderer.OverlayNames[(int)(view?.Overlay ?? 0)]} {view?.Legend} (O) · при сворачивании: {(PauseWhenMinimized ? "пауза" : "продолжать")} (P)\n");
@@ -414,9 +419,21 @@ namespace Worldbound.App
             // Флора, Stage 2.1 (G2): начальное состояние Genesis/Wildlands и стенд — против конструктора TS Simulation.
             ok &= FloraG2Golden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g2.json")), L, out var g2);
             yield return null;
+            // G3 (Stage 2.2): 20 лет голой земли — вода на Burst (флора — Mono); и 25 суток целиком на Mono.
+            string g3json = File.ReadAllText(Path.Combine(goldenDir, "flora-g3.json"));
+            var g3bursts = new Dictionary<Simulation, BurstWater>();
+            ok &= FloraG3Golden.Run(g3json, L, out var g3burst, new FloraG3Golden.Options
+            {
+                Label = "burst-water",
+                Configure = s => { var b = new BurstWater(s.World); g3bursts[s] = b; s.WaterAccelerator = b; },
+                Release = s => { if (g3bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); g3bursts.Remove(s); } },
+            });
+            yield return null;
+            ok &= FloraG3Golden.Run(g3json, L, out var g3mono, new FloraG3Golden.Options { Label = "mono", Days = 25 });
+            yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
         /// <summary>
@@ -431,7 +448,7 @@ namespace Worldbound.App
             int hoursPerRun = int.Parse(Arg("-wbhours") ?? "240", Inv);
             foreach (var size in new[] { WorldSize.S, WorldSize.M })
             {
-                var config = new WorldConfig { Seed = 42, Size = size };
+                var config = new WorldConfig { Seed = 42, Size = size, Scenario = Scenario.Genesis, Isolated = true };
                 var sw = Stopwatch.StartNew();
                 var gen = Sim.WorldGen.Generate.World(config);
                 double genMs = sw.Elapsed.TotalMilliseconds;
@@ -447,7 +464,7 @@ namespace Worldbound.App
             // С рендером: мир M, Burst, сцена построена, камера над миром.
             manualSim = true;
             cam.enabled = true;
-            NewWorld(new WorldConfig { Seed = 42, Size = WorldSize.M });
+            NewWorld(new WorldConfig { Seed = 42, Size = WorldSize.M, Scenario = Scenario.Genesis, Isolated = true });
             while (host.Status == SimHost.SimHost.State.Generating) { host.Poll(); yield return null; }
             host.Poll();
             OnWorldReady();
@@ -624,6 +641,63 @@ namespace Worldbound.App
                 rows.Add($"{{ \"cap\": {Q(FpsCaps[c])}, \"vSyncCount\": {QualitySettings.vSyncCount}, \"targetFrameRate\": {Application.targetFrameRate}, \"fps\": {N(Math.Round(frames.Count / dt, 1))}, \"frameMs\": {Stats(frames)} }}");
             }
             File.WriteAllText(outFile, $"{{ \"refreshRate\": {N(Math.Round(Screen.currentResolution.refreshRateRatio.value, 2))}, \"resolution\": \"{Screen.width}x{Screen.height}\", \"runs\": [\n  {string.Join(",\n  ", rows)}\n ] }}\n");
+        }
+
+        /// <summary>
+        /// Симуляция не зависит от рендера: мир Genesis (изоляция) S/42 идёт двое суток под рендером (120 кадров по 120 тактов) — камера облетает
+        /// мир, качество (MSAA, масштаб рендера, тени), слой данных и ограничение кадров меняются каждые несколько
+        /// кадров; шаг воды — Burst. Затем тот же мир без рендера (управляемая вода) до того же такта: хеши обязаны
+        /// совпасть друг с другом и с эталоном TS (сутки 2 из Golden/flora-g3.json, если передан -wbgolden).
+        /// </summary>
+        IEnumerator RunRenderCheck(string outFile, string goldenDir)
+        {
+            var config = new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Genesis, Isolated = true };
+            manualSim = true;
+            NewWorld(config);
+            while (host.Status == SimHost.SimHost.State.Generating) { host.Poll(); yield return null; }
+            host.Poll();
+            OnWorldReady();
+            var sim = host.Sim;
+            long start = sim.World.Tick;
+            long target = start + 2L * SimTime.TicksPerDay;
+            var rp = (UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline;
+            int[] msaa = { 1, 2, 4 };
+            float[] scales = { 0.6f, 1f, 0.8f };
+            float[] shadows = { 60, 400, 150 };
+            int frames = 0;
+            float size = sim.World.WorldSize;
+            while (sim.World.Tick < target)
+            {
+                int k = frames++;
+                if (k % 5 == 0)
+                {
+                    rp.msaaSampleCount = msaa[(k / 5) % 3];
+                    rp.renderScale = scales[(k / 5) % 3];
+                    rp.shadowDistance = shadows[(k / 5) % 3];
+                    view.Overlay = (Overlay)((k / 5) % WorldRenderer.OverlayNames.Length);
+                    fpsCap = (k / 5) % FpsCaps.Length;
+                    ApplyFrameCap();
+                }
+                float a = k * 0.05f;
+                SetCam(new Vector3(size * 0.5f + Mathf.Sin(a) * size * 0.4f, 300 + 200 * Mathf.Sin(a * 0.7f), size * 0.5f + Mathf.Cos(a) * size * 0.4f), a * Mathf.Rad2Deg, 25 + 20 * Mathf.Sin(a));
+                for (int t = 0; t < 120 && sim.World.Tick < target; t++) sim.Step();
+                host.RefreshSnapshot();
+                view.Apply(host.Snapshot, sun);
+                yield return null;
+            }
+            string rendered = sim.StateHash();
+            var headless = new Simulation(config);
+            while (headless.World.Tick < target) headless.Step();
+            string plain = headless.StateHash();
+            string golden = null;
+            if (goldenDir != null)
+            {
+                var g = MiniJson.Obj(MiniJson.Parse(File.ReadAllText(Path.Combine(goldenDir, "flora-g3.json"))));
+                golden = (string)MiniJson.Obj(MiniJson.Arr(MiniJson.Obj(g["scenarioA"])["days"])[1])["stateHash"];
+            }
+            bool ok = rendered == plain && (golden == null || golden == rendered);
+            File.WriteAllText(outFile, $"{{ \"ok\": {(ok ? "true" : "false")}, \"frames\": {frames}, \"ticks\": {target - start}, \"renderedBurstWater\": {Q(rendered)}, \"headlessManagedWater\": {Q(plain)}, \"tsGoldenDay2\": {(golden == null ? "null" : Q(golden))}, \"burstActive\": {(host.BurstActive ? "true" : "false")} }}\n");
+            Debug.Log($"[WB] render-check: {(ok ? "OK" : "FAIL")} рендер {rendered}, без рендера {plain}, TS {golden}");
         }
 
         /// <summary>Снимки: общий вид, низкий ракурс, слои данных ядра.</summary>
