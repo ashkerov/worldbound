@@ -133,9 +133,11 @@ namespace Worldbound.EditorTools
             ok &= Worldbound.Sim.Golden.FloraG2Golden.Run(File.ReadAllText(Path.Combine(golden, "flora-g2.json")), L, out var g2);
             // G3 (Stage 2.2): 20 лет голой земли, Mono, управляемая вода.
             ok &= Worldbound.Sim.Golden.FloraG3Golden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3.json")), L, out var g3, new Worldbound.Sim.Golden.FloraG3Golden.Options { Label = "mono-editor" });
+            // G3 B (Stage 2.3): травяной ярус — B1/B2 20 лет, опыты, нагрузка S/M; Mono, управляемая вода.
+            ok &= Worldbound.Sim.Golden.FloraG3BGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3b.json")), L, out var g3b, new Worldbound.Sim.Golden.FloraG3BGolden.Options { Label = "mono-editor" });
             ok &= Worldbound.Sim.Golden.FloraGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "content")), L, out var flora);
             bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
-            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3} }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3},\n \"g3b\": {g3b} }}\n");
             Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
             if (!ok) EditorApplication.Exit(1);
         }

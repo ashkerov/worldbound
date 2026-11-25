@@ -365,7 +365,7 @@ namespace Worldbound.App
                 sb.Append($"Мир: seed {w.Seed}, {w.Config.Size} ({w.WorldSize} м), климат {w.Config.ClimateId}, провинций {w.Geo.Provinces.Length}, озёр {w.Geo.Lakes.Length} · geoHash {w.GeoHash}\n");
                 var sim = host.Sim;
                 sb.Append(w.Config.Scenario == Scenario.Genesis
-                    ? $"Сценарий Genesis{(w.Config.Isolated ? " (изоляция)" : "")}: голая земля; флора идёт по суткам — средние, почва, покров, биомы (рост растений — этап 2.3)\n"
+                    ? $"Сценарий Genesis{(w.Config.Isolated ? " (изоляция)" : "")}: флора идёт по суткам — травы (рост, семена, прорастание), почва, покров, биомы; древесные — этап 2.4\n"
                     : $"Сценарий Wildlands: банк семян трав заложен, подготовка 20 лет ожидает (этап 2.5), готово {sim.PreparationFraction() * 100:0}%\n");
                 if (host.Blocked != null) sb.Append($"Такты не идут: флора этого мира требует ещё не перенесённой части модели — {host.Blocked}\n");
                 sb.Append($"Год {c.Year + 1}, {seasons[c.Season]}, день {c.DayOfSeason + 1}, {c.Hour:00}:{c.Minute:00} · скорость {(s.Speed == 0 ? "пауза" : "×" + s.Speed)} (Пробел, 1–4){(host.Behind ? " · НЕ УСПЕВАЕТ" : "")}\n");
@@ -431,9 +431,20 @@ namespace Worldbound.App
             yield return null;
             ok &= FloraG3Golden.Run(g3json, L, out var g3mono, new FloraG3Golden.Options { Label = "mono", Days = 25 });
             yield return null;
+            // G3 B (Stage 2.3): травяной ярус — B1/B2 20 лет, опыты, нагрузка S/M; вода на Burst, флора — Mono.
+            string g3bjson = File.ReadAllText(Path.Combine(goldenDir, "flora-g3b.json"));
+            ok &= FloraG3BGolden.Run(g3bjson, L, out var g3b, new FloraG3BGolden.Options
+            {
+                Label = "burst-water",
+                Configure = s => { var b = new BurstWater(s.World); g3bursts[s] = b; s.WaterAccelerator = b; },
+                Release = s => { if (g3bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); g3bursts.Remove(s); } },
+            });
+            yield return null;
+            ok &= FloraG3BGolden.Run(g3bjson, L, out var g3bMono, new FloraG3BGolden.Options { Label = "mono", Days = 40 });
+            yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"g3bBurstWater\": {g3b},\n \"g3bMono\": {g3bMono},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
         /// <summary>
