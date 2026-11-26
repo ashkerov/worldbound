@@ -1,0 +1,16 @@
+{
+ "build": "unity/WorldboundProto/Build/Windows",
+ "kind": "qa",
+ "files": 173,
+ "bytes": 107163590,
+ "streamingAssets": false,
+ "goldenDataFiles": [],
+ "goldenMarkersFound": [],
+ "testCodeAssemblies": [
+  [
+   "WorldboundProto_Data/Managed/Worldbound.Sim.Golden.dll",
+   196608
+  ]
+ ],
+ "ok": true
+}
