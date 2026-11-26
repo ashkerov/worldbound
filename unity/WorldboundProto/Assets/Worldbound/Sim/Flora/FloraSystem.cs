@@ -1,5 +1,6 @@
 // Суточный шаг растительности (src/sim/flora/system.ts: floraSystem, processCell) — Stage 2.2: расписание и голая земля;
-// Stage 2.3: травяной ярус (рост, конкуренция, отмирание, семена, расселение, прорастание, старение банка семян).
+// Stage 2.3: травяной ярус (рост, конкуренция, отмирание, семена, расселение, прорастание, старение банка семян);
+// Stage 2.4: древесные (фенология, рост, питание, оборот, здоровье, стадии, смертность, семена, приживание всходов).
 //
 // Расписание — как в TS: период 50 тактов, фаза 25 (никогда не совпадает с часовым шагом воды); 6 порций в час,
 // 144 в сутки. Ячейки — строки z ≡ час (mod 24), в порции sub — столбцы [⌊sub·n/6⌋, ⌊(sub+1)·n/6⌋), только суша;
@@ -9,10 +10,11 @@
 // Перенесено: суточные средние и сброс накопителей воды, травяной ярус целиком (два прохода роста и потерь с общими
 // ограничениями ячейки, исчезновение популяции в опад, семена в сезон плодоношения, расселение двумя пакетами,
 // прорастание банка, старение банка в опад), почва (выветривание, вымывание, разложение), живой покров (вход испарения),
-// суточное обновление биома. Ветви древесных, колонизации и семян региона — этапы 2.4–2.5: там, где TS пошёл бы в такую
-// ветвь (есть живые древесные, мир открыт колонистам или идёт подготовка Wildlands), шаг останавливается исключением
-// FloraNotPortedException — молчаливого расхождения с эталоном нет. Мир без древесных (Genesis + изоляция, с травами и
-// банком семян или без них) перенесённая часть ведёт побитно равно TS.
+// суточное обновление биома; древесные целиком (processWoody, killWoody, produceWoodySeeds, landWoodyPacket, seedlingFit,
+// deposit). Ветви колонизации и семян региона — этап 2.5: там, где TS пошёл бы в такую ветвь (мир открыт колонистам или
+// идёт подготовка Wildlands), шаг останавливается исключением FloraNotPortedException — молчаливого расхождения с
+// эталоном нет. Изолированный мир Genesis с травами, банком семян, кустарниками и деревьями перенесённая часть ведёт
+// побитно равно TS.
 //
 // Точки округления — как в TS: всё считается в double, во float32 округляется только запись в массив состояния
 // (слоты, банк, опад, запас питания). Значения массивов float читаются в double до арифметики.
@@ -36,6 +38,9 @@ namespace Worldbound.Sim.Flora
     {
         public long Portions, Cells, OccupiedSlots, SeedingSlots, Germinations;
         public long HerbTicks, SeedTicks, GerminationTicks, AgingTicks, SoilTicks, BiomeTicks;
+        /// <summary>Древесные: весь цикл растений порции; внутри — рассев (вместе с приживанием) и приживание отдельно.</summary>
+        public long WoodyTicks, WoodySeedTicks, LandingTicks, CoverTicks, DeathTicks;
+        public long WoodyProcessed, Deaths, SeedingPlants, Packets, PacketsExported, Established;
         public static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
     }
 
@@ -68,6 +73,21 @@ namespace Worldbound.Sim.Flora
         const double RootReserve = 0.1;
         /// <summary>Система счётчикового генератора: расселение семян трав (SYS_HERB_SEED).</summary>
         const int SysHerbSeed = 312;
+        // Древесные (system.ts).
+        const int SysWoodyDeath = 311;
+        const int SysWoodySeed = 313;
+        const double Pi = 3.141592653589793;
+        /// <summary>Оборот ветвей и коры: доля биомассы в год.</summary>
+        const double WoodTurnover = 0.01;
+        /// <summary>День рассева древесных — эта доля года (плюс сдвиг по индексу растения).</summary>
+        public const double WoodySeedFraction = 0.62;
+        const int SeedDaysSpread = 4;
+        /// <summary>Не больше стольких пакетов семян от растения за раз.</summary>
+        const int SeedPackets = 8;
+        const double SeedRecruitment = 0.05;
+        /// <summary>Биомасса всхода, кг.</summary>
+        public const double SeedlingBiomass = 0.002;
+        const double SeedlingMortality = 0.35;
 
         // Рабочие массивы прохода 1 (модульные Float64Array в TS). Флора всех симуляций идёт под BiomeState.Gate.
         static readonly double[] Grow = new double[FloraState.Slots];
@@ -98,8 +118,7 @@ namespace Worldbound.Sim.Flora
             var f = world.Flora;
             if (f.RegionalSeedRain) return "идёт подготовка Wildlands (семена региона) — этап 2.5";
             if (!world.Config.Isolated) return "мир открыт колонистам извне (колонизация через край) — этап 2.5";
-            if (f.Woody.Count > 0) return "есть древесные растения — этап 2.4";
-            // Травы и банк семян трав перенесены (этап 2.3).
+            // Травы и банк семян (этап 2.3), кустарники и деревья (этап 2.4) перенесены.
             return null;
         }
 
@@ -124,7 +143,12 @@ namespace Worldbound.Sim.Flora
             ctx.DayOfYear = ctx.Day % ctx.DaysPerYear;
             ctx.CellArea = geo.CellSize * geo.CellSize;
             ctx.HoldDays = Math.Max(2, (long)JsMath.Round(ctx.DaysPerYear / 4.0));
-            if (slice == 0 && sub == 0) Cover.Refresh(world, false);
+            if (slice == 0 && sub == 0)
+            {
+                long ct = Profile != null ? Stopwatch.GetTimestamp() : 0;
+                Cover.Refresh(world, false);
+                if (Profile != null) Profile.CoverTicks += Stopwatch.GetTimestamp() - ct;
+            }
             if (Profile != null) Profile.Portions++;
             int n = geo.N;
             // Ячейки: строки z ≡ час (mod 24), в каждой порции — свой отрезок столбцов.
@@ -140,8 +164,10 @@ namespace Worldbound.Sim.Flora
             var w = f.Woody;
             int high = w.HighWater;
             int stride = 24 * Substeps;
+            long woodyT0 = Profile != null ? Stopwatch.GetTimestamp() : 0;
             for (int i = slice + 24 * sub; i < high; i += stride)
-                if (w.Alive[i] == 1) throw new FloraNotPortedException($"processWoody (растение {i}) — этап 2.4");
+                if (w.Alive[i] == 1) ProcessWoody(world, i, in ctx);
+            if (Profile != null) Profile.WoodyTicks += Stopwatch.GetTimestamp() - woodyT0;
             // Край мира: колонизация извне. Изоляция действует с момента готовности мира (во время подготовки мир открыт).
             if (!world.Config.Isolated || f.RegionalSeedRain)
             {
@@ -334,6 +360,235 @@ namespace Worldbound.Sim.Flora
             world.Env.Greenness[c] = (float)Cover.GreennessOf(world, c);
             UpdateBiome(world, c, dt, ctx.YearFrac, ctx.HoldDays);
             if (prof != null) prof.BiomeTicks += Stopwatch.GetTimestamp() - t0;
+        }
+
+        // ───────── Древесные (system.ts: processWoody, killWoody, produceWoodySeeds, landWoodyPacket, seedlingFit, deposit) ─────────
+
+        /// <summary>Опад в ячейку (deposit): масса кг → г/м²; древесный — в litterWood, остальное — в быстрый опад.</summary>
+        static void Deposit(World world, int cell, double massKg, int s, bool wood)
+        {
+            var f = world.Flora;
+            double perM2 = massKg * 1000 / (world.Geo.CellSize * world.Geo.CellSize);
+            if (wood)
+            {
+                f.LitterWood[cell] = (float)(f.LitterWood[cell] + perM2);
+                f.LitterWoodN[cell] = (float)(f.LitterWoodN[cell] + perM2 * f.Species.Nutrient[s]);
+            }
+            else AddLitterFast(f, cell, perM2, s);
+            f.Ledger[Ledger.Litterfall] += massKg;
+        }
+
+        /// <summary>Пригодность ячейки для приживания всхода (seedlingFit): климат сезона роста, влага, свет у земли сквозь траву, почва.</summary>
+        public static double SeedlingFit(World world, int s, int c)
+        {
+            var f = world.Flora;
+            var geo = world.Geo;
+            var t = f.Species;
+            double light = FloraMath.GroundLight(f.Canopy, c) * FloraMath.HerbShade(f.SlotBiomass, c);
+            return Suitability.TempResponse(t, s, geo.TMean[c] + 0.6 * geo.TAmp[c]) * Suitability.MoistureResponse(t, s, f.DayW[c]) * Suitability.LightResponse(t, s, light)
+                * Suitability.SoilResponse(t, s, geo.Soil[c]);
+        }
+
+        /// <summary>Суточный шаг древесного растения i (processWoody).</summary>
+        static void ProcessWoody(World world, int i, in DayContext ctx)
+        {
+            var f = world.Flora;
+            var w = f.Woody;
+            var t = f.Species;
+            int s = w.Species[i];
+            int c = w.Cell[i];
+            double T = f.DayT[c];
+            double W = f.DayW[c];
+            double dt = ctx.Dt;
+            double b = w.Biomass[i];
+            double height = FloraMath.WoodyHeight(t, s, b);
+
+            // Фенология: лиственные распускаются в тепле весной и летом, сбрасывают листву осенью и в холод.
+            double leaf = w.Leaf[i];
+            if (t.Evergreen[s] == 1) leaf = 1;
+            else
+            {
+                bool autumn = ctx.YearFrac > 0.68;
+                double target = !autumn && T > 6 ? 1 : autumn || T < 3 ? 0 : leaf;
+                double next = leaf + DMath.Clamp(target - leaf, -0.35, 0.35);
+                if (next < leaf)
+                {
+                    double dropped = t.LeafFraction[s] * b * (leaf - next);
+                    b -= dropped;
+                    Deposit(world, c, dropped, s, false);
+                }
+                leaf = next;
+            }
+
+            // Свет: полог выше; низкие всходы ещё и в тени травостоя.
+            double light = FloraMath.LightAt(f.Canopy, c, height);
+            if (height < 0.8) light *= FloraMath.HerbShade(f.SlotBiomass, c);
+            double fT = Suitability.TempResponse(t, s, T);
+            double fW = Suitability.MoistureResponse(t, s, W);
+            double fL = Suitability.LightResponse(t, s, light);
+            bool growing = leaf > 0.5 && T > 3;
+            double vigor = fT * fW * fL * Suitability.SoilResponse(t, s, world.Geo.Soil[c]);
+            double growth = 0;
+            if (growing)
+            {
+                // b^0,75 через корни: точные операции IEEE, одинаковые в любом движке.
+                double rootB = Math.Sqrt(b);
+                growth = t.Growth[s] * rootB * Math.Sqrt(rootB) * vigor * Suitability.NutrientResponse(t, s, f.Nutrient[c]) * leaf * Math.Max(0, 1 - b / t.MaxBiomass[s]) * dt;
+                double area = ctx.CellArea;
+                double needN = growth * 1000 * t.Nutrient[s];
+                double available = f.Nutrient[c] * area;
+                if (needN > 0.3 * available) growth *= needN > 0 ? 0.3 * available / needN : 0;
+                f.Nutrient[c] = (float)(f.Nutrient[c] - growth * 1000 * t.Nutrient[s] / area);
+                f.Ledger[Ledger.Photosynthesis] += growth;
+                // Фиксация элемента питания (ольха): пропорционально кроне.
+                double fixN = t.Fixes[s] * dt * Math.Min(1, b / t.HalfBiomass[s]);
+                f.Nutrient[c] = (float)(f.Nutrient[c] + fixN);
+                f.Ledger[Ledger.Fixation] += fixN * area;
+            }
+            // Оборот: хвоя у вечнозелёных обновляется за ~3 года, ветви и кора — понемногу.
+            double turnover = WoodTurnover * b * dt;
+            double needles = t.Evergreen[s] == 1 ? t.LeafFraction[s] * b * dt / 3 : 0;
+            b += growth - turnover - needles;
+            Deposit(world, c, turnover, s, true);
+            if (needles > 0) Deposit(world, c, needles, s, false);
+
+            // Здоровье: в сезон роста тянется к бодрости; мороз ниже порога повреждает даже в покое.
+            double health = w.Health[i];
+            if (growing) health += (vigor - 0.35) * 2.5 * dt;
+            if (T < t.FrostKill[s]) health -= 0.3;
+            health = DMath.Clamp(health, 0, 1);
+            w.StressW[i] = (float)(0.9 * w.StressW[i] + 0.1 * (1 - fW));
+            w.StressL[i] = (float)(0.9 * w.StressL[i] + 0.1 * (1 - fL));
+            double age = w.Age[i] + dt;
+            w.Age[i] = (float)age;
+            w.Leaf[i] = (float)leaf;
+            w.Health[i] = (float)health;
+            w.Biomass[i] = (float)b;
+            double life = t.LifespanYears[s];
+            double h = FloraMath.WoodyHeight(t, s, b);
+            w.Stage[i] = h < 0.5 ? WoodyStage.Seedling : age < t.MaturityYears[s] ? WoodyStage.Sapling : age > 0.8 * life ? WoodyStage.Old : WoodyStage.Mature;
+
+            // Размножение: раз в год, в день рассева (сдвиг по индексу на 0–3 суток), у зрелых и здоровых растений.
+            long seedDay = (long)Math.Floor(WoodySeedFraction * ctx.DaysPerYear) + i % SeedDaysSpread;
+            if (ctx.DayOfYear == seedDay % ctx.DaysPerYear && age >= t.MaturityYears[s] && health > 0.4 && h >= 0.5)
+            {
+                var prof = Profile;
+                long t0 = prof != null ? Stopwatch.GetTimestamp() : 0;
+                ProduceWoodySeeds(world, i, in ctx);
+                if (prof != null) { prof.WoodySeedTicks += Stopwatch.GetTimestamp() - t0; prof.SeedingPlants++; }
+            }
+            b = w.Biomass[i];
+
+            // Смертность: фоновая, всходов, от плохого здоровья, от старости; случайность — от (seed, растение, сутки).
+            double senescence = age > 0.8 * life ? (age / life - 0.8) * 2 : 0;
+            // Всходы гибнут чаще; запас крупного семени повышает их выживание.
+            double juvenile = h < 0.5 ? SeedlingMortality * (1 - h / 0.5) / (1 + Math.Sqrt(t.SeedMass[s])) : 0;
+            double p = (t.Mortality[s] + juvenile + 1.5 * (1 - health) * (1 - health) + senescence) * dt;
+            if (Profile != null) Profile.WoodyProcessed++;
+            if (b <= 0.0005 || Hash.CounterRandom(unchecked((int)world.Seed), SysWoodyDeath, EntityId.Key(w.IdOf(i)), unchecked((int)ctx.Day)) < p)
+            {
+                var prof = Profile;
+                long t0 = prof != null ? Stopwatch.GetTimestamp() : 0;
+                KillWoody(world, i);
+                if (prof != null) { prof.DeathTicks += Stopwatch.GetTimestamp() - t0; prof.Deaths++; }
+            }
+        }
+
+        /// <summary>
+        /// Гибель древесного растения (killWoody): листва — в быстрый опад, остальное — в древесный; растение удаляется
+        /// (индекс — в стек свободных, поколение +1), счётчик ячейки уменьшается.
+        /// </summary>
+        public static void KillWoody(World world, int i)
+        {
+            var f = world.Flora;
+            var w = f.Woody;
+            if (w.Alive[i] != 1) return;
+            int s = w.Species[i];
+            int c = w.Cell[i];
+            double b = w.Biomass[i];
+            double leafMass = f.Species.LeafFraction[s] * w.Leaf[i] * Math.Max(0, b);
+            if (b > 0)
+            {
+                Deposit(world, c, leafMass, s, false);
+                Deposit(world, c, b - leafMass, s, true);
+            }
+            w.Remove(i);
+            if (f.WoodyCount[c] > 0) f.WoodyCount[c] = (byte)(f.WoodyCount[c] - 1);
+        }
+
+        /// <summary>Семена дерева или кустарника (produceWoodySeeds): масса — из растения, разлёт пакетами, приживание всходов.</summary>
+        static void ProduceWoodySeeds(World world, int i, in DayContext ctx)
+        {
+            var f = world.Flora;
+            var w = f.Woody;
+            var t = f.Species;
+            int s = w.Species[i];
+            double b = w.Biomass[i];
+            double r = FloraMath.CrownRadius(t, s, b);
+            double seeds = t.Fecundity[s] * Pi * r * r * w.Health[i];
+            if (seeds < 1) return;
+            // Не больше 5 % биомассы растения уходит в семена.
+            double massKg = Math.Min(seeds * t.SeedMass[s] * 0.001, 0.05 * b);
+            seeds = massKg / (t.SeedMass[s] * 0.001);
+            w.Biomass[i] = (float)(b - massKg);
+            int packets = (int)Math.Min(SeedPackets, Math.Ceiling(seeds));
+            double perPacket = seeds / packets;
+            double packetKg = massKg / packets;
+            uint id = w.IdOf(i);
+            int seed = unchecked((int)world.Seed);
+            for (int p = 0; p < packets; p++)
+            {
+                DispersalTarget(world, w.X[i], w.Z[i], s, id, p, ctx.Day, SysWoodySeed, out double tx, out double tz);
+                int tc = LandCellAt(world, tx, tz);
+                if (Profile != null) Profile.Packets++;
+                if (tc < 0)
+                {
+                    f.Ledger[Ledger.Exported] += packetKg * 1000 * t.Nutrient[s];
+                    if (Profile != null) Profile.PacketsExported++;
+                    continue;
+                }
+                double roll = Hash.CounterRandom(seed, SysWoodySeed, EntityId.Key(id), unchecked((int)(ctx.Day * 64 + 32 + p)));
+                var prof = Profile;
+                long t0 = prof != null ? Stopwatch.GetTimestamp() : 0;
+                LandWoodyPacket(world, s, tx, tz, tc, perPacket, packetKg, roll, in ctx);
+                if (prof != null) prof.LandingTicks += Stopwatch.GetTimestamp() - t0;
+            }
+        }
+
+        /// <summary>
+        /// Пакет семян древесного вида упал в ячейку суши tc (landWoodyPacket): возможно, одно семя даёт всход, остальное —
+        /// в опад. У предела ёмкости хранилища (последние 10 %) приживание плавно стихает.
+        /// </summary>
+        static void LandWoodyPacket(World world, int s, double x, double z, int tc, double seeds, double packetKg, double roll, in DayContext ctx)
+        {
+            var f = world.Flora;
+            var w = f.Woody;
+            var t = f.Species;
+            double area = ctx.CellArea;
+            double space = Math.Max(0, 1 - f.WoodyCount[tc] / (double)FloraState.MaxWoodyPerCell);
+            double fill = w.Count / (double)w.Capacity;
+            double storeRoom = fill < 0.9 ? 1 : Math.Max(0, (1 - fill) * 10);
+            double pOne = t.Establishment[s] * SeedlingFit(world, s, tc) * space * storeRoom * SeedRecruitment;
+            double pAny = Math.Min(1, seeds * pOne);
+            double seedKg = t.SeedMass[s] * 0.001;
+            double grownKg = Math.Max(0, SeedlingBiomass - seedKg);
+            double needN = grownKg * 1000 * t.Nutrient[s];
+            if (roll < pAny && f.WoodyCount[tc] < FloraState.MaxWoodyPerCell && f.Nutrient[tc] * area > needN)
+            {
+                int j = w.Spawn(s, x, z, tc, Math.Max(SeedlingBiomass, seedKg), 0);
+                if (j >= 0)
+                {
+                    // Семя стало всходом; разница до массы всхода — первый прирост: питание из почвы ячейки.
+                    f.Nutrient[tc] = (float)(f.Nutrient[tc] - needN / area);
+                    f.Ledger[Ledger.Photosynthesis] += grownKg;
+                    f.WoodyCount[tc] = (byte)(f.WoodyCount[tc] + 1);
+                    Deposit(world, tc, Math.Max(0, packetKg - seedKg), s, false);
+                    if (Profile != null) Profile.Established++;
+                    return;
+                }
+            }
+            // Не прижились (или хранилище заполнено): семена пакета уходят в опад там, куда упали.
+            Deposit(world, tc, packetKg, s, false);
         }
 
         /// <summary>Отклик вида на условия ячейки за сутки (без питания): температура × влага × свет × почва (herbFit).</summary>

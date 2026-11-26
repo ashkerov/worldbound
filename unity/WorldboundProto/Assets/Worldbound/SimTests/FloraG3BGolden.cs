@@ -716,17 +716,18 @@ namespace Worldbound.Sim.Golden
                 f.Woody.Spawn(t.IndexOf("spruce"), 4, 4, 0, 100, 10);
                 f.WoodyCount[0]++;
                 string why = sim.FloraUnsupported;
-                pGuard.Eq(why != null, () => "мир с древесным не заблокирован");
-                bool threw = false;
+                // С этапа 2.4 древесные перенесены: изолированный мир с травами и деревом ведётся сутки без остановки.
+                pGuard.Eq(why == null, () => $"мир с древесным заблокирован: {why}");
+                string threw = null;
                 long st = sim.World.Tick;
                 try { while (sim.World.Tick < st + SimTime.TicksPerDay) sim.Step(); }
-                catch (FloraNotPortedException) { threw = true; }
-                pGuard.Eq(threw, () => "шаг мира с древесным не остановился исключением");
+                catch (FloraNotPortedException e) { threw = e.Message; }
+                pGuard.Eq(threw == null, () => $"шаг мира с древесным остановился: {threw}");
                 var open = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Genesis, Isolated = false });
                 pGuard.Eq(open.FloraUnsupported != null, () => "открытый мир (колонизация) не заблокирован");
                 var wild = new Simulation(new WorldConfig { Seed = 42, Size = WorldSize.S, Scenario = Scenario.Wild });
                 pGuard.Eq(wild.FloraUnsupported != null, () => "Wildlands (подготовка) не заблокирован");
-                log($"g3b[{opt.Label}] защита: древесные — «{why}», открытый мир — «{open.FloraUnsupported}», Wildlands — «{wild.FloraUnsupported}»");
+                log($"g3b[{opt.Label}] защита: древесные — {(why == null ? "ведутся" : "«" + why + "»")}, открытый мир — «{open.FloraUnsupported}», Wildlands — «{wild.FloraUnsupported}»");
             }
 
             // ───────── Нагрузка: S и M с лугом и банком на всей суше ─────────
