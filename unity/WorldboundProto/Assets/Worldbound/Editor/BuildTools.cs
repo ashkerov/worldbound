@@ -84,9 +84,18 @@ namespace Worldbound.EditorTools
             EditorUtility.SetDirty(m);
         }
 
-        public static void BuildWindows()
+        /// <summary>
+        /// QA-сборка (Build/Windows): с тестовой сборкой Worldbound.Sim.Golden (define WB_QA) — для -wbsimtest и
+        /// сравнения рендера с эталоном. На ней идут все автоматические проверки сборки.
+        /// </summary>
+        public static void BuildWindows() => Build("Windows", "build-summary.json", new[] { "WB_QA" });
+
+        /// <summary>Release-сборка (Build/WindowsRelease): без тестовой сборки и golden-кода — то, что получает игрок.</summary>
+        public static void BuildWindowsRelease() => Build("WindowsRelease", "build-summary-release.json", new string[0]);
+
+        static void Build(string folder, string summaryFile, string[] defines)
         {
-            var dir = Path.Combine(ProjectDir, "Build", "Windows");
+            var dir = Path.Combine(ProjectDir, "Build", folder);
             Directory.CreateDirectory(dir);
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
@@ -94,11 +103,12 @@ namespace Worldbound.EditorTools
                 locationPathName = Path.Combine(dir, "WorldboundProto.exe"),
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
+                extraScriptingDefines = defines,
             });
             var s = report.summary;
             Directory.CreateDirectory(ResultsDir);
-            File.WriteAllText(Path.Combine(ResultsDir, "build-summary.json"), $"{{ \"result\": \"{s.result}\", \"seconds\": {s.totalTime.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}, \"bytes\": {s.totalSize}, \"errors\": {s.totalErrors}, \"warnings\": {s.totalWarnings}, \"unity\": \"{Application.unityVersion}\" }}\n");
-            Debug.Log($"[WB] Build {s.result} in {s.totalTime.TotalSeconds:0}s, {s.totalSize / 1048576} MB");
+            File.WriteAllText(Path.Combine(ResultsDir, summaryFile), $"{{ \"result\": \"{s.result}\", \"kind\": \"{(defines.Length > 0 ? "qa" : "release")}\", \"defines\": \"{string.Join(";", defines)}\", \"seconds\": {s.totalTime.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}, \"bytes\": {s.totalSize}, \"errors\": {s.totalErrors}, \"warnings\": {s.totalWarnings}, \"unity\": \"{Application.unityVersion}\" }}\n");
+            Debug.Log($"[WB] Build {folder} {s.result} in {s.totalTime.TotalSeconds:0}s, {s.totalSize / 1048576} MB");
             if (s.result != BuildResult.Succeeded) EditorApplication.Exit(1);
         }
 
@@ -135,9 +145,11 @@ namespace Worldbound.EditorTools
             ok &= Worldbound.Sim.Golden.FloraG3Golden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3.json")), L, out var g3, new Worldbound.Sim.Golden.FloraG3Golden.Options { Label = "mono-editor" });
             // G3 B (Stage 2.3): травяной ярус — B1/B2 20 лет, опыты, нагрузка S/M; Mono, управляемая вода.
             ok &= Worldbound.Sim.Golden.FloraG3BGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3b.json")), L, out var g3b, new Worldbound.Sim.Golden.FloraG3BGolden.Options { Label = "mono-editor" });
+            // G3 C (Stage 2.4): древесные и травы — C1, C2 (3 × 50 лет), исходные тесты TS, нагрузка S/M; Mono.
+            ok &= Worldbound.Sim.Golden.FloraG3CGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3c.json")), L, out var g3c, new Worldbound.Sim.Golden.FloraG3CGolden.Options { Label = "mono-editor" });
             ok &= Worldbound.Sim.Golden.FloraGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "content")), L, out var flora);
             bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
-            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3},\n \"g3b\": {g3b} }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3},\n \"g3b\": {g3b},\n \"g3c\": {g3c} }}\n");
             Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
             if (!ok) EditorApplication.Exit(1);
         }

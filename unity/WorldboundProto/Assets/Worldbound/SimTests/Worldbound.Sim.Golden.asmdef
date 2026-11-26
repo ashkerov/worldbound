@@ -3,6 +3,7 @@
     "rootNamespace": "Worldbound.Sim.Golden",
     "references": ["Worldbound.Sim"],
     "noEngineReferences": true,
+    "defineConstraints": ["UNITY_EDITOR || WB_QA"],
     "allowUnsafeCode": false,
     "autoReferenced": true
 }

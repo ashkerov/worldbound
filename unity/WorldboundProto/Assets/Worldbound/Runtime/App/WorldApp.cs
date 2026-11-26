@@ -26,7 +26,9 @@ using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using Worldbound.Sim;
-using Worldbound.Sim.Golden;
+#if UNITY_EDITOR || WB_QA
+using Worldbound.Sim.Golden; // golden-проверки — только в QA-сборке (WB_QA) и редакторе
+#endif
 using Worldbound.Sim.Persistence;
 using Worldbound.SimHost;
 using Worldbound.WorldView;
@@ -96,7 +98,17 @@ namespace Worldbound.App
             bool automated = Arg("-wbsimtest") != null || Arg("-wbsimbench") != null || Arg("-wbbg") != null || Arg("-wbworldshots") != null || Arg("-wbfpstest") != null || Arg("-wbrendercheck") != null;
             if (automated) showUi = false;
             if (Flag("-wbpause")) PauseWhenMinimized = true;
-            if (Arg("-wbsimtest") is { } golden) { yield return RunSimTest(golden, args[Array.IndexOf(args, "-wbsimtest") + 2]); Application.Quit(); yield break; }
+            if (Arg("-wbsimtest") is { } golden)
+            {
+#if UNITY_EDITOR || WB_QA
+                yield return RunSimTest(golden, args[Array.IndexOf(args, "-wbsimtest") + 2]);
+                Application.Quit();
+#else
+                Debug.LogError("[WB] -wbsimtest: golden-проверки есть только в QA-сборке (BuildTools.BuildWindows, define WB_QA)");
+                Application.Quit(2);
+#endif
+                yield break;
+            }
             if (Arg("-wbsimbench") is { } bench) { yield return RunSimBench(bench); Application.Quit(); yield break; }
             NewWorld(ConfigFromArgs());
             if (Arg("-wbbg") is { } bg) { yield return RunBackground(bg); Application.Quit(); yield break; }
@@ -379,12 +391,13 @@ namespace Worldbound.App
 
         // ───────── проверки и замеры ─────────
 
-        static string Q(string s) => MiniJson.Q(s);
-        static string N(double v) => MiniJson.N(v);
+        static string Q(string s) => Json.Q(s);
+        static string N(double v) => Json.N(v);
 
         string SystemJson() =>
             $"\"unity\": {Q(Application.unityVersion)}, \"build\": {(Application.isEditor ? "\"editor\"" : "\"player\"")}, \"scripting\": \"Mono\", \"cpu\": {Q(SystemInfo.processorType)}, \"cores\": {SystemInfo.processorCount}, \"ramMB\": {SystemInfo.systemMemorySize}, \"gpu\": {Q(SystemInfo.graphicsDeviceName)}, \"api\": {Q(SystemInfo.graphicsDeviceType.ToString())}, \"burstActive\": {(BurstWater.IsBurstActive() ? "true" : "false")}";
 
+#if UNITY_EDITOR || WB_QA
         /// <summary>Golden-проверки в сборке: генератор (все случаи), среда — обычный C# (Mono) и Burst, сохранение.</summary>
         IEnumerator RunSimTest(string goldenDir, string outFile)
         {
@@ -442,10 +455,23 @@ namespace Worldbound.App
             yield return null;
             ok &= FloraG3BGolden.Run(g3bjson, L, out var g3bMono, new FloraG3BGolden.Options { Label = "mono", Days = 40 });
             yield return null;
+            // G3 C (Stage 2.4): древесные и травы — полностью на Mono (вода тоже Mono) и полностью с водой на Burst.
+            string g3cjson = File.ReadAllText(Path.Combine(goldenDir, "flora-g3c.json"));
+            ok &= FloraG3CGolden.Run(g3cjson, L, out var g3cMono, new FloraG3CGolden.Options { Label = "mono" });
+            yield return null;
+            ok &= FloraG3CGolden.Run(g3cjson, L, out var g3cBurst, new FloraG3CGolden.Options
+            {
+                Label = "burst-water",
+                Configure = s => { var b = new BurstWater(s.World); g3bursts[s] = b; s.WaterAccelerator = b; },
+                Release = s => { if (g3bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); g3bursts.Remove(s); } },
+            });
+            yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"g3bBurstWater\": {g3b},\n \"g3bMono\": {g3bMono},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"g3bBurstWater\": {g3b},\n \"g3bMono\": {g3bMono},\n \"g3cMono\": {g3cMono},\n \"g3cBurstWater\": {g3cBurst},\n \"log\": {Q(log.ToString())} }}\n");
         }
+
+#endif
 
         /// <summary>
         /// Замеры симуляции: (1) без рендера — S и M, обычный C# и Burst: время часа и суток (среднее, p95, p99), GC, память;
@@ -703,8 +729,12 @@ namespace Worldbound.App
             string golden = null;
             if (goldenDir != null)
             {
+#if UNITY_EDITOR || WB_QA
                 var g = MiniJson.Obj(MiniJson.Parse(File.ReadAllText(Path.Combine(goldenDir, "flora-g3.json"))));
                 golden = (string)MiniJson.Obj(MiniJson.Arr(MiniJson.Obj(g["scenarioA"])["days"])[1])["stateHash"];
+#else
+                Debug.LogWarning("[WB] -wbgolden: сравнение с эталоном TS — только в QA-сборке");
+#endif
             }
             bool ok = rendered == plain && (golden == null || golden == rendered);
             File.WriteAllText(outFile, $"{{ \"ok\": {(ok ? "true" : "false")}, \"frames\": {frames}, \"ticks\": {target - start}, \"renderedBurstWater\": {Q(rendered)}, \"headlessManagedWater\": {Q(plain)}, \"tsGoldenDay2\": {(golden == null ? "null" : Q(golden))}, \"burstActive\": {(host.BurstActive ? "true" : "false")} }}\n");
