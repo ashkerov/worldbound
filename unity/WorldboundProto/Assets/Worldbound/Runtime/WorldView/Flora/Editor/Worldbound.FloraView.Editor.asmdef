@@ -1,0 +1,17 @@
+{
+  "name": "Worldbound.FloraView.Editor",
+  "rootNamespace": "Worldbound.FloraView.EditorTools",
+  "references": [
+    "Worldbound.FloraView",
+    "Worldbound.FloraView.Contract",
+    "Worldbound.FloraView.Stand",
+    "Worldbound.FloraView.SimAdapter",
+    "Worldbound.Sim",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime"
+  ],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}

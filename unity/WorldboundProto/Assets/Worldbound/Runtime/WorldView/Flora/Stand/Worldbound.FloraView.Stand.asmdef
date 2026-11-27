@@ -1,0 +1,16 @@
+{
+  "name": "Worldbound.FloraView.Stand",
+  "rootNamespace": "Worldbound.FloraView.Stand",
+  "references": [
+    "Worldbound.FloraView",
+    "Worldbound.FloraView.Contract",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime"
+  ],
+  "allowUnsafeCode": true,
+  "autoReferenced": false
+}

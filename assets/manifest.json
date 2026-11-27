@@ -28,6 +28,24 @@
       "authorSite": "https://quaternius.com",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "changes": "Файл не изменён (скачан 2026-11-16, 1 370 524 байта). При загрузке в прототипе 1A: нормали пересчитаны для сглаженного затенения, материалы заменены на собственные с подобранными цветами одежды и кожи. Копия для Unity (ветка experiment/unity-windows-prototype): unity/WorldboundProto/Assets/Worldbound/Resources/Models/Farmer.glb — побайтно тот же файл; импорт glTFast, используется только в сценах оценки рендера (PrototypeApp, запуск с -wbproto)."
+    },
+    {
+      "id": "worldbound-flora-renderer-procedural",
+      "title": "Рендер растительности Unity: процедурные модели деревьев, кустарников и трав, атлас листвы, шейдеры, стенд",
+      "files": [
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Woody/WoodyModels.cs",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Grass/HerbModels.cs",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Gfx/FloraTextures.cs",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Shaders/FloraWoody.shader",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Shaders/FloraImpostor.shader",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Shaders/FloraGrass.shader",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Shaders/FloraCommon.hlsl",
+        "unity/WorldboundProto/Assets/Worldbound/Runtime/WorldView/Flora/Stand/StandGround.shader"
+      ],
+      "license": "own",
+      "author": "WORLDBOUND (собственная работа проекта)",
+      "source": "Генерируется кодом при запуске (ветка experiment/unity-flora-renderer); внешних файлов, текстур и моделей нет",
+      "changes": "Атлас листвы, шум ветра, модели 10 древесных видов (3 уровня детализации, возрастные архетипы), 8 видов трав и атлас импосторов строятся процедурно; небо стенда — встроенный шейдер Unity Skybox/Procedural"
     }
   ]
 }
