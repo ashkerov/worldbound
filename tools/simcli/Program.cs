@@ -44,6 +44,10 @@ static class Program
                 ok = FloraG3CGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3c.json")), Console.WriteLine, out report,
                     new FloraG3CGolden.Options { Label = "dotnet6", Only = only != null ? new System.Collections.Generic.HashSet<string>(only.Split(',')) : null, AllocatedBytes = () => GC.GetAllocatedBytesForCurrentThread() });
                 break;
+            case "g3d":
+                ok = FloraG3DGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3d.json")), Console.WriteLine, out report,
+                    new FloraG3CGolden.Options { Label = "dotnet6", Only = only != null ? new System.Collections.Generic.HashSet<string>(only.Split(',')) : null, AllocatedBytes = () => GC.GetAllocatedBytesForCurrentThread() });
+                break;
             case "woodyrestore":
                 ok = WoodyRestoreCheck.Run(Console.WriteLine, out report);
                 break;
@@ -54,7 +58,7 @@ static class Program
                 ok = SaveRobustness.Run(Environment.GetEnvironmentVariable("WB_TMP") ?? "unity/WorldboundProto/Temp/saverobust", Console.WriteLine, out report);
                 break;
             default:
-                Console.WriteLine("режимы: worldgen | env | save [S|M] | pacer | robust | flora | woodyrestore | g2 | g3 [сутки] | g3b [сутки] | g3c [прогоны через запятую]");
+                Console.WriteLine("режимы: worldgen | env | save [S|M] | pacer | robust | flora | woodyrestore | g2 | g3 [сутки] | g3b [сутки] | g3c [прогоны] | g3d [прогоны]");
                 return 2;
         }
         string outPath = Environment.GetEnvironmentVariable("WB_REPORT");

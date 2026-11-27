@@ -26,7 +26,7 @@ namespace Worldbound.Sim.Golden
         static double D(object o) => MiniJson.FromBits(o);
         static int I(object o) => (int)MiniJson.Num(o);
 
-        sealed class Part
+        internal sealed class Part
         {
             public string Name;
             public int Checked, Failed;
@@ -120,9 +120,10 @@ namespace Worldbound.Sim.Golden
             ResetLedger(sim);
         }
 
-        static Simulation Create(Dictionary<string, object> s, string geoHash)
+        internal static Simulation Create(Dictionary<string, object> s, string geoHash)
         {
             var t = SpeciesTable.Default;
+            if ((string)s["kind"] == "plot" || (string)s["kind"] == "world") return CreateWorld(s, geoHash);
             uint seed = (uint)MiniJson.Num(s["seed"]);
             switch ((string)s["kind"])
             {
@@ -223,6 +224,39 @@ namespace Worldbound.Sim.Golden
             throw new ArgumentException("неизвестная настройка " + s["kind"]);
         }
 
+        static WorldConfig ConfigOf(Dictionary<string, object> c, WorldSize size, int daysPerSeason)
+        {
+            var cfg = new WorldConfig
+            {
+                Seed = (uint)MiniJson.Num(c["seed"]),
+                Size = size,
+                DaysPerSeason = daysPerSeason,
+                Scenario = (string)c["scenario"] == "wild" ? Scenario.Wild : Scenario.Genesis,
+                Isolated = (bool)c["isolated"],
+            };
+            if (c.TryGetValue("climate", out var cl)) cfg.Climate = (string)cl == "cold" ? Climate.Cold : (string)cl == "warm" ? Climate.Warm : Climate.Temperate;
+            return cfg;
+        }
+
+        /// <summary>Миры G3 D–F: участок plotGeo или созданный мир с любым сценарием, изоляцией и сроком подготовки.</summary>
+        static Simulation CreateWorld(Dictionary<string, object> s, string geoHash)
+        {
+            var t = SpeciesTable.Default;
+            var options = new SimulationOptions();
+            if (s.TryGetValue("prepareYears", out var py) && py != null) options.PrepareYears = MiniJson.Num(py);
+            var c = O(s["config"]);
+            if ((string)s["kind"] == "world")
+                return new Simulation(ConfigOf(c, (string)s["size"] == "M" ? WorldSize.M : WorldSize.S, SimTime.DaysPerSeason), null, null, options);
+            var sim = new Simulation(ConfigOf(c, WorldSize.S, 5), new Generate.Result { Geo = PlotGeo.Build(PlotOptions.From(O(s["plot"]))), Hash = geoHash }, null, options);
+            if (s.TryGetValue("plants", out var po) && po != null)
+                foreach (var pp in A(po))
+                {
+                    var p = A(pp);
+                    sim.World.Flora.Woody.Spawn(t.IndexOf((string)p[0]), MiniJson.Num(p[1]), MiniJson.Num(p[2]), I(p[3]), MiniJson.Num(p[4]), MiniJson.Num(p[5]));
+                }
+            return sim;
+        }
+
         // ───────── Сводки (те же, что compact()/full()/zoneRaw() в инструменте TS) ─────────
 
         static string FnvPrefix<T>(T[] a, int n) where T : struct
@@ -232,7 +266,7 @@ namespace Worldbound.Sim.Golden
             return h.ToString("x8");
         }
 
-        static double BalanceError(Simulation sim)
+        internal static double BalanceError(Simulation sim)
         {
             var f = sim.World.Flora;
             double init = f.Ledger[Ledger.InitialStock];
@@ -251,6 +285,12 @@ namespace Worldbound.Sim.Golden
             p.Eq(Bits(BalanceError(sim)) == (string)e["balanceError"], () => $"{where}: ошибка баланса");
             var st = A(e["store"]);
             p.Eq(w.Count == I(st[0]) && w.HighWater == I(st[1]) && w.FreeCount == I(st[2]), () => $"{where}: хранилище {w.Count}/{w.HighWater}/{w.FreeCount} ≠ {st[0]}/{st[1]}/{st[2]}");
+            if (e.TryGetValue("preparing", out var prep)) p.Eq((sim.Preparation != null) == (bool)prep, () => $"{where}: подготовка {(sim.Preparation != null ? "идёт" : "завершена")}, в TS — {((bool)prep ? "идёт" : "завершена")}");
+            if (e.TryGetValue("water", out var wo))
+            {
+                var wt = A(wo);
+                for (int j = 0; j < wt.Count; j++) { int jj = j; p.Eq(Bits(sim.World.Env.WaterTotals[j]) == (string)wt[j], () => $"{where}: waterTotals[{jj}]"); }
+            }
         }
 
         static void Full(Part p, Simulation sim, Dictionary<string, object> e, string where)
@@ -335,10 +375,28 @@ namespace Worldbound.Sim.Golden
                 ["woody.cell"] = FnvPrefix(wd.Cell, hw), ["woody.alive"] = FnvPrefix(wd.Alive, hw), ["woody.generation"] = FnvPrefix(wd.Generation, hw),
             };
             foreach (var kv in O(e["arrays"])) { var key = kv.Key; p.Eq(arr[key] == (string)kv.Value, () => $"{where}: {key} {arr[key]} ≠ {kv.Value}"); }
+            if (e.TryGetValue("extra", out var xo))
+            {
+                var x = O(xo);
+                double maxAge = 0, maxBio = 0;
+                for (int i = 0; i < wd.HighWater; i++)
+                {
+                    if (wd.Alive[i] != 1) continue;
+                    if (wd.Age[i] > maxAge) maxAge = wd.Age[i];
+                    if (wd.Biomass[i] > maxBio) maxBio = wd.Biomass[i];
+                }
+                p.Eq(Bits(maxAge) == (string)x["maxAge"] && Bits(maxBio) == (string)x["maxBiomass"], () => $"{where}: наибольшие возраст/биомасса");
+                var cf = A(x["colonistFirst"]);
+                var cm = A(x["colonistMass"]);
+                bool colOk = true;
+                for (int s = 0; s < t.Count; s++) colOk &= f.ColonistFirst[s] == MiniJson.Num(cf[s]) && Bits(f.ColonistMass[s]) == (string)cm[s];
+                p.Eq(colOk, () => $"{where}: колонисты (первое появление, масса)");
+                p.Eq(f.PreparedYears == MiniJson.Num(x["preparedYears"]) && f.RegionalSeedRain == (bool)x["regionalSeedRain"], () => $"{where}: preparedYears/regionalSeedRain");
+            }
         }
 
         /// <summary>Выборка зоны без округления (zoneRaw в инструменте TS).</summary>
-        sealed class Zone
+        internal sealed class Zone
         {
             public double Herbs, HerbOccupancy, TreeCover, ShrubCover, TopHeight, SeedBank, Nutrient, Balance;
             public double[] HerbBySpecies;
@@ -346,16 +404,18 @@ namespace Worldbound.Sim.Golden
             public int[] TreeStages, WoodyBySpecies, Biomes;
         }
 
-        static Zone ZoneOf(Simulation sim, int from, int to)
+        internal static Zone ZoneOf(Simulation sim, int from, int to, int z0 = 0, int z1 = -1)
         {
             var f = sim.World.Flora;
             var geo = sim.World.Geo;
             var t = f.Species;
             int n = geo.N;
-            var z0 = new Zone { HerbBySpecies = new double[t.Herbs.Length], TreeStages = new int[4], WoodyBySpecies = new int[t.Count], Biomes = new int[BiomeCatalog.All.Length] };
+            if (z1 < 0) z1 = n;
+            int zr0 = z0, zr1 = z1;
+            var z0z = new Zone { HerbBySpecies = new double[t.Herbs.Length], TreeStages = new int[4], WoodyBySpecies = new int[t.Count], Biomes = new int[BiomeCatalog.All.Length] };
             int cells = 0, occupied = 0;
             double herbs = 0, tree = 0, shrub = 0, bank = 0, nut = 0;
-            for (int z = 0; z < n; z++)
+            for (int z = zr0; z < zr1; z++)
                 for (int x = from; x < to; x++)
                 {
                     int c = z * n + x;
@@ -367,7 +427,7 @@ namespace Worldbound.Sim.Golden
                         if (s == SpeciesTable.NoSpecies) continue;
                         double b = f.SlotBiomass[c * FloraState.Slots + k];
                         hb += b;
-                        z0.HerbBySpecies[t.HerbSlot[s]] += b;
+                        z0z.HerbBySpecies[t.HerbSlot[s]] += b;
                     }
                     herbs += hb;
                     if (hb > 1) occupied++;
@@ -375,37 +435,37 @@ namespace Worldbound.Sim.Golden
                     nut += f.Nutrient[c];
                     shrub += f.ShrubCover[c];
                     for (int h = 0; h < t.Herbs.Length; h++) bank += f.SeedBank[h * n * n + c];
-                    z0.Biomes[f.Biome.Current[c]]++;
+                    z0z.Biomes[f.Biome.Current[c]]++;
                 }
             var w = f.Woody;
             var heights = new List<double>();
             for (int i = 0; i < w.HighWater; i++)
             {
-                if (w.Alive[i] != 1 || w.X[i] < from * geo.CellSize || w.X[i] >= to * geo.CellSize) continue;
+                if (w.Alive[i] != 1 || w.X[i] < from * geo.CellSize || w.X[i] >= to * geo.CellSize || w.Z[i] < zr0 * geo.CellSize || w.Z[i] >= zr1 * geo.CellSize) continue;
                 int s = w.Species[i];
-                z0.WoodyBySpecies[s]++;
+                z0z.WoodyBySpecies[s]++;
                 if (t.Tree[s] == 1)
                 {
-                    z0.Trees++;
-                    z0.TreeStages[w.Stage[i]]++;
+                    z0z.Trees++;
+                    z0z.TreeStages[w.Stage[i]]++;
                     heights.Add(FloraMath.WoodyHeight(t, s, w.Biomass[i]));
                 }
-                else z0.Shrubs++;
+                else z0z.Shrubs++;
             }
             heights.Sort((a, b) => b.CompareTo(a));
             int topN = Math.Min(5, heights.Count);
             double top = 0;
             for (int k = 0; k < topN; k++) top += heights[k];
-            z0.Herbs = herbs / cells;
-            for (int h = 0; h < z0.HerbBySpecies.Length; h++) z0.HerbBySpecies[h] /= cells;
-            z0.HerbOccupancy = occupied / (double)cells;
-            z0.TreeCover = tree / cells;
-            z0.ShrubCover = shrub / cells;
-            z0.TopHeight = topN > 0 ? top / topN : 0;
-            z0.SeedBank = bank / cells;
-            z0.Nutrient = nut / cells;
-            z0.Balance = BalanceError(sim);
-            return z0;
+            z0z.Herbs = herbs / cells;
+            for (int h = 0; h < z0z.HerbBySpecies.Length; h++) z0z.HerbBySpecies[h] /= cells;
+            z0z.HerbOccupancy = occupied / (double)cells;
+            z0z.TreeCover = tree / cells;
+            z0z.ShrubCover = shrub / cells;
+            z0z.TopHeight = topN > 0 ? top / topN : 0;
+            z0z.SeedBank = bank / cells;
+            z0z.Nutrient = nut / cells;
+            z0z.Balance = BalanceError(sim);
+            return z0z;
         }
 
         static void ZoneEq(Part p, Zone z, Dictionary<string, object> e, string where)
@@ -423,7 +483,7 @@ namespace Worldbound.Sim.Golden
 
         // ───────── Свойства после порции и после суток ─────────
 
-        sealed class WoodySnap
+        internal sealed class WoodySnap
         {
             public byte[] Alive, Gen, Species;
             public float[] Leaf;
@@ -432,10 +492,14 @@ namespace Worldbound.Sim.Golden
             public void Take(WoodyStore w)
             {
                 int n = w.Capacity;
-                Alive ??= new byte[n];
-                Gen ??= new byte[n];
-                Species ??= new byte[n];
-                Leaf ??= new float[n];
+                if (Alive == null || Alive.Length < n)
+                {
+                    Alive = new byte[n];
+                    Gen = new byte[n];
+                    Species = new byte[n];
+                    Leaf = new float[n];
+                    HighWater = 0;
+                }
                 int hw = w.HighWater;
                 Array.Copy(w.Alive, Alive, hw);
                 Array.Copy(w.Generation, Gen, hw);
@@ -446,11 +510,13 @@ namespace Worldbound.Sim.Golden
             }
         }
 
-        sealed class Checks
+        internal sealed class Checks
         {
             public Part Store, Cells, Deaths, Phenology;
             public readonly WoodySnap Portion0 = new(), Day0 = new();
             public double LitterfallBefore;
+            /// <summary>Шли ли семена региона в начале порции: их всходы появляются в цикле ячеек, до цикла древесных.</summary>
+            public bool SeedRain;
             public bool CountsTrusted;
             public long Births, DeathsCount, Reused;
         }
@@ -486,8 +552,10 @@ namespace Worldbound.Sim.Golden
                 {
                     ck.Births++;
                     if (i < b.HighWater) ck.Reused++;
-                    // Новое за границей highWater начала порции цикл этой порции не обрабатывал.
-                    if (i >= b.HighWater && w.Age[i] != 0) Bad($"{where}: всход {i} за границей порции обработан (возраст {w.Age[i]})");
+                    // Граница цикла древесных фиксируется в его начале (после ячеек порции, как в TS). Всходы от семян
+                    // растений мира и колонистов с края появляются в цикле древесных и после него — за границей они не
+                    // обрабатываются. Всходы от семян региона (подготовка Wildlands) появляются в цикле ячеек, до границы.
+                    if (!ck.SeedRain && i >= b.HighWater && w.Age[i] != 0) Bad($"{where}: всход {i} за границей порции обработан (возраст {w.Age[i]})");
                     if (w.Age[i] != 0 && w.Age[i] != (float)dt) Bad($"{where}: всход {i} возраст {w.Age[i]}");
                     if (f.Species.Woody[w.Species[i]] != 1) Bad($"{where}: всход {i} не древесный");
                 }
@@ -539,7 +607,7 @@ namespace Worldbound.Sim.Golden
 
         // ───────── Прогон ─────────
 
-        sealed class Result
+        internal sealed class Result
         {
             public string Name;
             public Simulation Sim;
@@ -550,9 +618,52 @@ namespace Worldbound.Sim.Golden
             public int StepGen0;
             public long LiveStart, LiveEnd;
             public FloraProfile Profile;
+            /// <summary>Время тактов подготовки Wildlands, мс (такты, начатые при идущей подготовке).</summary>
+            public double PrepMs;
+            public long PrepTicks;
+            /// <summary>Состояние C# на выборке: приток извне, число древесных, отпечаток флоры, виды.</summary>
+            public readonly Dictionary<string, ProbeState> States = new();
         }
 
-        static Result Run(Dictionary<string, object> r, Part eq, Part balance, Checks ck, Options opt, bool profile = false, bool release = true)
+        internal sealed class ProbeState
+        {
+            public double External;
+            public int Woody;
+            public string FloraPrint;
+            public double[] ColonistMass, ColonistFirst;
+            public HashSet<int> Species;
+        }
+
+        /// <summary>Отпечаток флоры (как floraArrays в тесте «Изолированный Wildlands»): травы, банк, древесные, приток, колонисты.</summary>
+        internal static string FloraPrint(Simulation sim)
+        {
+            var f = sim.World.Flora;
+            var w = f.Woody;
+            return StateHasher.Fnv(f.SlotBiomass) + StateHasher.Fnv(f.SeedBank) + FnvPrefix(w.Biomass, w.HighWater) + ":" + w.Count + ":" + Bits(f.Ledger[Ledger.External]) + ":" + StateHasher.Fnv(f.ColonistMass);
+        }
+
+        /// <summary>Виды мира: живые древесные, травы в слотах и в банке семян.</summary>
+        internal static HashSet<int> SpeciesOf(Simulation sim)
+        {
+            var f = sim.World.Flora;
+            var t = f.Species;
+            var set = new HashSet<int>();
+            var w = f.Woody;
+            for (int i = 0; i < w.HighWater; i++) if (w.Alive[i] == 1) set.Add(w.Species[i]);
+            int cells = sim.World.Geo.N * sim.World.Geo.N;
+            for (int s = 0; s < t.Count; s++)
+            {
+                int h = t.HerbSlot[s];
+                if (h < 0) continue;
+                bool present = false;
+                foreach (var sp in f.SlotSpecies) if (sp == s) { present = true; break; }
+                if (!present) for (int c = 0; c < cells; c++) if (f.SeedBank[h * cells + c] > 0) { present = true; break; }
+                if (present) set.Add(s);
+            }
+            return set;
+        }
+
+        internal static Result Run(Dictionary<string, object> r, Part eq, Part balance, Checks ck, Options opt, bool profile = false, bool release = true)
         {
             string name = (string)r["name"];
             var sim = Create(O(r["setup"]), (string)r["geoHash"]);
@@ -584,7 +695,7 @@ namespace Worldbound.Sim.Golden
                     foreach (var zo in A(p["zones"]))
                     {
                         var ze = O(zo);
-                        var z = ZoneOf(sim, I(ze["from"]), I(ze["to"]));
+                        var z = ZoneOf(sim, I(ze["from"]), I(ze["to"]), ze.TryGetValue("z0", out var zz0) ? I(zz0) : 0, ze.TryGetValue("z1", out var zz1) ? I(zz1) : -1);
                         ZoneEq(eq, z, ze, $"{name} «{label}»");
                         zones.Add(z);
                     }
@@ -600,6 +711,8 @@ namespace Worldbound.Sim.Golden
                         plants.Add(pe);
                     }
                     res.Probes[label] = (sim.World.Tick, zones, plants);
+                    var fl = sim.World.Flora;
+                    res.States[label] = new ProbeState { External = fl.Ledger[Ledger.External], Woody = fl.Woody.Count, FloraPrint = FloraPrint(sim), ColonistMass = (double[])fl.ColonistMass.Clone(), ColonistFirst = (double[])fl.ColonistFirst.Clone(), Species = SpeciesOf(sim) };
                 }
             }
             DoProbes();
@@ -612,12 +725,14 @@ namespace Worldbound.Sim.Golden
                 {
                     long tick = sim.World.Tick;
                     bool flora = (tick - FloraSystem.Phase) % FloraSystem.Period == 0;
-                    if (flora && ck != null) { ck.Portion0.Take(sim.World.Flora.Woody); ck.LitterfallBefore = sim.World.Flora.Ledger[Ledger.Litterfall]; }
+                    if (flora && ck != null) { ck.Portion0.Take(sim.World.Flora.Woody); ck.LitterfallBefore = sim.World.Flora.Ledger[Ledger.Litterfall]; ck.SeedRain = sim.World.Flora.RegionalSeedRain; }
                     long a0 = opt.AllocatedBytes?.Invoke() ?? 0;
                     int g0 = GC.CollectionCount(0);
+                    bool preparing = sim.Preparation != null;
                     sw.Restart();
                     sim.Step();
                     double ms = sw.Elapsed.TotalMilliseconds;
+                    if (preparing) { res.PrepMs += ms; res.PrepTicks++; }
                     res.StepGen0 += GC.CollectionCount(0) - g0;
                     if (opt.AllocatedBytes != null) res.StepAllocated += opt.AllocatedBytes() - a0;
                     acc += ms;
@@ -660,7 +775,7 @@ namespace Worldbound.Sim.Golden
             return res;
         }
 
-        static string Stat(List<double> xs)
+        internal static string Stat(List<double> xs)
         {
             if (xs.Count == 0) return "null";
             var s = new List<double>(xs);
@@ -672,15 +787,15 @@ namespace Worldbound.Sim.Golden
             return $"{{\"n\":{s.Count},\"mean\":{MiniJson.N(Math.Round(mean, 4))},\"p95\":{MiniJson.N(Math.Round(P(0.95), 4))},\"p99\":{MiniJson.N(Math.Round(P(0.99), 4))},\"max\":{MiniJson.N(Math.Round(s[s.Count - 1], 4))}}}";
         }
 
-        static string TsStat(object o)
+        internal static string TsStat(object o)
         {
             var x = O(o);
             return $"{{\"mean\":{MiniJson.N(Math.Round(MiniJson.Num(x["mean"]), 4))},\"p95\":{MiniJson.N(Math.Round(MiniJson.Num(x["p95"]), 4))},\"p99\":{MiniJson.N(Math.Round(MiniJson.Num(x["p99"]), 4))},\"max\":{MiniJson.N(Math.Round(MiniJson.Num(x["max"]), 4))}}}";
         }
 
-        static long WoodyBytes(WoodyStore w) => (long)w.Capacity * (4 * 8 + 1 * 4 + 4) + 4L * w.Capacity;
+        internal static long WoodyBytes(WoodyStore w) => (long)w.Capacity * (4 * 8 + 1 * 4 + 4) + 4L * w.Capacity;
 
-        static long FloraBytes(FloraState f) =>
+        internal static long FloraBytes(FloraState f) =>
             f.SlotSpecies.Length + 4L * f.SlotBiomass.Length + 4L * (f.LitterFast.Length * 5 + f.Nutrient.Length) + 4L * f.SeedBank.Length + f.WoodyCount.Length
             + 4L * (f.AccT.Length * 4) + f.AccHours.Length + 4L * (f.DayT.Length * 2) + 8L * f.Capillary.Length + 4L * (f.Canopy.Length + 4 * f.TreeCover.Length)
             + 4L * 9 * f.Biome.Herb.Length + 3L * f.Biome.Current.Length + 8L * (f.ColonistMass.Length + f.ColonistFirst.Length + f.Ledger.Length);
