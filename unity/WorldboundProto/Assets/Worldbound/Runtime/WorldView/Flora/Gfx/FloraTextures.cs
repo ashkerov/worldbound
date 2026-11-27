@@ -234,11 +234,11 @@ namespace Worldbound.FloraView
             int t = (int)tile;
             switch (tile)
             {
-                case LeafTile.Oak: Spray(g, a, t, ox, oy, 11, S * 0.34f, S * 0.2f, 0.9f, OakLobes); break;
-                case LeafTile.Birch: Spray(g, a, t, ox, oy, 22, S * 0.17f, S * 0.12f, 1.1f, Serrated(Ovate, 26, 0.12f), 0.5f, 0.5f); break;
-                case LeafTile.Linden: Spray(g, a, t, ox, oy, 12, S * 0.27f, S * 0.24f, 0.9f, Serrated(Cordate, 22, 0.06f)); break;
-                case LeafTile.Alder: Spray(g, a, t, ox, oy, 13, S * 0.24f, S * 0.21f, 0.9f, Serrated(Obovate, 18, 0.07f)); break;
-                case LeafTile.Hazel: Spray(g, a, t, ox, oy, 12, S * 0.27f, S * 0.23f, 0.95f, Serrated(Ellipse, 30, 0.08f)); break;
+                case LeafTile.Oak: Spray(g, a, t, ox, oy, 17, S * 0.25f, S * 0.15f, 0.95f, OakLobes); break;
+                case LeafTile.Birch: Spray(g, a, t, ox, oy, 28, S * 0.14f, S * 0.1f, 1.1f, Serrated(Ovate, 26, 0.12f), 0.5f, 0.5f); break;
+                case LeafTile.Linden: Spray(g, a, t, ox, oy, 18, S * 0.2f, S * 0.18f, 0.95f, Serrated(Cordate, 22, 0.06f)); break;
+                case LeafTile.Alder: Spray(g, a, t, ox, oy, 18, S * 0.19f, S * 0.17f, 0.95f, Serrated(Obovate, 18, 0.07f)); break;
+                case LeafTile.Hazel: Spray(g, a, t, ox, oy, 18, S * 0.2f, S * 0.17f, 1f, Serrated(Ellipse, 30, 0.08f)); break;
                 case LeafTile.Willow: Spray(g, a, t, ox, oy, 26, S * 0.3f, S * 0.07f, 1.2f, Lanceolate, 0.5f, 0.35f); break;
                 case LeafTile.Rose:
                     // Непарноперистые листья: мелкие листочки парами вдоль черешков.

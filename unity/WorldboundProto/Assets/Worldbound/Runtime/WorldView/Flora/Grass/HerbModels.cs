@@ -35,7 +35,7 @@ namespace Worldbound.FloraView
         {
             HerbProfile p = k switch
             {
-                HerbKind.MeadowGrass => new() { Base = C(0x4b6a2d), Tip = C(0x8fa556), Dry = C(0xbba66a), Autumn = C(0x9c8c4c), Bloom = C(0xb9a97c), BloomWindow = new Vector2(0.3f, 0.62f), GramsPerTuft = 55, MaxPerM2 = 8, HeightLow = 0.22f, HeightHigh = 0.65f, Stiffness = 1, Patch = 0.15f },
+                HerbKind.MeadowGrass => new() { Base = C(0x46642b), Tip = C(0x7f994c), Dry = C(0xbba66a), Autumn = C(0x9c8c4c), Bloom = C(0x9c8f68), BloomWindow = new Vector2(0.3f, 0.62f), GramsPerTuft = 55, MaxPerM2 = 8, HeightLow = 0.22f, HeightHigh = 0.65f, Stiffness = 1, Patch = 0.15f },
                 HerbKind.FeatherGrass => new() { Base = C(0x76875a), Tip = C(0xb2b68c), Dry = C(0xd2c69a), Autumn = C(0xc6b47e), Bloom = C(0xe8e4d6), BloomWindow = new Vector2(0.2f, 0.52f), GramsPerTuft = 45, MaxPerM2 = 6, HeightLow = 0.35f, HeightHigh = 0.85f, Stiffness = 0.55f, Patch = 0.2f },
                 HerbKind.Sedge => new() { Base = C(0x395836), Tip = C(0x6d8850), Dry = C(0x9a9058), Autumn = C(0x8c8048), Bloom = C(0x5c4c32), BloomWindow = new Vector2(0.15f, 0.42f), GramsPerTuft = 60, MaxPerM2 = 7, HeightLow = 0.3f, HeightHigh = 0.62f, Stiffness = 1.6f, Patch = 0.3f },
                 HerbKind.Clover => new() { Base = C(0x3e692e), Tip = C(0x5e893e), Dry = C(0x8a8a4a), Autumn = C(0x6a7a3a), Bloom = C(0xf2ece6), Bloom2 = C(0xd98aa6), BloomWindow = new Vector2(0.24f, 0.56f), GramsPerTuft = 16, MaxPerM2 = 14, HeightLow = 0.08f, HeightHigh = 0.2f, Stiffness = 2, Patch = 0.65f, PatchScale = 4 },
@@ -166,9 +166,22 @@ namespace Worldbound.FloraView
                         }
                         else
                         {
-                            var uv = FloraTextures.Uv(LeafTile.GrassClump);
-                            var c = Color.white; c.a = 1;
-                            b.Card(top + V(0, 0.05f, 0), V(0.035f, 0, 0.02f), V(0, 0.09f, 0), Vector3.up, c, c, 1, 1, R(50 + i), uv, FloraPart.Flower);
+                            // Метёлка мятлика / колоски осоки: узкие чешуйки вдоль верхушки стебля.
+                            var dirv = (top - root).normalized;
+                            int spk = lod == 0 ? 7 : 4;
+                            for (int q = 0; q < spk; q++)
+                            {
+                                float t = 0.7f + 0.3f * q / (spk - 1f);
+                                var at = Vector3.Lerp(root, top, t);
+                                float ang = a + q * 2.4f;
+                                var side = new Vector3(Mathf.Cos(ang), 0.4f, Mathf.Sin(ang)).normalized * (sedge ? 0.016f : 0.028f) * (1.2f - 0.5f * t);
+                                var c = Color.white; c.a = 1;
+                                float rr = R(60 + i, q);
+                                int s0 = b.Vertex(at, Vector3.up, c, NoTex, 1, FloraPart.Flower, rr);
+                                int s1 = b.Vertex(at + side + dirv * 0.012f, Vector3.up, c, NoTex, 1, FloraPart.Flower, rr);
+                                int s2 = b.Vertex(at + side * 0.3f + dirv * (sedge ? 0.05f : 0.035f), Vector3.up, c, NoTex, 1, FloraPart.Flower, rr);
+                                b.Tri(s0, s1, s2);
+                            }
                         }
                     }
                     break;
@@ -263,11 +276,11 @@ namespace Worldbound.FloraView
                 }
                 default: // мох: невысокие подушки
                 {
-                    int bumps = lod == 0 ? 5 : lod == 1 ? 3 : 0;
+                    int bumps = lod == 0 ? 7 : lod == 1 ? 4 : 0;
                     for (int i = 0; i < bumps; i++)
                     {
-                        float a = i * 2.39996f, r = 0.15f + R(i) * 0.2f;
-                        Cushion(b, V(Mathf.Cos(a) * r, 0, Mathf.Sin(a) * r), 0.12f + R(i, 1) * 0.1f, 0.6f + R(i, 2) * 0.4f, R(i, 3));
+                        float a = i * 2.39996f, r = 0.05f + R(i) * 0.16f;
+                        Cushion(b, V(Mathf.Cos(a) * r, 0, Mathf.Sin(a) * r), 0.045f + R(i, 1) * 0.05f, 1.6f + R(i, 2) * 1.2f, R(i, 3));
                     }
                     if (bumps == 0) FlatCard(b, V(0, 0.2f, 0), 0.25f, 0, 0, LeafTile.GrassClump, Color.white, 0, FloraPart.Leaf, 0.5f);
                     break;
@@ -295,7 +308,7 @@ namespace Worldbound.FloraView
         /// <summary>Подушка мха: приплюснутая полусфера (12 треугольников).</summary>
         static void Cushion(FloraMeshBuilder b, Vector3 c, float r, float h, float rnd)
         {
-            int ring = 6;
+            int ring = 8;
             int top = b.Vertex(c + V(0, h * r * 2, 0), Vector3.up, Color.white, NoTex, 0.1f, 1, rnd);
             int start = b.Vertices;
             for (int i = 0; i < ring; i++)

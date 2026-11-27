@@ -126,7 +126,7 @@ Shader "WB/FloraWoody"
                 else
                 {
                     float3 tex = SAMPLE_TEXTURE2D(_FloraLeafAtlas, sampler_FloraLeafAtlas, i.uv).rgb;
-                    float3 base = i.col.rgb * (0.55 + 0.6 * tex.r);
+                    float3 base = i.col.rgb * (0.6 + 0.45 * tex.r);
                     if (part < 1.5) albedo = WoodyLeafColor(base, i.ex.z, i.inst.y, i.inst.w, sp);
                     else if (part < 2.5) albedo = sp.bloom.rgb * (0.6 + 0.5 * tex.r);
                     else albedo = sp.fruit.rgb * (0.7 + 0.4 * tex.r);
@@ -134,8 +134,10 @@ Shader "WB/FloraWoody"
                     wrap = 0.55;
                 }
                 // Снег на обращённых вверх поверхностях кроны и ветвей.
-                float snow = surf.x * sp.misc.x * saturate((n.y - 0.15) * 1.8) * (part < 0.5 ? 0.6 : 1);
-                albedo = lerp(albedo, _FloraSnowColor.rgb, saturate(snow * 1.2));
+                // Снег пятнами: только на обращённых вверх карточках и не на всех (хвоя остаётся видна).
+                float patchy = part < 0.5 ? 0.45 : step(frac(i.ex.z * 7.7 + i.inst.w * 3.1), 0.72);
+                float snow = surf.x * sp.misc.x * smoothstep(0.3, 0.85, n.y) * patchy;
+                albedo = lerp(albedo, _FloraSnowColor.rgb, saturate(snow * 0.85));
                 albedo *= 1 - surf.y * 0.25;
                 #if defined(_SCREEN_SPACE_OCCLUSION)
                     float2 suv = GetNormalizedScreenSpaceUV(i.cs);
@@ -272,7 +274,7 @@ Shader "WB/FloraWoody"
                 float3 n = normalize(i.n);
                 float3 albedo;
                 if (part < 0.5) { albedo = Bark(i.col.rgb, i.uv, i.ex.z, i.ex.w); if (!front) n = -n; }
-                else albedo = i.col.rgb * (0.55 + 0.6 * SAMPLE_TEXTURE2D(_FloraLeafAtlas, sampler_FloraLeafAtlas, i.uv).r);
+                else albedo = i.col.rgb * (0.6 + 0.45 * SAMPLE_TEXTURE2D(_FloraLeafAtlas, sampler_FloraLeafAtlas, i.uv).r);
                 float3 nv = float3(dot(n, _FloraBakeRight.xyz), dot(n, _FloraBakeUp.xyz), dot(n, _FloraBakeFwd.xyz));
                 MRT o;
                 o.albedo = half4(albedo, 1);

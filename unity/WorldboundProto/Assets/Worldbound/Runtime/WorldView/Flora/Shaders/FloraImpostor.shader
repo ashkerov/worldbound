@@ -83,18 +83,19 @@ Shader "WB/FloraImpostor"
             float2 u00 = FrameUv(e0, sel.x, row, uv);
             float4 c00 = SAMPLE_TEXTURE2D_LOD(_ImpAlbedo, sampler_ImpAlbedo, u00, mip);
             float4 n00 = SAMPLE_TEXTURE2D_LOD(_ImpNormal, sampler_ImpNormal, u00, mip);
-            if (!blend)
+            // Атлас хранит значения, умноженные на покрытие (фон очищен нулями): делим на покрытие —
+            // цвет, нормаль и код листа верны и на мип-уровнях, и на краях кроны.
+            float4 c = c00, n = n00;
+            if (blend)
             {
-                rgb = c00.rgb / max(c00.a, 1e-3); nrm = n00; alpha = c00.a; return;
+                float2 u01 = FrameUv(e0, sel.y, row, uv);
+                float w1 = sel.z;
+                c = c00 * (1 - w1) + SAMPLE_TEXTURE2D_LOD(_ImpAlbedo, sampler_ImpAlbedo, u01, mip) * w1;
+                n = n00 * (1 - w1) + SAMPLE_TEXTURE2D_LOD(_ImpNormal, sampler_ImpNormal, u01, mip) * w1;
             }
-            float2 u01 = FrameUv(e0, sel.y, row, uv);
-            float4 c01 = SAMPLE_TEXTURE2D_LOD(_ImpAlbedo, sampler_ImpAlbedo, u01, mip);
-            float4 n01 = SAMPLE_TEXTURE2D_LOD(_ImpNormal, sampler_ImpNormal, u01, mip);
-            float w1 = sel.z;
-            float4 c = c00 * (1 - w1) + c01 * w1;
-            nrm = (c01.a * w1 > c00.a * (1 - w1)) ? n01 : n00;
-            rgb = c.rgb / max(c.a, 1e-3);
             alpha = c.a;
+            rgb = c.rgb / max(alpha, 1e-3);
+            nrm = n / max(alpha, 1e-3);
         }
         ENDHLSL
 
@@ -149,7 +150,7 @@ Shader "WB/FloraImpostor"
                 float3 n = normalize(nv.x * i.right + nv.y * i.up + nv.z * i.toCam);
                 float3 albedo = isLeaf ? WoodyLeafColor(rgb, rnd, i.inst.y, i.rows.w, sp) : rgb;
                 float2 surf = FloraSurfaceAt(i.ws);
-                albedo = lerp(albedo, _FloraSnowColor.rgb, saturate(surf.x * sp.misc.x * saturate((n.y - 0.15) * 1.8) * 1.2));
+                albedo = lerp(albedo, _FloraSnowColor.rgb, saturate(surf.x * sp.misc.x * smoothstep(0.3, 0.85, n.y) * 0.6));
                 half3 lit = FloraShade(albedo, n, i.ws, nrm.b, isLeaf ? 0.55 : 0.2, isLeaf ? sp.autumnB.a : 0, 0);
                 lit = FloraLodTint(lit);
                 lit = MixFog(lit, i.fog);

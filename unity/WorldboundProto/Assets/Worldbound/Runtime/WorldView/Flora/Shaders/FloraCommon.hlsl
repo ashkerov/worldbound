@@ -119,13 +119,13 @@ float3 WoodyLeafColor(float3 vcol, float rnd, float health, float seed, WoodySpe
 {
     float3 c = vcol;
     float fresh = sp.spring.a * (0.55 + 0.45 * rnd);
-    c = lerp(c, sp.spring.rgb * (0.7 + 0.6 * FloraLum(vcol) / max(0.04, FloraLum(sp.spring.rgb))), fresh * 0.75);
+    c = lerp(c, sp.spring.rgb * (0.45 + 0.35 * saturate(FloraLum(vcol) / 0.15)), fresh * 0.7);
     float turn = saturate((sp.autumnA.a * 1.25 - rnd * 0.6 - seed * 0.25) * 3.0);
     float3 ac = lerp(sp.autumnA.rgb, sp.autumnB.rgb, frac(rnd * 7.31 + seed * 3.7));
-    ac *= 0.75 + 0.55 * saturate(FloraLum(vcol) / 0.16);
+    ac *= 0.42 + 0.38 * saturate(FloraLum(vcol) / 0.15);
     c = lerp(c, ac, turn * (1 - sp.flex.w));
-    float sick = saturate(1 - health) * 0.65;
-    c = lerp(c, float3(0.36, 0.3, 0.09) * (0.6 + 2.5 * FloraLum(c)), sick);
+    float sick = saturate(1 - health) * 0.4;
+    c = lerp(c, float3(0.2, 0.17, 0.06) * (0.7 + 2.0 * FloraLum(c)), sick);
     float hue = seed - 0.5;
     c *= float3(1 + hue * 0.08, 1 + hue * 0.03, 1 - hue * 0.12) * (0.92 + 0.16 * frac(seed * 5.3));
     return c;
@@ -143,7 +143,8 @@ half3 FloraShade(float3 albedo, float3 n, float3 posWS, float ao, float wrap, fl
     float3 V = normalize(GetWorldSpaceViewDir(posWS));
     float back = pow(saturate(dot(V, -L.direction)), 3.0) * translucency;
     float3 direct = L.color * sh * (diff + back * float3(0.85, 1.0, 0.55));
-    float3 amb = SampleSH(n) * (0.3 + 0.7 * ao);
+    // Амбиент по нормали, приподнятой к небу: нижняя сторона кроны темнее, но не проваливается в черноту.
+    float3 amb = max(SampleSH(normalize(n + float3(0, 0.6, 0))), SampleSH(float3(0, 1, 0)) * 0.25) * (0.3 + 0.7 * ao);
     return albedo * (amb + direct * (0.5 + 0.5 * ao));
 }
 

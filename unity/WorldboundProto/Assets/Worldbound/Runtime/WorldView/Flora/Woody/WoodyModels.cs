@@ -60,7 +60,7 @@ namespace Worldbound.FloraView
             {
                 0 => (cards0, size0, 0.45f),
                 1 => (Mathf.Max(3, Mathf.RoundToInt(cards0 * 0.27f)), size0 * 1.8f, 0.3f),
-                _ => (Mathf.Max(1, Mathf.RoundToInt(cards0 * 0.085f)), size0 * 3.1f, 0.15f),
+                _ => (Mathf.Max(2, Mathf.RoundToInt(cards0 * 0.1f)), size0 * 2.8f, 0.2f),
             };
             var bias = upBias ?? Vector3.up;
             for (int k = 0; k < n; k++)
@@ -82,7 +82,7 @@ namespace Worldbound.FloraView
                 if (Vector3.Dot(up, bias) < 0) up = -up;
                 float s = size * (0.75f + c.R01(id, k, 8) * 0.5f);
                 float h = Mathf.Clamp01((p.y - c.Bottom) / Mathf.Max(0.1f, c.Top - c.Bottom));
-                var baseC = Color.Lerp(c.P.LeafBase, c.P.LeafLit, Mathf.Clamp01(h * 0.55f + c.R01(id, k, 9) * 0.3f + Mathf.Max(0, outward.y) * 0.15f));
+                var baseC = Color.Lerp(c.P.LeafBase, c.P.LeafLit, Mathf.Clamp01(h * 0.42f + c.R01(id, k, 9) * 0.28f + Mathf.Max(0, outward.y) * 0.12f));
                 float inner = Mathf.Clamp01(Vector3.Distance(p, c.Centre) / Mathf.Max(0.5f, c.R));
                 float ao = Mathf.Clamp01(0.42f + 0.5f * inner + 0.2f * h);
                 var lo = baseC * 0.86f; lo.a = ao * 0.92f;
@@ -360,9 +360,9 @@ namespace Worldbound.FloraView
                     if (lod == 0 && len > 1.2f && u < 0.6f)
                         Branch(c, new List<Vector3> { root, Vector3.Lerp(root, tip, 0.5f) - Vector3.up * len * 0.06f, tip }, 0.02f + 0.012f * len, 0.006f, 0x4a3b30, BarkFlaky, 0.1f, 0.6f, 3, 2);
                     var right = Vector3.Cross(Vector3.up, along).normalized;
-                    float tone = 0.72f + 0.38f * u + c.R01(37, w, j) * 0.1f;
-                    var lo = dark * tone * 0.75f; lo.a = 0.45f + 0.35f * u;
-                    var hi = Color.Lerp(dark, tipC, 0.8f) * tone; hi.a = 0.85f + 0.15f * u;
+                    float tone = 0.86f + 0.26f * u + c.R01(37, w, j) * 0.1f;
+                    var lo = Color.Lerp(dark, tipC, 0.2f) * tone; lo.a = 0.5f + 0.3f * u;
+                    var hi = Color.Lerp(dark, tipC, 0.85f) * tone; hi.a = 0.85f + 0.15f * u;
                     var shade = (outv * 0.62f + Vector3.up * 0.78f).normalized;
                     int cards = lod == 0 ? 3 : lod == 1 ? 2 : 1;
                     for (int k = 0; k < cards; k++)
@@ -372,17 +372,21 @@ namespace Worldbound.FloraView
                         var a1 = Vector3.Lerp(root + along * 0.15f, tip, Mathf.Min(1, f1 + 0.25f));
                         var mid = (a0 + a1) * 0.5f;
                         var half = (a1 - a0) * 0.5f;
-                        float wdt = len * (lod == 0 ? 0.36f : 0.48f) * (1 - 0.35f * f0);
+                        float wdt = len * (lod == 0 ? 0.36f : lod == 1 ? 0.46f : 0.55f) * (1 - 0.35f * f0);
                         float sw0 = 0.15f + 0.8f * f0, sw1 = 0.15f + 0.8f * Mathf.Min(1, f1 + 0.25f);
                         var l2 = Color.Lerp(lo, hi, f0); var h2 = Color.Lerp(lo, hi, Mathf.Min(1, f1 + 0.2f));
-                        c.B.Card(mid, right * wdt, half, shade, l2, h2, sw0, sw1, c.R01(38, w * 16 + j, k), uv);
-                        if (lod == 0 || (lod == 1 && k == 0))
-                        {
-                            // Вторая плоскость под углом: объём лапы сбоку.
-                            var tilt = (Vector3.up * 0.75f + right * 0.45f).normalized;
-                            c.B.Card(mid + Vector3.up * wdt * 0.15f, tilt * wdt * 0.7f, half, shade, l2, h2, sw0, sw1, c.R01(39, w * 16 + j, k), uv);
-                        }
+                        // Лапа — две перекрещенные плоскости (сверху и сбоку не «лист бумаги»).
+                        var flat = (right + Vector3.up * 0.18f).normalized;
+                        c.B.Card(mid, flat * wdt, half, shade, l2, h2, sw0, sw1, c.R01(38, w * 16 + j, k), uv);
+                        var tilt = (Vector3.up * 0.8f + right * 0.3f).normalized;
+                        c.B.Card(mid + Vector3.up * wdt * 0.12f, tilt * wdt * 0.62f, half, shade, l2, h2, sw0, sw1, c.R01(39, w * 16 + j, k), uv);
                     }
+                }
+                // Внутренняя «шуба» у ствола: заполняет просветы конуса.
+                if (lod > 0 || w % 2 == 0)
+                {
+                    float shell = reach * 0.62f;
+                    Cluster(c, V(0, y + spacing * 0.3f, 0), V(shell, spacing * 0.9f + 0.3f, shell), 500 + w, lod == 0 ? 10 : 8, Mathf.Max(0.45f, reach * 0.42f), 0.25f, 0.9f);
                 }
             }
             // Шпиль.
