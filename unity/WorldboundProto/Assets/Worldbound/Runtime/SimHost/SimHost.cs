@@ -1,4 +1,5 @@
-// Адаптер ядра для Unity: создание мира из seed (генерация в фоновом потоке), фиксированные такты 100 мс игрового
+// Адаптер ядра для Unity: создание мира из seed (генерация в фоновом потоке), подготовка Wildlands (обычные такты той же
+// симуляции пакетами в бюджете кадра на главном потоке, с прогрессом и отменой), фиксированные такты 100 мс игрового
 // времени, скорость, снимки состояния для рендера и корректное освобождение ресурсов.
 // Состояние мира живёт только в Simulation; рендер читает снимки (WorldSnapshot), камера — своё состояние отдельно.
 using System;
@@ -44,7 +45,7 @@ namespace Worldbound.SimHost
 
     public sealed class SimHost : IDisposable
     {
-        public enum State { Idle, Generating, Running, Failed, Disposed }
+        public enum State { Idle, Generating, Preparing, Running, Cancelled, Failed, Disposed }
 
         public State Status { get; private set; } = State.Idle;
         public string Stage = "";
@@ -81,6 +82,23 @@ namespace Worldbound.SimHost
         /// <summary>Игровые такты в реальную секунду при скорости 1 (такт — 100 мс игрового времени).</summary>
         public const double TicksPerSecondAtSpeed1 = TickPacer.TicksPerSecondAtSpeed1;
 
+        // ───────── Подготовка Wildlands ─────────
+
+        /// <summary>Доля выполненной подготовки, текущий год и всего лет, число древесных растений.</summary>
+        public double PrepFraction { get; private set; }
+        public int PrepYear { get; private set; }
+        public double PrepYears { get; private set; }
+        public int PrepPlants { get; private set; }
+        /// <summary>Прошедшее время подготовки по настенным часам (включая кадры между пакетами), с.</summary>
+        public double PrepElapsed => prepClock.Elapsed.TotalSeconds;
+        /// <summary>Оценка оставшегося времени, с (null — пока прогресс меньше 2 %).</summary>
+        public double? PrepRemaining { get; private set; }
+        /// <summary>Время чистого счёта подготовки (сумма пакетов), с.</summary>
+        public double PrepComputeSeconds { get; private set; }
+        public long PrepTicks { get; private set; }
+        readonly Stopwatch prepClock = new();
+        YearlyCostEta eta;
+
         public void Begin(WorldConfig config)
         {
             Config = config;
@@ -106,10 +124,13 @@ namespace Worldbound.SimHost
             }
             Sim = new Simulation(Config, genTask.Result);
             genTask = null;
-            Start();
+            Attach();
+            if (Sim.Preparation != null) BeginPreparation();
+            else Start();
         }
 
-        void Start()
+        /// <summary>Часы ядра и ускоритель воды — до подготовки: подготовка идёт тем же ядром, что и игра.</summary>
+        void Attach()
         {
             Sim.Clock = () => clock.Elapsed.TotalMilliseconds;
             if (UseBurst)
@@ -118,6 +139,67 @@ namespace Worldbound.SimHost
                 Sim.WaterAccelerator = burst;
                 BurstActive = BurstWater.IsBurstActive();
             }
+        }
+
+        void BeginPreparation()
+        {
+            var p = Sim.Preparation;
+            PrepYears = p.Years;
+            PrepFraction = Sim.PreparationFraction();
+            PrepYear = Sim.PreparationYear();
+            PrepPlants = Sim.World.Flora.Woody.Count;
+            PrepRemaining = null;
+            PrepComputeSeconds = 0;
+            PrepTicks = 0;
+            eta = new YearlyCostEta(p.Years);
+            prepClock.Restart();
+            Stage = "Природа развивается";
+            Status = State.Preparing;
+        }
+
+        /// <summary>
+        /// Подготовка Wildlands: такты той же симуляции пакетами по одной порции флоры (50 тактов), пока не истечёт
+        /// budgetMs (вызывается каждый кадр на главном потоке). Когда подготовка завершена — мир запускается.
+        /// Результат не зависит от размера пакетов и бюджета (проверено G3 D–F).
+        /// </summary>
+        public void AdvancePreparation(double budgetMs)
+        {
+            if (Status != State.Preparing) return;
+            var sw = Stopwatch.StartNew();
+            long t0 = Sim.World.Tick;
+            while (Sim.Preparation != null && sw.Elapsed.TotalMilliseconds < budgetMs) Sim.AdvancePreparation(Worldbound.Sim.Flora.FloraSystem.Period);
+            PrepComputeSeconds += sw.Elapsed.TotalSeconds;
+            PrepTicks += Sim.World.Tick - t0;
+            PrepFraction = Sim.PreparationFraction();
+            PrepPlants = Sim.World.Flora.Woody.Count;
+            if (Sim.Preparation != null)
+            {
+                PrepYear = Sim.PreparationYear();
+                eta.Add(PrepFraction, PrepElapsed);
+                PrepRemaining = eta.Remaining();
+                return;
+            }
+            PrepYear = (int)Math.Ceiling(PrepYears);
+            PrepRemaining = 0;
+            prepClock.Stop();
+            Start();
+        }
+
+        /// <summary>Отмена подготовки: мир отбрасывается целиком (сохранять недоготовленный мир нельзя, как в TS).</summary>
+        public void CancelPreparation()
+        {
+            if (Status != State.Preparing) return;
+            prepClock.Stop();
+            if (Sim != null) Sim.WaterAccelerator = null;
+            burst?.Dispose();
+            burst = null;
+            Sim = null;
+            Status = State.Cancelled;
+            Stage = "Создание мира отменено";
+        }
+
+        void Start()
+        {
             pacer.Reset(Sim);
             Blocked = Sim.FloraUnsupported;
             int count = Sim.World.Geo.N * Sim.World.Geo.N;
@@ -132,7 +214,9 @@ namespace Worldbound.SimHost
         {
             Config = sim.World.Config;
             Sim = sim;
-            Start();
+            Attach();
+            if (Sim.Preparation != null) BeginPreparation();
+            else Start();
         }
 
         public int Speed => Sim?.World.Speed ?? 0;

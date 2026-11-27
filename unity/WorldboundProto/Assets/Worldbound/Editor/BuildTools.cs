@@ -147,9 +147,11 @@ namespace Worldbound.EditorTools
             ok &= Worldbound.Sim.Golden.FloraG3BGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3b.json")), L, out var g3b, new Worldbound.Sim.Golden.FloraG3BGolden.Options { Label = "mono-editor" });
             // G3 C (Stage 2.4): древесные и травы — C1, C2 (3 × 50 лет), исходные тесты TS, нагрузка S/M; Mono.
             ok &= Worldbound.Sim.Golden.FloraG3CGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3c.json")), L, out var g3c, new Worldbound.Sim.Golden.FloraG3CGolden.Options { Label = "mono-editor" });
+            // G3 D–F (Stage 2.5): колонизация, Genesis, Wildlands S/M и подготовка; Mono.
+            ok &= Worldbound.Sim.Golden.FloraG3DGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g3d.json")), L, out var g3d, new Worldbound.Sim.Golden.FloraG3CGolden.Options { Label = "mono-editor" });
             ok &= Worldbound.Sim.Golden.FloraGolden.Run(File.ReadAllText(Path.Combine(golden, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "content")), L, out var flora);
             bool burst = Worldbound.SimHost.BurstWater.IsBurstActive();
-            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3},\n \"g3b\": {g3b},\n \"g3c\": {g3c} }}\n");
+            File.WriteAllText(Path.Combine(ResultsDir, "sim-editor.json"), $"{{ \"ok\": {(ok ? "true" : "false")}, \"burstActive\": {(burst ? "true" : "false")}, \"unity\": \"{Application.unityVersion}\",\n \"worldgen\": {wg},\n \"envMono\": {envMono},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3\": {g3},\n \"g3b\": {g3b},\n \"g3c\": {g3c},\n \"g3d\": {g3d} }}\n");
             Debug.Log($"[WB] Sim tests: {(ok ? "OK" : "FAIL")}, burst {burst}");
             if (!ok) EditorApplication.Exit(1);
         }

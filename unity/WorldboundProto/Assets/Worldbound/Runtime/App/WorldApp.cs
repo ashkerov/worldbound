@@ -5,12 +5,16 @@
 // Управление: ПКМ — обзор, WASD/QE — полёт (Shift ×4), колесо — скорость полёта; Пробел — пауза;
 // 1–4 — скорость ×1/×2/×4/×8; O — слой данных; F3 — ограничение кадров (VSync/30/60/90/120);
 // P — при сворачивании: продолжать / пауза; F5 — сохранить, F9 — загрузить; G — новый мир (следующий seed);
+// N — сценарий нового мира (Genesis с изоляцией / Genesis открытый / Wildlands / Wildlands с изоляцией);
+// Esc — отменить подготовку Wildlands;
 // F1 — панель; F12 — снимок экрана.
 // Аргументы: -wbseed N -wbsize S|M -wbclimate cold|temperate|warm -wbfps vsync|30|60|90|120 -wbmanaged (без Burst);
 //   -wbsimtest папкаЭталонов файл — golden-проверки ядра в сборке (Mono и Burst) и выход;
 //   -wbsimbench файл              — замеры производительности симуляции (без рендера и с рендером) и выход;
 //   -wbbg файл                    — проверка свёрнутого режима и выход;
-//   -wbworldshots папка           — снимки мира и слоёв данных и выход.
+//   -wbworldshots папка           — снимки мира и слоёв данных и выход;
+//   -wbprepbench файл [-wbgolden папка] — подготовка Wildlands S и M через хост (прогресс, оценка времени, отмена,
+//                                   повторный запуск), сравнение с эталоном TS и выход.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -63,6 +67,11 @@ namespace Worldbound.App
         Task saveTask;
         string status = "";
         double simBudgetMs = 6;
+        /// <summary>Бюджет подготовки Wildlands в кадре, мс: подготовка идёт пакетами на главном потоке, окно отзывчиво.</summary>
+        double prepBudgetMs = 40;
+        /// <summary>Мир на экране (сцена построена) — после генерации и, у Wildlands, после подготовки.</summary>
+        bool worldShown;
+        static readonly string[] ScenarioNames = { "Genesis с изоляцией", "Genesis (открытый мир)", "Wildlands", "Wildlands с изоляцией" };
         /// <summary>Замер сам ведёт такты — обычный ход мира в Update выключен (иначе мир шёл бы дважды).</summary>
         bool manualSim;
 
@@ -95,7 +104,8 @@ namespace Worldbound.App
         {
             yield return null;
             window = GetActiveWindow();
-            bool automated = Arg("-wbsimtest") != null || Arg("-wbsimbench") != null || Arg("-wbbg") != null || Arg("-wbworldshots") != null || Arg("-wbfpstest") != null || Arg("-wbrendercheck") != null;
+            bool automated = Arg("-wbsimtest") != null || Arg("-wbsimbench") != null || Arg("-wbbg") != null || Arg("-wbworldshots") != null || Arg("-wbfpstest") != null || Arg("-wbrendercheck") != null || Arg("-wbprepbench") != null;
+            if (Arg("-wbprepbudget") is { } pb) prepBudgetMs = double.Parse(pb, Inv);
             if (automated) showUi = false;
             if (Flag("-wbpause")) PauseWhenMinimized = true;
             if (Arg("-wbsimtest") is { } golden)
@@ -110,6 +120,7 @@ namespace Worldbound.App
                 yield break;
             }
             if (Arg("-wbsimbench") is { } bench) { yield return RunSimBench(bench); Application.Quit(); yield break; }
+            if (Arg("-wbprepbench") is { } prepOut) { yield return RunPrepBench(prepOut, Arg("-wbgolden")); Application.Quit(); yield break; }
             NewWorld(ConfigFromArgs());
             if (Arg("-wbbg") is { } bg) { yield return RunBackground(bg); Application.Quit(); yield break; }
             if (Arg("-wbworldshots") is { } shots) { yield return RunWorldShots(shots); Application.Quit(); yield break; }
@@ -124,8 +135,8 @@ namespace Worldbound.App
                 Seed = uint.Parse(Arg("-wbseed") ?? PlayerPrefs.GetString("wb.seed", "42"), Inv),
                 Size = (Arg("-wbsize") ?? "M") == "S" ? WorldSize.S : WorldSize.M,
             };
-            // Stage 2.2: по умолчанию — Genesis с изоляцией (голая земля): единственный мир, который перенесённая часть
-            // флоры ведёт эквивалентно TS. Wildlands и открытый мир создаются, но такты не идут до этапов 2.3–2.5.
+            // По умолчанию — Genesis с изоляцией (голая земля, как с этапа 2.2). С этапа 2.5 ведутся все сценарии:
+            // -wbscenario wild — Wildlands с подготовкой 20 лет, -wbisolated 0 — открытый мир (колонизация через край).
             c.Scenario = (Arg("-wbscenario") ?? "genesis") == "genesis" ? Scenario.Genesis : Scenario.Wild;
             c.Isolated = (Arg("-wbisolated") ?? "1") != "0";
             string climate = Arg("-wbclimate") ?? "temperate";
@@ -184,6 +195,7 @@ namespace Worldbound.App
         void NewWorld(WorldConfig config)
         {
             DisposeWorld();
+            worldShown = false;
             host = new SimHost.SimHost { UseBurst = useBurst };
             host.Begin(config);
             status = $"Создание мира: seed {config.Seed}, {config.Size}, {config.ClimateId}";
@@ -212,9 +224,14 @@ namespace Worldbound.App
             UpdateMinimized();
             if (host != null)
             {
-                bool wasGenerating = host.Status == SimHost.SimHost.State.Generating;
                 host.Poll();
-                if (wasGenerating && host.Status == SimHost.SimHost.State.Running) OnWorldReady();
+                // Подготовка Wildlands: пакеты тактов той же симуляции в бюджете кадра; затем мир запускается.
+                if (host.Status == SimHost.SimHost.State.Preparing && !manualSim) host.AdvancePreparation(prepBudgetMs);
+                if (!worldShown && host.Status == SimHost.SimHost.State.Running)
+                {
+                    worldShown = true;
+                    OnWorldReady();
+                }
                 if (!manualSim && !(minimized && PauseWhenMinimized)) host.Advance(Time.unscaledDeltaTime, minimized ? 250 : simBudgetMs);
             }
             if (!minimized) Controls();
@@ -242,6 +259,22 @@ namespace Worldbound.App
             }
             if (kb.pKey.wasPressedThisFrame) { PauseWhenMinimized = !PauseWhenMinimized; PlayerPrefs.SetInt("wb.pauseMinimized", PauseWhenMinimized ? 1 : 0); }
             if (kb.f12Key.wasPressedThisFrame) ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, $"shot-{DateTime.Now:HHmmss}.png"));
+            if (kb.nKey.wasPressedThisFrame)
+            {
+                int k = (PlayerPrefs.GetInt("wb.scenario", 0) + 1) % ScenarioNames.Length;
+                PlayerPrefs.SetInt("wb.scenario", k);
+                status = $"Сценарий следующего мира (G): {ScenarioNames[k]}";
+            }
+            if (host?.Status == SimHost.SimHost.State.Preparing && kb.escapeKey.wasPressedThisFrame)
+            {
+                host.CancelPreparation();
+                status = "Создание мира отменено: недоготовленный мир не сохраняется. G — новый мир";
+            }
+            if (host?.Status == SimHost.SimHost.State.Cancelled && kb.gKey.wasPressedThisFrame)
+            {
+                NewWorld(NextConfig(host.Config));
+                return;
+            }
             if (host?.Status == SimHost.SimHost.State.Running)
             {
                 if (kb.spaceKey.wasPressedThisFrame) host.SetSpeed(host.Speed == 0 ? 1 : 0);
@@ -254,10 +287,7 @@ namespace Worldbound.App
                 if (kb.f9Key.wasPressedThisFrame) LoadFrom(QuickSavePath);
                 if (kb.gKey.wasPressedThisFrame)
                 {
-                    var c = host.Config;
-                    var next = new WorldConfig { Seed = c.Seed + 1, Size = c.Size, Climate = c.Climate, Scenario = c.Scenario, Isolated = c.Isolated };
-                    PlayerPrefs.SetString("wb.seed", next.Seed.ToString(Inv));
-                    NewWorld(next);
+                    NewWorld(NextConfig(host.Config));
                     return;
                 }
             }
@@ -278,6 +308,22 @@ namespace Worldbound.App
             if (kb.qKey.isPressed) move -= Vector3.up;
             camState.Position += move * camState.FlySpeed * (kb.leftShiftKey.isPressed ? 4 : 1) * Time.unscaledDeltaTime;
         }
+
+        /// <summary>Следующий мир: seed + 1, сценарий — выбранный клавишей N (если выбирался), иначе тот же.</summary>
+        WorldConfig NextConfig(WorldConfig c)
+        {
+            var next = new WorldConfig { Seed = c.Seed + 1, Size = c.Size, Climate = c.Climate, Scenario = c.Scenario, Isolated = c.Isolated };
+            if (PlayerPrefs.HasKey("wb.scenario"))
+            {
+                int k = PlayerPrefs.GetInt("wb.scenario", 0);
+                next.Scenario = k >= 2 ? Scenario.Wild : Scenario.Genesis;
+                next.Isolated = k == 0 || k == 3;
+            }
+            PlayerPrefs.SetString("wb.seed", next.Seed.ToString(Inv));
+            return next;
+        }
+
+        static string Clock(double seconds) => seconds >= 3600 ? $"{(int)(seconds / 3600)}:{(int)(seconds % 3600 / 60):00}:{(int)(seconds % 60):00}" : $"{(int)(seconds / 60)}:{(int)(seconds % 60):00}";
 
         void ApplyCamera()
         {
@@ -367,6 +413,13 @@ namespace Worldbound.App
             sb.Append($"WORLDBOUND — Unity, ядро C# (Stage 1: рельеф, климат, погода, вода; флоры и фауны ещё нет)   {1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):0} к/с, ограничение {FpsCaps[fpsCap]} (F3)\n");
             if (host == null) sb.Append("Нет мира\n");
             else if (host.Status == SimHost.SimHost.State.Generating) sb.Append($"Генерация: {host.Stage} {host.StageFraction * 100:0}%\n");
+            else if (host.Status == SimHost.SimHost.State.Preparing)
+            {
+                var cfg = host.Config;
+                sb.Append($"Wildlands{(cfg.Isolated ? " с изоляцией" : "")}, seed {cfg.Seed}, {cfg.Size}: природа развивается — год {host.PrepYear} из {host.PrepYears:0} · готово {host.PrepFraction * 100:0.0}%\n");
+                sb.Append($"Деревьев и кустарников: {host.PrepPlants:N0} · прошло {Clock(host.PrepElapsed)} · осталось {(host.PrepRemaining is double r ? "≈ " + Clock(r) : "оценивается")} · Esc — отменить\n");
+            }
+            else if (host.Status == SimHost.SimHost.State.Cancelled) sb.Append("Создание мира отменено. G — новый мир, N — сценарий\n");
             else if (host.Status == SimHost.SimHost.State.Failed) sb.Append($"Ошибка: {host.Error}\n");
             else if (host.Status == SimHost.SimHost.State.Running)
             {
@@ -375,18 +428,26 @@ namespace Worldbound.App
                 string[] seasons = { "весна", "лето", "осень", "зима" };
                 var w = host.Sim.World;
                 sb.Append($"Мир: seed {w.Seed}, {w.Config.Size} ({w.WorldSize} м), климат {w.Config.ClimateId}, провинций {w.Geo.Provinces.Length}, озёр {w.Geo.Lakes.Length} · geoHash {w.GeoHash}\n");
-                var sim = host.Sim;
+                var fl = w.Flora;
                 sb.Append(w.Config.Scenario == Scenario.Genesis
-                    ? $"Сценарий Genesis{(w.Config.Isolated ? " (изоляция)" : "")}: флора идёт по суткам — травы (рост, семена, прорастание), почва, покров, биомы; древесные — этап 2.4\n"
-                    : $"Сценарий Wildlands: банк семян трав заложен, подготовка 20 лет ожидает (этап 2.5), готово {sim.PreparationFraction() * 100:0}%\n");
+                    ? $"Сценарий Genesis{(w.Config.Isolated ? " с изоляцией" : " (открытый мир: колонисты через сухопутные края)")}"
+                    : $"Сценарий Wildlands{(w.Config.Isolated ? " с изоляцией" : "")}: подготовлен за {fl.PreparedYears:0} лет");
+                sb.Append($" · древесных {fl.Woody.Count:N0} из {fl.Woody.Capacity:N0} · видов-колонистов {CountColonists(fl)}\n");
                 if (host.Blocked != null) sb.Append($"Такты не идут: флора этого мира требует ещё не перенесённой части модели — {host.Blocked}\n");
                 sb.Append($"Год {c.Year + 1}, {seasons[c.Season]}, день {c.DayOfSeason + 1}, {c.Hour:00}:{c.Minute:00} · скорость {(s.Speed == 0 ? "пауза" : "×" + s.Speed)} (Пробел, 1–4){(host.Behind ? " · НЕ УСПЕВАЕТ" : "")}\n");
                 sb.Append($"Ядро: шаг воды {(host.BurstActive ? "Burst" : "C# без Burst")}, последний час {host.LastHourMs:0.00} мс, такты за кадр {host.TicksLastAdvance}, время ядра за кадр {host.LastAdvanceMs:0.00} мс\n");
                 sb.Append($"Ветер {s.Wind.Speed:0.0} м/с · аномалия {s.Anomaly:+0.0;-0.0} °C · слой: {WorldRenderer.OverlayNames[(int)(view?.Overlay ?? 0)]} {view?.Legend} (O) · при сворачивании: {(PauseWhenMinimized ? "пауза" : "продолжать")} (P)\n");
             }
             sb.Append(status).Append('\n');
-            sb.Append("ПКМ — обзор, WASD/QE — полёт, колесо — скорость полёта, F5/F9 — сохранить/загрузить, G — новый мир, F1 — скрыть, F12 — снимок");
+            sb.Append($"ПКМ — обзор, WASD/QE — полёт, колесо — скорость полёта, F5/F9 — сохранить/загрузить, G — новый мир ({ScenarioNames[PlayerPrefs.GetInt("wb.scenario", 0)]}, N — сменить), F1 — скрыть, F12 — снимок");
             GUI.Label(new Rect(12, 10, 1600, 160), sb.ToString());
+        }
+
+        static int CountColonists(Worldbound.Sim.Flora.FloraState f)
+        {
+            int k = 0;
+            foreach (var t in f.ColonistFirst) if (t >= 0) k++;
+            return k;
         }
 
         // ───────── проверки и замеры ─────────
@@ -466,12 +527,116 @@ namespace Worldbound.App
                 Release = s => { if (g3bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); g3bursts.Remove(s); } },
             });
             yield return null;
+            // G3 D–F (Stage 2.5): колонизация, Genesis, Wildlands и подготовка — полностью на Mono и полностью с водой на Burst.
+            string g3djson = File.ReadAllText(Path.Combine(goldenDir, "flora-g3d.json"));
+            ok &= FloraG3DGolden.Run(g3djson, L, out var g3dMono, new FloraG3CGolden.Options { Label = "mono" });
+            yield return null;
+            ok &= FloraG3DGolden.Run(g3djson, L, out var g3dBurst, new FloraG3CGolden.Options
+            {
+                Label = "burst-water",
+                Configure = s => { var b = new BurstWater(s.World); g3bursts[s] = b; s.WaterAccelerator = b; },
+                Release = s => { if (g3bursts.TryGetValue(s, out var b)) { s.WaterAccelerator = null; b.Dispose(); g3bursts.Remove(s); } },
+            });
+            yield return null;
             // Флора, Stage 2.0 (G0/G1): каталоги, функции, WoodyStore, FloraState. content/ — рядом с папкой эталонов в репозитории.
             ok &= FloraGolden.Run(File.ReadAllText(Path.Combine(goldenDir, "flora-g0g1.json")), Path.GetFullPath(Path.Combine(goldenDir, "..", "..", "..", "content")), L, out var flora);
-            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"g3bBurstWater\": {g3b},\n \"g3bMono\": {g3bMono},\n \"g3cMono\": {g3cMono},\n \"g3cBurstWater\": {g3cBurst},\n \"log\": {Q(log.ToString())} }}\n");
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(ok ? "true" : "false")},\n \"worldgen\": {wg},\n \"envMono\": {envManaged},\n \"envBurst\": {envBurst},\n \"save\": {save},\n \"saveM\": {saveM},\n \"saveRobustness\": {robust},\n \"pacer\": {pacer},\n \"host\": {hostCheck},\n \"flora\": {flora},\n \"woodyRestore\": {woodyRestore},\n \"g2\": {g2},\n \"g3BurstWater\": {g3burst},\n \"g3Mono\": {g3mono},\n \"g3bBurstWater\": {g3b},\n \"g3bMono\": {g3bMono},\n \"g3cMono\": {g3cMono},\n \"g3cBurstWater\": {g3cBurst},\n \"g3dMono\": {g3dMono},\n \"g3dBurstWater\": {g3dBurst},\n \"log\": {Q(log.ToString())} }}\n");
         }
 
 #endif
+
+        /// <summary>
+        /// Подготовка Wildlands через хост, как у игрока (пакеты тактов в бюджете кадра на главном потоке): S/42 — запуск,
+        /// отмена на 5 %, повторный запуск до конца; M/42 — до конца. Прогресс (доля, год, растения, прошедшее и оставшееся
+        /// время) — на каждых 2 %; время кадра во время подготовки; хранилище древесных; хеш готового мира — против эталона
+        /// TS (G3 D–F: конец подготовки E-S42 и W-M42), если передан -wbgolden.
+        /// </summary>
+        IEnumerator RunPrepBench(string outFile, string goldenDir)
+        {
+            cam.enabled = false;
+            manualSim = true;
+            var expect = new Dictionary<string, string>();
+#if UNITY_EDITOR || WB_QA
+            if (goldenDir != null)
+            {
+                var runs = MiniJson.Obj(MiniJson.Obj(MiniJson.Parse(File.ReadAllText(Path.Combine(goldenDir, "flora-g3d.json"))))["runs"]);
+                foreach (var (key, size) in new[] { ("E-S42", "S"), ("W-M42", "M") })
+                    if (runs.TryGetValue(key, out var ro))
+                        foreach (var po in MiniJson.Arr(MiniJson.Obj(ro)["probes"]))
+                            if ((string)MiniJson.Obj(po)["label"] == "подготовка завершена") expect[size] = (string)MiniJson.Obj(po)["stateHash"];
+            }
+#endif
+            var parts = new List<string>();
+            bool allOk = true;
+            foreach (var sizeName in (Arg("-wbprepsizes") ?? "S,M").Split(','))
+            {
+                var size = sizeName == "M" ? WorldSize.M : WorldSize.S;
+                var cfg = new WorldConfig { Seed = 42, Size = size, Scenario = Scenario.Wild, Isolated = false };
+                string cancel = "null";
+                if (size == WorldSize.S)
+                {
+                    // Запуск и отмена на 5 %: мир отбрасывается, хост в состоянии «отменено».
+                    NewWorld(cfg);
+                    while (host.Status == SimHost.SimHost.State.Generating) yield return null;
+                    while (host.Status == SimHost.SimHost.State.Preparing && host.PrepFraction < 0.05)
+                    {
+                        host.AdvancePreparation(prepBudgetMs);
+                        yield return null;
+                    }
+                    double at = host.PrepFraction, el = host.PrepElapsed;
+                    var cs = Stopwatch.StartNew();
+                    host.CancelPreparation();
+                    double cancelMs = cs.Elapsed.TotalMilliseconds;
+                    bool cancelOk = host.Status == SimHost.SimHost.State.Cancelled && host.Sim == null;
+                    allOk &= cancelOk;
+                    cancel = $"{{\"atFraction\":{N(Math.Round(at, 4))},\"afterSeconds\":{N(Math.Round(el, 2))},\"cancelMs\":{N(Math.Round(cancelMs, 3))},\"ok\":{(cancelOk ? "true" : "false")}}}";
+                    Debug.Log($"[WB] prep-bench {size}: отмена на {at * 100:0.0}% через {el:0.0} с — {(cancelOk ? "OK" : "FAIL")}");
+                    yield return null;
+                }
+                // Полная подготовка (для S — повторный запуск после отмены).
+                var wall = Stopwatch.StartNew();
+                NewWorld(cfg);
+                while (host.Status == SimHost.SimHost.State.Generating) yield return null;
+                double genS = wall.Elapsed.TotalSeconds;
+                var frames = new List<double>();
+                var samples = new StringBuilder();
+                double next = 0.02;
+                var prepWall = Stopwatch.StartNew();
+                while (host.Status == SimHost.SimHost.State.Preparing)
+                {
+                    var fs = Stopwatch.StartNew();
+                    host.AdvancePreparation(prepBudgetMs);
+                    frames.Add(fs.Elapsed.TotalMilliseconds);
+                    if (host.Status == SimHost.SimHost.State.Preparing && host.PrepFraction >= next)
+                    {
+                        samples.Append(samples.Length > 0 ? "," : "").Append($"[{N(Math.Round(host.PrepFraction, 4))},{host.PrepYear},{host.PrepPlants},{N(Math.Round(host.PrepElapsed, 2))},{(host.PrepRemaining is double r ? N(Math.Round(r, 1)) : "null")}]");
+                        next = Math.Floor(host.PrepFraction / 0.02) * 0.02 + 0.02;
+                    }
+                    yield return null;
+                }
+                double prepS = prepWall.Elapsed.TotalSeconds;
+                bool ready = host.Status == SimHost.SimHost.State.Running && host.Sim.Preparation == null;
+                string hash = ready ? host.Sim.StateHash() : "";
+                bool hashOk = !expect.TryGetValue(sizeName, out var exp) || exp == hash;
+                allOk &= ready && hashOk;
+                var f = host.Sim.World.Flora;
+                var w = f.Woody;
+                var bySpecies = new int[f.Species.Count];
+                for (int i = 0; i < w.HighWater; i++) if (w.Alive[i] == 1) bySpecies[w.Species[i]]++;
+                frames.Sort();
+                double Pct(double q) => frames.Count == 0 ? 0 : frames[Math.Min(frames.Count - 1, (int)(q * frames.Count))];
+                parts.Add($"{{\"size\":\"{sizeName}\",\"seed\":42,\"years\":{N(host.PrepYears)},\"generateS\":{N(Math.Round(genS, 2))},\"prepareWallS\":{N(Math.Round(prepS, 2))},\"prepareComputeS\":{N(Math.Round(host.PrepComputeSeconds, 2))},\"ticks\":{host.PrepTicks}"
+                    + $",\"budgetMs\":{N(prepBudgetMs)},\"frames\":{frames.Count},\"frameMs\":{{\"p50\":{N(Math.Round(Pct(0.5), 2))},\"p95\":{N(Math.Round(Pct(0.95), 2))},\"p99\":{N(Math.Round(Pct(0.99), 2))},\"max\":{N(Math.Round(Pct(1), 2))}}}"
+                    + $",\"ready\":{(ready ? "true" : "false")},\"stateHash\":{Q(hash)},\"tsStateHash\":{(exp == null ? "null" : Q(exp))},\"hashOk\":{(hashOk ? "true" : "false")}"
+                    + $",\"woody\":{w.Count},\"highWater\":{w.HighWater},\"free\":{w.FreeCount},\"capacity\":{w.Capacity},\"bySpecies\":[{string.Join(",", bySpecies)}],\"burst\":{(host.BurstActive ? "true" : "false")}"
+                    + $",\"cancel\":{cancel},\"progress\":[{samples}]}}");
+                Debug.Log($"[WB] prep-bench {sizeName}: подготовка {prepS:0.0} с (счёт {host.PrepComputeSeconds:0.0} с), древесных {w.Count}, хеш {hash} {(hashOk ? "= TS" : "≠ TS " + exp)}");
+                DisposeWorld();
+                yield return null;
+            }
+            manualSim = false;
+            File.WriteAllText(outFile, $"{{ {SystemJson()}, \"ok\": {(allOk ? "true" : "false")}, \"runs\": [\n{string.Join(",\n", parts)}\n] }}\n");
+        }
 
         /// <summary>
         /// Замеры симуляции: (1) без рендера — S и M, обычный C# и Burst: время часа и суток (среднее, p95, p99), GC, память;
