@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9885f7a544dd17444adf0b80f97dbdcb, type: 3}
+  m_Name: FloraRenderAssets
+  m_EditorClassIdentifier: Worldbound.FloraView::Worldbound.FloraView.FloraRenderAssets
+  Woody: {fileID: 4800000, guid: b81f5f3533d94bf4d9fd927a6d3fcdac, type: 3}
+  Impostor: {fileID: 4800000, guid: 566a74111f00e0f4db1dc462cf2fc695, type: 3}
+  Grass: {fileID: 4800000, guid: 063b737508d8d534ca884355eab0184d, type: 3}
