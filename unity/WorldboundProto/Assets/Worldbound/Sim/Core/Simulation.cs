@@ -129,6 +129,29 @@ namespace Worldbound.Sim
         /// <summary>Почему флору этого мира нельзя вести перенесённой частью (null — можно); см. FloraSystem.Unsupported.</summary>
         public string FloraUnsupported => scheduleFlora ? FloraSystem.Unsupported(World) : null;
 
+        /// <summary>
+        /// Подготовка Wildlands — обычные такты той же симуляции (advancePreparation в TS): не больше maxTicks тактов
+        /// и не дальше конца подготовки. Возвращает долю выполненной подготовки (1 — мир готов). Хост вызывает её
+        /// пакетами в бюджете кадра; результат не зависит от размера пакетов.
+        /// </summary>
+        public double AdvancePreparation(long maxTicks)
+        {
+            var p = Preparation;
+            if (p == null) return 1;
+            long end = Math.Min(p.TargetTick, World.Tick + maxTicks);
+            while (World.Tick < end) Step();
+            return PreparationFraction();
+        }
+
+        /// <summary>Текущий год подготовки (1..years) — для экрана подготовки.</summary>
+        public int PreparationYear()
+        {
+            var p = Preparation;
+            if (p == null) return 0;
+            long ticksPerYear = (long)World.Config.DaysPerSeason * SimTime.SeasonsPerYear * SimTime.TicksPerDay;
+            return (int)Math.Min(Math.Ceiling(p.Years), Math.Floor((World.Tick - p.StartTick) / (double)ticksPerYear) + 1);
+        }
+
         /// <summary>Доля выполненной подготовки (1 — мир готов).</summary>
         public double PreparationFraction()
         {

@@ -1,20 +1,23 @@
 // Суточный шаг растительности (src/sim/flora/system.ts: floraSystem, processCell) — Stage 2.2: расписание и голая земля;
 // Stage 2.3: травяной ярус (рост, конкуренция, отмирание, семена, расселение, прорастание, старение банка семян);
-// Stage 2.4: древесные (фенология, рост, питание, оборот, здоровье, стадии, смертность, семена, приживание всходов).
+// Stage 2.4: древесные (фенология, рост, питание, оборот, здоровье, стадии, смертность, семена, приживание всходов);
+// Stage 2.5: колонизация через край мира и семена региона (подготовка Wildlands) — флора перенесена целиком.
 //
 // Расписание — как в TS: период 50 тактов, фаза 25 (никогда не совпадает с часовым шагом воды); 6 порций в час,
 // 144 в сутки. Ячейки — строки z ≡ час (mod 24), в порции sub — столбцы [⌊sub·n/6⌋, ⌊(sub+1)·n/6⌋), только суша;
-// древесные — индексы ≡ час + 24·sub (mod 144) до highWater, зафиксированного в начале порции; позиции края — так же.
+// древесные — индексы ≡ час + 24·sub (mod 144) до highWater, зафиксированного в начале цикла древесных (после ячеек
+// порции: всходы семян региона, появившиеся в ячейках, в него входят; всходы цикла древесных и края — нет); позиции
+// края — так же.
 // Полог пересчитывается в порции 0 часа 0 суток; lastSliceHour — после 6-й порции часа.
 //
 // Перенесено: суточные средние и сброс накопителей воды, травяной ярус целиком (два прохода роста и потерь с общими
 // ограничениями ячейки, исчезновение популяции в опад, семена в сезон плодоношения, расселение двумя пакетами,
 // прорастание банка, старение банка в опад), почва (выветривание, вымывание, разложение), живой покров (вход испарения),
 // суточное обновление биома; древесные целиком (processWoody, killWoody, produceWoodySeeds, landWoodyPacket, seedlingFit,
-// deposit). Ветви колонизации и семян региона — этап 2.5: там, где TS пошёл бы в такую ветвь (мир открыт колонистам или
-// идёт подготовка Wildlands), шаг останавливается исключением FloraNotPortedException — молчаливого расхождения с
-// эталоном нет. Изолированный мир Genesis с травами, банком семян, кустарниками и деревьями перенесённая часть ведёт
-// побитно равно TS.
+// deposit); колонизация через край (colonizeEdge) и семена региона во время подготовки Wildlands (regionalSeedRain) с
+// приходом колонистов (addColonistHerbSeeds, addColonistWoodyPacket — обычные пути банка семян и приживания всходов,
+// приток — в Ledger.External). Изоляция действует с момента, когда мир готов: во время подготовки Wildlands мир открыт
+// региону и краям независимо от настройки (как в TS). Любой мир ведётся побитно равно TS.
 //
 // Точки округления — как в TS: всё считается в double, во float32 округляется только запись в массив состояния
 // (слоты, банк, опад, запас питания). Значения массивов float читаются в double до арифметики.
@@ -40,6 +43,8 @@ namespace Worldbound.Sim.Flora
         public long HerbTicks, SeedTicks, GerminationTicks, AgingTicks, SoilTicks, BiomeTicks;
         /// <summary>Древесные: весь цикл растений порции; внутри — рассев (вместе с приживанием) и приживание отдельно.</summary>
         public long WoodyTicks, WoodySeedTicks, LandingTicks, CoverTicks, DeathTicks;
+        /// <summary>Колонизация через край (весь цикл позиций края) и семена региона (по ячейкам).</summary>
+        public long ColonizeTicks, SeedRainTicks;
         public long WoodyProcessed, Deaths, SeedingPlants, Packets, PacketsExported, Established;
         public static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
     }
@@ -88,6 +93,19 @@ namespace Worldbound.Sim.Flora
         /// <summary>Биомасса всхода, кг.</summary>
         public const double SeedlingBiomass = 0.002;
         const double SeedlingMortality = 0.35;
+        // Колонизация и семена региона (system.ts).
+        const int SysColonize = 314;
+        const int SysSeedRain = 315;
+        /// <summary>Семена трав, приходящие через край, г/м² за сезон при пригодности и весе вида 1.</summary>
+        public const double ColonistHerbSeeds = 0.4;
+        /// <summary>Вероятность пакета древесных колонистов в свой день рассева при пригодности и весе 1.</summary>
+        public const double ColonistWoodyPacket = 0.25;
+        /// <summary>Пакет колонистов — семена кроны такой площади, м² (× плодовитость вида).</summary>
+        const double ColonistWoodyCrown = 2;
+        const double ColonistMinSuit = 0.05;
+        /// <summary>Семена региона при подготовке Wildlands: травы, г/м² за сезон; вероятность пакета древесных.</summary>
+        public const double RainHerbSeeds = 0.15;
+        public const double RainWoodyPacket = 1.0;
 
         // Рабочие массивы прохода 1 (модульные Float64Array в TS). Флора всех симуляций идёт под BiomeState.Gate.
         static readonly double[] Grow = new double[FloraState.Slots];
@@ -110,17 +128,10 @@ namespace Worldbound.Sim.Flora
         }
 
         /// <summary>
-        /// Почему этот мир нельзя вести перенесённой частью флоры (null — можно). Проверка заранее, для интерфейса;
-        /// сам шаг дополнительно останавливается в каждой неперенесённой ветви.
+        /// Почему этот мир нельзя вести перенесённой частью флоры (null — можно). С этапа 2.5 флора перенесена целиком:
+        /// Genesis и Wildlands, с изоляцией и без, ведутся все. Проверка оставлена для интерфейса хоста.
         /// </summary>
-        public static string Unsupported(World world)
-        {
-            var f = world.Flora;
-            if (f.RegionalSeedRain) return "идёт подготовка Wildlands (семена региона) — этап 2.5";
-            if (!world.Config.Isolated) return "мир открыт колонистам извне (колонизация через край) — этап 2.5";
-            // Травы и банк семян (этап 2.3), кустарники и деревья (этап 2.4) перенесены.
-            return null;
-        }
+        public static string Unsupported(World world) => null;
 
         /// <summary>Одна порция суточного шага (вызывается в такты с tick ≡ 25 (mod 50)).</summary>
         public static void Run(World world, long tick)
@@ -160,7 +171,7 @@ namespace Worldbound.Sim.Flora
                     int c = z * n + x;
                     if (geo.WaterKind[c] == WaterKind.None) ProcessCell(world, c, in ctx);
                 }
-            // Древесные: индекс ≡ час (mod 24), в каждой порции — каждый шестой из них; граница — на начало порции.
+            // Древесные: индекс ≡ час (mod 24), в каждой порции — каждый шестой из них; граница — на начало цикла древесных (после ячеек порции, как в TS).
             var w = f.Woody;
             int high = w.HighWater;
             int stride = 24 * Substeps;
@@ -171,8 +182,10 @@ namespace Worldbound.Sim.Flora
             // Край мира: колонизация извне. Изоляция действует с момента готовности мира (во время подготовки мир открыт).
             if (!world.Config.Isolated || f.RegionalSeedRain)
             {
+                long ct = Profile != null ? Stopwatch.GetTimestamp() : 0;
                 int edge = 4 * n;
-                if (slice + 24 * sub < edge) throw new FloraNotPortedException("colonizeEdge (колонизация через край) — этап 2.5");
+                for (int k = slice + 24 * sub; k < edge; k += stride) ColonizeEdge(world, k, in ctx);
+                if (Profile != null) Profile.ColonizeTicks += Stopwatch.GetTimestamp() - ct;
             }
             if (sub == Substeps - 1) f.LastSliceHour = hour;
         }
@@ -356,7 +369,12 @@ namespace Worldbound.Sim.Flora
             ledger[Ledger.Decomposition] += (lf + lw) * area / 1000;
             f.Nutrient[c] = (float)nut;
             if (prof != null) { long t1 = Stopwatch.GetTimestamp(); prof.SoilTicks += t1 - t0; t0 = t1; }
-            if (f.RegionalSeedRain) throw new FloraNotPortedException("regionalSeedRain (семена региона) — этап 2.5");
+            if (f.RegionalSeedRain)
+            {
+                long rt = prof != null ? Stopwatch.GetTimestamp() : 0;
+                RegionalSeedRain(world, c, cold, in ctx);
+                if (prof != null) prof.SeedRainTicks += Stopwatch.GetTimestamp() - rt;
+            }
             world.Env.Greenness[c] = (float)Cover.GreennessOf(world, c);
             UpdateBiome(world, c, dt, ctx.YearFrac, ctx.HoldDays);
             if (prof != null) prof.BiomeTicks += Stopwatch.GetTimestamp() - t0;
@@ -589,6 +607,137 @@ namespace Worldbound.Sim.Flora
             }
             // Не прижились (или хранилище заполнено): семена пакета уходят в опад там, куда упали.
             Deposit(world, tc, packetKg, s, false);
+        }
+
+        // ───────── Колонизация и семена региона (system.ts: colonistSuit, noteColonist, addColonistHerbSeeds,
+        //           addColonistWoodyPacket, woodySeedDay, colonizeEdge, regionalSeedRain) ─────────
+
+        /// <summary>Пригодность места для прихода колонистов вида: климат сезона роста, климатическая влага, питание, почва.</summary>
+        public static double ColonistSuit(World world, int s, int c)
+        {
+            var geo = world.Geo;
+            return Suitability.Of(world.Flora.Species, s, geo.TMean[c] + 0.6 * geo.TAmp[c], Env.EnvFactory.ClimateMoisture(geo.Precip[c]), 1, world.Flora.Nutrient[c], geo.Soil[c]);
+        }
+
+        static void NoteColonist(World world, int s, double grams)
+        {
+            var f = world.Flora;
+            f.ColonistMass[s] += grams;
+            if (f.ColonistFirst[s] < 0) f.ColonistFirst[s] = world.Tick;
+        }
+
+        /// <summary>Семена трав пришли в банк ячейки извне: приход вещества — в ведомость.</summary>
+        static void AddColonistHerbSeeds(World world, int c, int s, double perM2, in DayContext ctx)
+        {
+            var f = world.Flora;
+            int count = world.Geo.N * world.Geo.N;
+            int o = f.Species.HerbSlot[s] * count + c;
+            f.SeedBank[o] = (float)(f.SeedBank[o] + perM2);
+            f.Ledger[Ledger.External] += perM2 * ctx.CellArea * f.Species.Nutrient[s];
+            NoteColonist(world, s, perM2 * ctx.CellArea);
+        }
+
+        /// <summary>Пакет семян древесного вида пришёл извне в ячейку tc: приход — в ведомость, дальше обычное приживание.</summary>
+        static void AddColonistWoodyPacket(World world, int s, double x, double z, int tc, double seeds, double roll, in DayContext ctx)
+        {
+            var t = world.Flora.Species;
+            double packetKg = seeds * t.SeedMass[s] * 0.001;
+            world.Flora.Ledger[Ledger.External] += packetKg * 1000 * t.Nutrient[s];
+            NoteColonist(world, s, packetKg * 1000);
+            LandWoodyPacket(world, s, x, z, tc, seeds, packetKg, roll, in ctx);
+        }
+
+        /// <summary>День прихода древесных колонистов вида: тот же сезон рассева, что у растений мира, со сдвигом.</summary>
+        static long WoodySeedDay(in DayContext ctx, long k) => ((long)Math.Floor(WoodySeedFraction * ctx.DaysPerYear) + k % SeedDaysSpread) % ctx.DaysPerYear;
+
+        /// <summary>
+        /// Колонизация через позицию края мира k (сторона × n + номер ячейки вдоль стороны; стороны — север, восток, юг,
+        /// запад): для каждого вида — семена по ядру расселения вглубь мира. С моря колонисты не приходят.
+        /// </summary>
+        static void ColonizeEdge(World world, int k, in DayContext ctx)
+        {
+            var geo = world.Geo;
+            int n = geo.N;
+            int side = k / n;
+            if (geo.Edges[side] == EdgeKind.Sea) return;
+            int j = k - side * n;
+            int cs = geo.CellSize;
+            int size = world.WorldSize;
+            // Точка на краю и направление внутрь мира.
+            double along = (j + 0.5) * cs;
+            double ex = side == 1 ? size : side == 3 ? 0 : along;
+            double ez = side == 0 ? 0 : side == 2 ? size : along;
+            int nx = side == 1 ? -1 : side == 3 ? 1 : 0;
+            int nz = side == 0 ? 1 : side == 2 ? -1 : 0;
+            var t = world.Flora.Species;
+            double yf = ctx.YearFrac;
+            bool herbSeason = yf >= HerbSeedSeason[0] && yf < HerbSeedSeason[1];
+            double seasonShare = ctx.Dt / (HerbSeedSeason[1] - HerbSeedSeason[0]);
+            int seed = unchecked((int)world.Seed);
+            int day8 = unchecked((int)(ctx.Day * 8));
+            for (int s = 0; s < t.Count; s++)
+            {
+                bool woody = t.Woody[s] == 1;
+                if (!woody && !herbSeason) continue;
+                if (woody && ctx.DayOfYear != WoodySeedDay(in ctx, k + s)) continue;
+                double weight = t.Colonist[s];
+                if (weight <= 0) continue;
+                int key = k * 32 + s;
+                double u = Hash.CounterRandom(seed, SysColonize, key, day8);
+                double v = Hash.CounterRandom(seed, SysColonize, key, day8 + 1);
+                double d = Math.Min(t.DispersalMax[s], 3 * t.DispersalMean[s] * u * u) + 0.5;
+                double lateral = (v - 0.5) * cs;
+                double x = ex + nx * d + (nx == 0 ? lateral : 0);
+                double z = ez + nz * d + (nz == 0 ? lateral : 0);
+                int tc = LandCellAt(world, x, z);
+                if (tc < 0) continue;
+                double suit = ColonistSuit(world, s, tc);
+                if (suit < ColonistMinSuit) continue;
+                if (!woody)
+                {
+                    // В холод семена в регионе не созревают.
+                    if (world.Flora.DayT[tc] < 2) continue;
+                    AddColonistHerbSeeds(world, tc, s, ColonistHerbSeeds * weight * suit * seasonShare, in ctx);
+                }
+                else
+                {
+                    if (Hash.CounterRandom(seed, SysColonize, key, day8 + 2) >= ColonistWoodyPacket * weight * suit) continue;
+                    AddColonistWoodyPacket(world, s, x, z, tc, ColonistWoodyCrown * t.Fecundity[s], Hash.CounterRandom(seed, SysColonize, key, day8 + 3), in ctx);
+                }
+            }
+        }
+
+        /// <summary>Подготовка Wildlands: семена из окружающего региона падают на ячейку суши c (те же механизмы приживания).</summary>
+        static void RegionalSeedRain(World world, int c, bool cold, in DayContext ctx)
+        {
+            var t = world.Flora.Species;
+            double yf = ctx.YearFrac;
+            bool herbSeason = !cold && yf >= HerbSeedSeason[0] && yf < HerbSeedSeason[1];
+            double seasonShare = ctx.Dt / (HerbSeedSeason[1] - HerbSeedSeason[0]);
+            int n = world.Geo.N;
+            int cs = world.Geo.CellSize;
+            int seed = unchecked((int)world.Seed);
+            int day4 = unchecked((int)(ctx.Day * 4));
+            for (int s = 0; s < t.Count; s++)
+            {
+                bool woody = t.Woody[s] == 1;
+                if (!woody && !herbSeason) continue;
+                if (woody && ctx.DayOfYear != WoodySeedDay(in ctx, c + s)) continue;
+                double weight = t.Colonist[s];
+                if (weight <= 0) continue;
+                double suit = ColonistSuit(world, s, c);
+                if (suit < ColonistMinSuit) continue;
+                if (!woody)
+                {
+                    AddColonistHerbSeeds(world, c, s, RainHerbSeeds * weight * suit * seasonShare, in ctx);
+                    continue;
+                }
+                int key = c * 32 + s;
+                if (Hash.CounterRandom(seed, SysSeedRain, key, day4) >= RainWoodyPacket * weight * suit) continue;
+                double x = (c % n + Hash.CounterRandom(seed, SysSeedRain, key, day4 + 1)) * cs;
+                double z = (c / n + Hash.CounterRandom(seed, SysSeedRain, key, day4 + 2)) * cs;
+                AddColonistWoodyPacket(world, s, x, z, c, ColonistWoodyCrown * t.Fecundity[s], Hash.CounterRandom(seed, SysSeedRain, key, day4 + 3), in ctx);
+            }
         }
 
         /// <summary>Отклик вида на условия ячейки за сутки (без питания): температура × влага × свет × почва (herbFit).</summary>
