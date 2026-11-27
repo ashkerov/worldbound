@@ -1,0 +1,20 @@
+{ "ok": true, "unity": "6000.3.29f1",
+ "checks": [
+  { "name": "publisher.full", "ok": true, "detail": "chunks 16" },
+  { "name": "publisher.noChange", "ok": true, "detail": "" },
+  { "name": "publisher.sameDataNoVersion", "ok": true, "detail": "v 1 → 1" },
+  { "name": "publisher.incremental", "ok": true, "detail": "chunks 2, total 15" },
+  { "name": "publisher.otherWorldFull", "ok": true, "detail": "" },
+  { "name": "checksum.detectsChange", "ok": true, "detail": "" },
+  { "name": "synthetic.deterministic", "ok": true, "detail": "trees 19806, shrubs 6069, build 211 ms" },
+  { "name": "synthetic.countMatters", "ok": true, "detail": "" },
+  { "name": "synthetic.livingIncremental", "ok": true, "detail": "changed chunks 8 of 256" },
+  { "name": "profiles.allSpecies", "ok": true, "detail": "woody 10/10, herbs 8/8" },
+  { "name": "models.lodTriangles", "ok": true, "detail": "Spruce/Young:1753/750/140 Spruce/Mature:3729/796/158 Spruce/Mature:3729/796/158 Spruce/Old:3139/718/132 Pine/Young:4378/722/182 Pine/Mature:4405/764/198 Pine/Mature:4501/800/198 Pine/Old:4573/806/198 Birch/Young:2693/580/149 Birch/Mature:4181/812/231 Birch/Mature:4181/812/231 Birch/Old:4181/812/231 Oak/Young:2997/558/159 Oak/Mature:3459/500/196 Oak/Mature:3459/500/196 Oak/Old:3954/580/196 Linden/Young:2879/670/147 Linden/Mature:3731/774/184 Linden/Mature:3731/774/184 Linden/Old:3731/774/184 Alder/Young:2226/538/139 Alder/Mature:4058/972/249 Alder/Mature:4058/972/249 Alder/Old:4708/1198/314 Hazel/Mature:2303/814/261 Hazel/Mature:2298/810/258 WildRose/Mature:1215/357/30 WildRose/Mature:1215/357/30 WillowShrub/Mature:2272/1080/344 WillowShrub/Mature:2272/1080/344 Juniper/Mature:624/180/32 Juniper/Mature:868/273/42" },
+  { "name": "adapter.readOnly", "ok": true, "detail": "hash f30c54a35be2" },
+  { "name": "adapter.contract", "ok": true, "detail": "grid 256, field chunks 256, species 18, yearPhase 0,115" },
+  { "name": "renderer.incrementalEqualsFull", "ok": true, "detail": "trees 49374/49374, shrubs 15222/15222, updates 7 (full 1), v 7" },
+  { "name": "renderer.integrity", "ok": true, "detail": "checksum failures 0, mismatches 0" },
+  { "name": "renderer.sourceUnchanged", "ok": true, "detail": "рендер только читает снимки" },
+  { "name": "renderer.init", "ok": true, "detail": "init 651 ms, impostor bake 71 ms, mesh triangles 131059, mesh 12,3 MB, textures 32,5 MB, full apply 17 ms" }
+ ] }
