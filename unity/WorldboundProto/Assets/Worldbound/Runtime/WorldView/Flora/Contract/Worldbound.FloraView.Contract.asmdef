@@ -1,0 +1,7 @@
+{
+  "name": "Worldbound.FloraView.Contract",
+  "rootNamespace": "Worldbound.FloraView",
+  "references": [],
+  "noEngineReferences": true,
+  "autoReferenced": false
+}
