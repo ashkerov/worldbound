@@ -1,0 +1,11 @@
+{
+ "build": "unity/WorldboundProto/Build/WindowsRelease",
+ "kind": "release",
+ "files": 172,
+ "bytes": 106971255,
+ "streamingAssets": false,
+ "goldenDataFiles": [],
+ "goldenMarkersFound": [],
+ "testCodeAssemblies": [],
+ "ok": true
+}
