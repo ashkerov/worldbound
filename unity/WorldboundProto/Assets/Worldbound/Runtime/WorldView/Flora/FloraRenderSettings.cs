@@ -15,9 +15,9 @@ namespace Worldbound.FloraView
         public FloraQuality Quality = FloraQuality.Medium;
 
         [Header("Деревья, м")]
-        public float TreeLod0 = 26, TreeLod1 = 60, TreeLod2 = 150, TreeThin = 380, TreeMax = 1500;
+        public float TreeLod0 = 18, TreeLod1 = 40, TreeLod2 = 90, TreeThin = 240, TreeMax = 1300;
         [Header("Кустарники, м")]
-        public float ShrubLod0 = 18, ShrubLod1 = 45, ShrubMax = 160;
+        public float ShrubLod0 = 12, ShrubLod1 = 30, ShrubMax = 120;
         [Tooltip("Доля ширины зоны плавного перехода от границы уровня")]
         public float FadeBand = 0.12f;
         [Tooltip("Множитель всех дальностей (настройка «дальность прорисовки»)")]
@@ -25,14 +25,14 @@ namespace Worldbound.FloraView
         public bool CrossFade = true;
 
         [Header("Тени")]
-        public bool TreeShadowsLod0 = true, TreeShadowsLod1 = true, TreeShadowsLod2 = false, ShrubShadows = true;
+        public bool TreeShadowsLod0 = true, TreeShadowsLod1 = false, TreeShadowsLod2 = false, ShrubShadows = true;
 
         [Header("Импосторы")]
         public int ImpostorFrame = 96;
-        public bool ImpostorBlend = true;
+        public bool ImpostorBlend = false;
 
         [Header("Трава, м")]
-        public float GrassRadius = 50, GrassLod0 = 12, GrassLod1 = 28;
+        public float GrassRadius = 45, GrassLod0 = 10, GrassLod1 = 24;
         [Tooltip("Множитель числа пучков")]
         public float GrassDensity = 0.7f;
         public int GrassMaxInstances = 60000;
@@ -48,24 +48,24 @@ namespace Worldbound.FloraView
             switch (q)
             {
                 case FloraQuality.Low:
-                    s.TreeLod0 = 16; s.TreeLod1 = 40; s.TreeLod2 = 105; s.TreeThin = 260; s.TreeMax = 1100;
-                    s.ShrubLod0 = 12; s.ShrubLod1 = 30; s.ShrubMax = 110;
-                    s.TreeShadowsLod1 = false; s.ShrubShadows = false;
+                    s.TreeLod0 = 12; s.TreeLod1 = 28; s.TreeLod2 = 70; s.TreeThin = 200; s.TreeMax = 1000;
+                    s.ShrubLod0 = 8; s.ShrubLod1 = 20; s.ShrubMax = 80;
+                    s.ShrubShadows = false;
                     s.ImpostorFrame = 64; s.ImpostorBlend = false;
                     s.GrassRadius = 32; s.GrassLod0 = 8; s.GrassLod1 = 18; s.GrassDensity = 0.45f; s.GrassMaxInstances = 30000;
                     break;
                 case FloraQuality.High:
-                    s.TreeLod0 = 36; s.TreeLod1 = 85; s.TreeLod2 = 220; s.TreeThin = 550; s.TreeMax = 2100;
-                    s.ShrubLod0 = 25; s.ShrubLod1 = 60; s.ShrubMax = 220;
-                    s.TreeShadowsLod2 = true;
-                    s.ImpostorFrame = 128;
+                    s.TreeLod0 = 28; s.TreeLod1 = 65; s.TreeLod2 = 160; s.TreeThin = 450; s.TreeMax = 1800;
+                    s.ShrubLod0 = 18; s.ShrubLod1 = 45; s.ShrubMax = 180;
+                    s.TreeShadowsLod1 = true;
+                    s.ImpostorFrame = 128; s.ImpostorBlend = true;
                     s.GrassRadius = 70; s.GrassLod0 = 16; s.GrassLod1 = 38; s.GrassDensity = 1f; s.GrassMaxInstances = 110000;
                     break;
                 case FloraQuality.Ultra:
                     s.TreeLod0 = 50; s.TreeLod1 = 120; s.TreeLod2 = 300; s.TreeThin = 800; s.TreeMax = 2600;
                     s.ShrubLod0 = 32; s.ShrubLod1 = 80; s.ShrubMax = 300;
                     s.TreeShadowsLod2 = true;
-                    s.ImpostorFrame = 128;
+                    s.ImpostorFrame = 128; s.ImpostorBlend = true;
                     s.GrassRadius = 90; s.GrassLod0 = 22; s.GrassLod1 = 50; s.GrassDensity = 1.2f; s.GrassMaxInstances = 180000;
                     break;
             }

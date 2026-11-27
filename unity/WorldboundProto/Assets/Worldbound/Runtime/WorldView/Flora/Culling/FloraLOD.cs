@@ -1,6 +1,6 @@
 // Выбор уровня детализации древесного растения (чистая функция, общая для подсчёта и записи в заданиях Burst).
 //
-// Эффективное расстояние de = d / (k · bias), где k = clamp(√(высота / эталон), 0.35, 1.7): крупное дерево
+// Эффективное расстояние de = d / (k · bias), где k = clamp((высота / эталон)^0,35, 0,4, 1,35): крупное дерево
 // упрощается позже, подрост — раньше. Уровни: 0, 1, 2 — модели; 3 — импостор (если у слоя есть импосторы).
 // Плавность: в полосе шириной Band·T вокруг каждой границы растение рисуется обоими уровнями с попиксельным
 // растворением (взаимодополняющий узор): ближний исчезает, дальний проявляется — без скачка размера и цвета.
@@ -22,7 +22,8 @@ namespace Worldbound.FloraView
 
     public static class FloraLOD
     {
-        public static float SizeFactor(float height, float sizeRef) => math.clamp(math.sqrt(math.max(0.05f, height) / sizeRef), 0.35f, 1.7f);
+        public const float TreeSizeRef = 14, ShrubSizeRef = 3;
+        public static float SizeFactor(float height, float sizeRef) => math.clamp(math.pow(math.max(0.05f, height) / sizeRef, 0.35f), 0.4f, 1.35f);
 
         static float T(in LodParams p, int i) => i == 0 ? p.T0 : i == 1 ? p.T1 : p.T2;
 

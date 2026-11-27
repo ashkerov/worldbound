@@ -15,8 +15,10 @@ namespace Worldbound.FloraView
         public float Yaw;
         public float ScaleXZ, ScaleY;
         public float Seed, Leaf, Health;
-        /// <summary>Высота растения, м (множитель уровня детализации).</summary>
+        /// <summary>Высота растения, м.</summary>
         public float Height;
+        /// <summary>1 / множитель размера для уровня детализации (считается один раз при загрузке чанка).</summary>
+        public float LodScale;
         /// <summary>Радиус описанной сферы, м, и высота её центра над основанием.</summary>
         public float Radius, CentreY;
         public int Archetype;

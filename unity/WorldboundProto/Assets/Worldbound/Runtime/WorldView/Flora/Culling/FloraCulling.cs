@@ -31,7 +31,7 @@ namespace Worldbound.FloraView
             float3 c = w.Pos + new float3(0, w.CentreY, 0);
             if (!FloraJobMath.SphereVisible(planes, c, w.Radius)) return 0;
             float d = math.distance(p.Cam, c);
-            float de = d / (FloraLOD.SizeFactor(w.Height, p.Lod.SizeRef) * p.Lod.Bias);
+            float de = d * w.LodScale / p.Lod.Bias;
             int n = FloraLOD.Select(p.Lod, de, w.Seed, out int l0, out f0, out int l1, out f1, out grow);
             if (n == 0) return 0;
             b0 = Bucket(w, l0, p);

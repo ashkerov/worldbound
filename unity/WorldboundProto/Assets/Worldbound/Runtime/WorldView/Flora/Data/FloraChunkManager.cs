@@ -208,6 +208,7 @@ namespace Worldbound.FloraView
                     Leaf = p.Leaf / 255f,
                     Health = p.Health / 255f,
                     Height = h,
+                    LodScale = 1f / FloraLOD.SizeFactor(h, m.Layer == 2 ? FloraLOD.ShrubSizeRef : FloraLOD.TreeSizeRef),
                     Radius = math.max(refR * sxz, refH * sy * 0.55f) * 1.15f,
                     CentreY = h * 0.55f,
                     Archetype = arch,

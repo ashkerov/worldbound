@@ -134,7 +134,7 @@ namespace Worldbound.FloraView
             float3 camPos = cam.transform.position;
             var p = new CullParams { Lod = lod, Cam = camPos, Buckets = Buckets, Archetypes = Archetypes.Count, Impostors = useImpostors && impostors != null, Capacity = output.Length };
             visible.Clear();
-            var h1 = new ChunkCullJob { Min = ChunkMin, Max = ChunkMax, Count = ChunkCount, Planes = planes, Cam = camPos, MaxDist = lod.Max * 1.7f * lod.Bias, Visible = visible.AsParallelWriter() }.Schedule(chunkCount, 16);
+            var h1 = new ChunkCullJob { Min = ChunkMin, Max = ChunkMax, Count = ChunkCount, Planes = planes, Cam = camPos, MaxDist = lod.Max * 1.4f * lod.Bias, Visible = visible.AsParallelWriter() }.Schedule(chunkCount, 16);
             var h2 = new CountJob { Visible = visible.AsDeferredJobArray(), Lists = ListsPtr, Planes = planes, P = p, Counts = counts }.Schedule(visible, 1, h1);
             var h3 = new PrefixJob { Visible = visible, Counts = counts, Offsets = offsets, BucketStart = bucketStart, BucketCount = bucketCount, Total = total, Buckets = Buckets }.Schedule(h2);
             var h4 = new WriteJob { Visible = visible.AsDeferredJobArray(), Lists = ListsPtr, Planes = planes, Offsets = offsets, P = p, Out = output, Changes = changes }.Schedule(visible, 1, h3);
@@ -210,7 +210,7 @@ namespace Worldbound.FloraView
         public static LodParams Lod(FloraRenderSettings s, float bias) => new()
         {
             T0 = s.TreeLod0 * s.DrawDistance, T1 = s.TreeLod1 * s.DrawDistance, T2 = s.TreeLod2 * s.DrawDistance,
-            Thin = s.TreeThin * s.DrawDistance, Max = s.TreeMax * s.DrawDistance, Band = s.FadeBand, Bias = bias, SizeRef = 14, Levels = 4, CrossFade = s.CrossFade,
+            Thin = s.TreeThin * s.DrawDistance, Max = s.TreeMax * s.DrawDistance, Band = s.FadeBand, Bias = bias, SizeRef = FloraLOD.TreeSizeRef, Levels = 4, CrossFade = s.CrossFade,
         };
 
         public static bool[] Shadows(FloraRenderSettings s) => new[] { s.TreeShadowsLod0, s.TreeShadowsLod1, s.TreeShadowsLod2, false };
@@ -222,7 +222,7 @@ namespace Worldbound.FloraView
         public static LodParams Lod(FloraRenderSettings s, float bias) => new()
         {
             T0 = s.ShrubLod0 * s.DrawDistance, T1 = s.ShrubLod1 * s.DrawDistance, T2 = s.ShrubMax * s.DrawDistance,
-            Thin = s.ShrubMax * 0.6f * s.DrawDistance, Max = s.ShrubMax * s.DrawDistance, Band = s.FadeBand, Bias = bias, SizeRef = 3, Levels = 3, CrossFade = s.CrossFade,
+            Thin = s.ShrubMax * 0.6f * s.DrawDistance, Max = s.ShrubMax * s.DrawDistance, Band = s.FadeBand, Bias = bias, SizeRef = FloraLOD.ShrubSizeRef, Levels = 3, CrossFade = s.CrossFade,
         };
 
         public static bool[] Shadows(FloraRenderSettings s) => new[] { s.ShrubShadows, s.ShrubShadows, false, false };

@@ -144,7 +144,7 @@ half3 FloraShade(float3 albedo, float3 n, float3 posWS, float ao, float wrap, fl
     float back = pow(saturate(dot(V, -L.direction)), 3.0) * translucency;
     float3 direct = L.color * sh * (diff + back * float3(0.85, 1.0, 0.55));
     // Амбиент по нормали, приподнятой к небу: нижняя сторона кроны темнее, но не проваливается в черноту.
-    float3 amb = max(SampleSH(normalize(n + float3(0, 0.6, 0))), SampleSH(float3(0, 1, 0)) * 0.25) * (0.3 + 0.7 * ao);
+    float3 amb = SampleSH(normalize(n + float3(0, 0.6, 0))) * (0.3 + 0.7 * ao);
     return albedo * (amb + direct * (0.5 + 0.5 * ao));
 }
 

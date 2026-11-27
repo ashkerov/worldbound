@@ -59,8 +59,8 @@ namespace Worldbound.FloraView
             (int n, float size, float depthMin) = lod switch
             {
                 0 => (cards0, size0, 0.45f),
-                1 => (Mathf.Max(3, Mathf.RoundToInt(cards0 * 0.27f)), size0 * 1.8f, 0.3f),
-                _ => (Mathf.Max(2, Mathf.RoundToInt(cards0 * 0.1f)), size0 * 2.8f, 0.2f),
+                1 => (Mathf.Max(3, Mathf.RoundToInt(cards0 * 0.19f)), size0 * 2.05f, 0.3f),
+                _ => (Mathf.Max(1, Mathf.RoundToInt(cards0 * 0.065f)), size0 * 3.4f, 0.2f),
             };
             var bias = upBias ?? Vector3.up;
             for (int k = 0; k < n; k++)
@@ -361,7 +361,7 @@ namespace Worldbound.FloraView
                         Branch(c, new List<Vector3> { root, Vector3.Lerp(root, tip, 0.5f) - Vector3.up * len * 0.06f, tip }, 0.02f + 0.012f * len, 0.006f, 0x4a3b30, BarkFlaky, 0.1f, 0.6f, 3, 2);
                     var right = Vector3.Cross(Vector3.up, along).normalized;
                     float tone = 0.86f + 0.26f * u + c.R01(37, w, j) * 0.1f;
-                    var lo = Color.Lerp(dark, tipC, 0.2f) * tone; lo.a = 0.5f + 0.3f * u;
+                    var lo = Color.Lerp(dark, tipC, 0.38f) * tone; lo.a = 0.58f + 0.3f * u;
                     var hi = Color.Lerp(dark, tipC, 0.85f) * tone; hi.a = 0.85f + 0.15f * u;
                     var shade = (outv * 0.62f + Vector3.up * 0.78f).normalized;
                     int cards = lod == 0 ? 3 : lod == 1 ? 2 : 1;
